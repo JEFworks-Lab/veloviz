@@ -1,0 +1,105 @@
+---
+title: "Using scvelo from within R"
+author: "Jean Fan"
+date: "8/17/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(
+    warning = FALSE,
+    message = FALSE,
+    cache = FALSE,
+    dpi=100
+)
+```
+
+# Introduction
+
+In this tutorial, we will demo the use of the Python package `scvelo` from within R using R's `retiulate` package.
+
+```{r install}
+## Install from CRAN if you have not doneso already
+## It also helps to have Conda installed to manage Python
+# install.packages("reticulate")
+library(reticulate)
+```
+
+I previously created a conda environment called r-velocity and installed scvelo via `pip install -U scvelo`
+You can double check in Python that the install worked using:
+```
+conda activate r-velocity
+python
+>>> import scvelo as scv
+```
+
+Now we can load up the appropriate Conda environment that has `scvelo` installed.
+```{r load}
+conda_list()
+use_condaenv("r-velocity", required = TRUE)
+```
+
+For demo purposes, we will work through the following tutorial https://scvelo.readthedocs.io/DynamicalModeling.html and work through how to interface with the results in R.
+
+```{r init}
+py_run_string('import scvelo as scv')
+py_run_string('scv.logging.print_version()')
+
+## load data
+py_run_string('adata = scv.datasets.pancreas()')
+py$adata
+
+## save some information from Python to R
+nmat <- py$adata$layers['unspliced']
+emat <- py$adata$layers['spliced']
+cells <- py$adata$obs_names$values
+genes <- py$adata$var_names$values
+dim(nmat)
+dim(emat)
+length(cells)
+length(genes)
+rownames(nmat) <- rownames(emat) <- cells
+colnames(nmat) <- colnames(emat) <- genes
+```
+
+Let's first run through the `scvelo` tutorial analysis.
+
+```{r scvelo}
+## prepare data
+py_run_string('scv.pp.filter_and_normalize(adata, min_shared_counts=20, n_top_genes=2000)')
+py_run_string('scv.pp.moments(adata, n_pcs=30, n_neighbors=30)')
+
+## dynamic model
+py_run_string('scv.tl.recover_dynamics(adata)')
+py_run_string('scv.tl.velocity(adata, mode="dynamical")')
+## note we can compare this to the stochastic to deterministic model
+#py_run_string('scv.tl.velocity(adata, mode="deterministic")')
+
+## plot 
+#py_run_string('scv.tl.velocity_graph(adata)')
+## (following seems to cause some issues for me...crashes R)
+#py_run_string('scv.pl.velocity_embedding_stream(adata, basis="umap")')
+
+## get top dynamic genes
+py_run_string('topgenes=adata.var["fit_likelihood"].sort_values(ascending=False).index.tolist()')
+py$topgenes[1:15]
+```
+
+Now, let's look through some of these top dynamic genes from `scvelo` by plotting their gene expression levels.
+
+```{r plot}
+emb <- py$adata$obsm["X_umap"]
+rownames(emb) <- cells
+head(emb)
+
+par(mfrow=c(3,3))
+sapply(1:9, function(i) {
+  g <- py$topgenes[i]
+  gexp <- log10(nmat[,g]+emat[,g]+1)
+  MERINGUE::plotEmbedding(emb, col=gexp, main=g)
+})
+```
+
+For our own data, we may also create a new `AnnData` object and use `scvelo` to run analyses and pull out the resulting velocity results and compare to `velocyto` analysis. 
+

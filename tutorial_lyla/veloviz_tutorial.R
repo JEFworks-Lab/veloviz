@@ -1,5 +1,5 @@
 #### SETUP ####
-#use velocyto environment 
+#use velocyto2 environment 
 setwd("/Users/lylaatta/Documents/GitHub/veloviz/tutorial_lyla")
 library(MUDAN)
 library(sva)
@@ -7,6 +7,7 @@ library(RSpectra)
 library(velocyto.R)
 library(Rtsne)
 library(destiny)
+library(umap)
 
 #### LOAD DATA ####
 cellExp = read.csv("../data/S12_cell_gexp.csv", header = TRUE)
@@ -48,7 +49,7 @@ mat.bc[mat.bc<0] = 0 #set negative expression to 0
 #CPM normalize 
 mat.cpm = normalizeCounts(mat.bc)
 
-#Normalize variane 
+#Normalize variance 
 mat.norm = normalizeVariance(mat.cpm, details = TRUE, plot = TRUE)
 
 #Over dispersed genes, log normalize
@@ -99,7 +100,9 @@ nmat = as.matrix(testNuc[,subcells])
 
 cell.dist = as.dist(1-cor(t(pcs[subcells,])))
 fit.quantile = 0.05
-rvel.cd = gene.relative.velocity.estimates(emat, nmat, deltaT = 1, kCells = 30, cell.dist = cell.dist, fit.quantile = fit.quantile)
+# rvel.cd = gene.relative.velocity.estimates(emat, nmat, deltaT = 1, kCells = 30, cell.dist = cell.dist, fit.quantile = fit.quantile)
+# saveRDS(rvel.cd,file = "rvelcd.rds")
+rvel.cd = readRDS("rvelcd.rds")
 
 gene.relative.velocity.estimates(emat, nmat, kCells = 30,
                                  fit.quantile = fit.quantile,
@@ -131,5 +134,15 @@ emb.destiny = eigenvectors(emb.destiny)[,1:2]
 show.velocity.on.embedding.cor(scale(emb.destiny), rvel.cd, n=100, scale='sqrt', cell.colors=cell.color,
                                cex=1, arrow.scale=1, show.grid.flow=TRUE,
                                min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2)
+
+#plot velocity projection on umap embedding 
+
+emb.umap = umap(pcs)
+
+show.velocity.on.embedding.cor(scale(emb.umap$layout), rvel.cd, n=100, scale='sqrt', cell.colors=cell.color,
+                               cex=1, arrow.scale=1, show.grid.flow=TRUE,
+                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2)
+
+
 
 

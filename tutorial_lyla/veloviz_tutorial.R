@@ -58,6 +58,13 @@ mat = log10(as.matrix(t(mat.norm$mat[mat.norm$ods,]))+1)
 #### DIM REDUCTION ####
 #PCA 
 pca = svds(A = mat, k = 50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
+#saveRDS(pca,file = "pca.rds")
+pcaInfo = list()
+pcaInfo[['pca']] = pca
+pcaInfo[['cellNames']] = colnames(mat.bc)
+pcaInfo[['geneNames']] = colnames(mat)
+#saveRDS(pcaInfo,file = "pcaInfo.rds")
+
 val = pca$d
 plot(val)
 points(val)
@@ -72,9 +79,10 @@ colnames(pcs) = paste0('PC',1:N)
 #low dimension embedding 
 emb.test = pcs[,1:2]
 
+
 #community detection 
 com = getComMembership(pcs, k=300, method = igraph::cluster_louvain)
-par(mfrow = c(1,2),mar=rep(5,4))
+par(mfrow = c(1,1),mar=rep(5,4))
 plotEmbedding(emb.test, groups = com, mark.clusters = TRUE, show.legend = TRUE, xlab = 'PC1', ylab = 'PC2', main = 'clustering', verbose = FALSE)
 plotEmbedding(emb.test, groups=batch, show.legend = TRUE,
               xlab = 'PC1', ylab = 'PC2', main = 'batch', verbose = FALSE)

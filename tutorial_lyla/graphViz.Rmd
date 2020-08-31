@@ -17,6 +17,9 @@ rvel.cd = readRDS("rvelcd.rds")
 emb.test = readRDS("embTest.rds")
 cell.color = readRDS("cellColor.rds")
 pcaInfo = readRDS("pcaInfo.rds")
+
+curr = rvel.cd$current #observed cells 
+proj = rvel.cd$projected #projected states
 ```
 
 RNA velocity (steady state model) projected on PCA embedding. 
@@ -111,7 +114,7 @@ ncells.sub = ncol(curr.sub)
 
 ```
 
-####
+#### Construct graph for cell subset 
 Make graph for sample subset: 
 ```{r subsample graph}
 cellidx.sub = sapply(seq(1:ncells.sub), function(x) nn2(t(curr.sub[,-x]),t(proj.sub[,x]),k=1)$nn.idx) #index of cell_{nn,i}
@@ -298,6 +301,7 @@ text(gTestFD-0.1,labels = paste("cell",seq(1:5)))
 
 ```
 
+#### Construct graph with new distance function and multiple projected neighbors 
 G6: force directed graph with no edge weights on subsample 
 ```{r}
 subCellsNewNNs = projectedNeighbors(curr.sub,proj.sub)
@@ -333,7 +337,7 @@ hist(subAllDists[1,],breaks = 69)
 
 ```
 
-#### Use PCA coords to make graph 
+#### Use PCA coords instead of gene expression to make graph 
 ```{r calculate score of projected cell states}
 pca = pcaInfo$pca
 sigma = diag(pca$d)
@@ -353,7 +357,7 @@ plot(curr.scores[,1:2], col = cell.color, main = 'Observed')
 
 proj.pca = proj[common.genes,]
 proj.scores = t(proj.pca) %*% vSub
-plot(proj.score[,1:2], col = cell.color, main = 'Projected')
+plot(proj.scores[,1:2], col = cell.color, main = 'Projected')
 
 
 ```
@@ -361,14 +365,14 @@ plot(proj.score[,1:2], col = cell.color, main = 'Projected')
 G7: graph from PCA coordinates 
 ```{r use PCA coordinates to make graph instead of coordinates in gene expression space}
 set.seed(1)
-curr.scores.cellsub = t(curr.scores[emb.test.sub.names,]) #### change here to change number of PCs included 
-proj.scores.cellsub = t(proj.scores[emb.test.sub.names,]) ####
+curr.scores.cellsub = t(curr.scores[emb.test.sub.names,c(1,2)]) #### change here to change number of PCs included 
+proj.scores.cellsub = t(proj.scores[emb.test.sub.names,c(1,2)]) ####
 
-k=5
-pcaSubNNs = projectedNeighbors(curr.scores.cellsub,proj.scores.cellsub,5)
+k=20
+pcaSubNNs = projectedNeighbors(curr.scores.cellsub,proj.scores.cellsub,k)
 pcaNewEdgeList = matrix(nrow = 0, ncol = 2)
 for (n in seq(1:k)){
-  print(n)
+  #print(n)
   pcaNewEdgeList = rbind(pcaNewEdgeList, cbind(seq(1,ncells.sub),pcaSubNNs$kNNs[,n]))
 }
 
@@ -396,6 +400,38 @@ text(scale(emb.test.sub)[rownames(g7FD),]+0.1,labels = seq(1,dim(g7FD)[1]))
 
 ```
 
+G8: Graph with k>1 from gene expression coordinates
+```{r k>1 gene expression coordinates}
+set.seed(1)
+
+k = 10
+gexpSubNNs = projectedNeighbors(curr.sub,proj.sub,k)
+gexpNewEdgeList = matrix(nrow = 0, ncol = 2)
+for (n in seq(1:k)){
+  #print(n)
+  gexpNewEdgeList = rbind(gexpNewEdgeList, cbind(seq(1,ncells.sub),gexpSubNNs$kNNs[,n]))
+}
+
+g8 = graph_from_edgelist(gexpNewEdgeList,directed =TRUE)
+V(g8)$color = cell.color.sub 
+plot(g7)
+g8FD = layout_with_fr(g8,dim=2)
+colnames(g8FD) = c("C1","C2")
+rownames(g8FD) = colnames(curr.sub)
+
+plot(scale(g8FD),col = cell.color.sub, pch = 16, main = "FDG cell coordinates")
+
+show.velocity.on.embedding.cor(scale(g8FD), rvel.cd, n=100, scale='sqrt', cell.colors=cell.color.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = "FDG embedding")
+text(scale(g8FD)+0.1,labels = seq(1,dim(g8FD)[1]))
+
+show.velocity.on.embedding.cor(scale(emb.test.sub), rvel.cd, n=100, scale='sqrt', cell.colors=cell.color.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = "PCA embedding")
+text(scale(emb.test.sub)[rownames(g8FD),]+0.1,labels = seq(1,dim(g8FD)[1]))
+
+
+```
+
+
+#### Distance distributions 
 ```{r look at distribution of distances with increasing PCs }
 
 curr.pc.dists = pcaSubNNs$all_dists

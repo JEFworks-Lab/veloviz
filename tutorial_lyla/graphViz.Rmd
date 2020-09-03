@@ -3,12 +3,12 @@ title: "graphViz U2O5"
 author: "LylaAtta"
 date: "8/19/2020"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE,include = FALSE)
 library(igraph)
 library(matie)
 library(RANN)
@@ -23,15 +23,14 @@ proj = rvel.cd$projected #projected states
 ```
 
 RNA velocity (steady state model) projected on PCA embedding. 
-```{r}
+```{r, results='hide', include=TRUE}
 show.velocity.on.embedding.cor(scale(emb.test), rvel.cd, n=100, scale='sqrt', cell.colors=cell.color,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2)
-
 ```
 
-#### Constructing embedding from velocity projections:
+#### Constructing embedding from velocity projections
 For each observed cell_i, find the nearest neighbor, cell_{nn,i}, to it's projected state p_i in the observed cells excluding cell_i. Build a force directed graph where edges are pointing from cell_i to cell_{nn,i}. 
 Find neighbors, calculate edge weights  
-```{r}
+```{r euclidean dist neighbors}
 curr = rvel.cd$current #observed cells 
 proj = rvel.cd$projected #projected states
 
@@ -49,9 +48,9 @@ for (c in seq(1,length(cellidx))){
 edgeList = cbind(seq(1,ncells),cellidx)
 edgeWeights = 1/(1+celldist)
 ```
-
+knit_exit()
 G0: force directed graph with no edge weights 
-```{r G0}
+```{r G0, results='hide', fig.width=2, fig.height=2}
 g0 = graph_from_edgelist(edgeList,directed =TRUE)
 g0FD = layout_with_fr(g0)
 colnames(g0FD) = c("C1","C2")
@@ -61,7 +60,7 @@ show.velocity.on.embedding.cor(scale(g0FD), rvel.cd, n=100, scale='sqrt', cell.c
 ```
 
 G1: force directed graph with edge weights 
-```{r G1}
+```{r G1, eval = FALSE, fig.width=2, fig.height=2}
 g1 = graph_from_edgelist(edgeList, directed = TRUE)
 edge.attributes(g1)$weight = edgeWeights
 g1FD = layout_with_fr(g1)
@@ -72,7 +71,7 @@ show.velocity.on.embedding.cor(scale(g1FD), rvel.cd, n=100, scale='sqrt', cell.c
 ```
 
 G2: force directed graph with no edge weights, starting with pca coords
-```{r G2}
+```{r G2, eval = FALSE, fig.width=2, fig.height=2}
 g2 = graph_from_edgelist(edgeList,directed =TRUE)
 g2FD = layout_with_fr(g2,emb.test)
 colnames(g2FD) = c("C1","C2")
@@ -82,7 +81,7 @@ show.velocity.on.embedding.cor(scale(g2FD), rvel.cd, n=100, scale='sqrt', cell.c
 ```
 
 G3: force directed graph with edge weights, starting with pca coords 
-```{r G3}
+```{r G3, eval = FALSE, fig.width=2, fig.height=2}
 g3 = graph_from_edgelist(edgeList, directed = TRUE)
 edge.attributes(g3)$weight = edgeWeights
 g3FD = layout_with_fr(g3,emb.test)
@@ -94,7 +93,7 @@ show.velocity.on.embedding.cor(scale(g3FD), rvel.cd, n=100, scale='sqrt', cell.c
 
 #### Subsample U2O5 data and construct graph from subset:
 Try on subset of the data to see what's happening. Want to sample cells across expression space (across cell cycles states) but not sure what order they're in in the data - order by angle from vertical in PC1vPC2 space and then uniform sample: 
-```{r subsample}
+```{r subsample, results = 'hide', include=TRUE, fig.width=3, fig.height=3}
 pcaAngle = acos(emb.test[,2]/sqrt(emb.test[,1]^2 + emb.test[,2]^2))
 pcaAngleOrd = order(pcaAngle)
 pcaAngle = pcaAngle[pcaAngleOrd]
@@ -114,7 +113,7 @@ ncells.sub = ncol(curr.sub)
 ```
 
 Make graph for sample subset: 
-```{r subsample graph}
+```{r subsample graph, include=FALSE}
 cellidx.sub = sapply(seq(1:ncells.sub), function(x) nn2(t(curr.sub[,-x]),t(proj.sub[,x]),k=1)$nn.idx) #index of cell_{nn,i}
 celldist.sub = sapply(seq(1:ncells.sub), function(x) nn2(t(curr.sub[,-x]),t(proj.sub[,x]),k=1)$nn.dist) #distance between p_i and cell_{nn,i}
 
@@ -130,7 +129,7 @@ edgeWeights.sub = 1/(1+celldist.sub)
 ```
 
 G4: force directed graph with no edge weights on subsample 
-```{r G4}
+```{r G4, eval = FALSE, fig.width=3, fig.height=3}
 g4 = graph_from_edgelist(edgeList.sub,directed =TRUE)
 V(g4)$color = cell.color.sub 
 plot(g4)
@@ -143,7 +142,7 @@ text(scale(g4FD)+0.1,labels = seq(1,dim(g4FD)[1]))
 ```
 
 G5: force directed graph with no edge weights on subsample 
-```{r G5}
+```{r G5, eval = FALSE}
 g5 = graph_from_edgelist(edgeList.sub,directed =TRUE)
 V(g5)$color = cell.color.sub 
 edge.attributes(g5)$weight = edgeWeights.sub
@@ -215,7 +214,7 @@ myDist = function(cell_i,proj_i,nn_i,distance_metric="L2",similarity_metric="cos
 ```
 
 Testing `myDist` on toy data... 
-```{r test new dist}
+```{r test new dist, include=TRUE, fig.width=3, fig.height=3 }
 
 pts = matrix(c(2,2,2,4,2,3,2,4,6,2,0,3), ncol =2)
 
@@ -316,7 +315,7 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
 ```
 
 Testing `projectedNeighbors` on toy data...
-```{r test new projected neighbor function}
+```{r test new projected neighbor function, include=TRUE, fig.width=3, fig.height=3 }
 obs = t(matrix(c(2,2,2,3,4,0,2,6,3,2), ncol =2))
 exp = t(matrix(c(3,2,3,3,2,1,4,5,1,4), ncol =2))
 obs_lab = paste("cell",seq(1,5))
@@ -350,8 +349,8 @@ text(gTestFD-0.1,labels = paste("cell",seq(1:5)))
 
 #### Construct graph with new distance function and multiple projected neighbors 
 G6: force directed graph with no edge weights on subsample 
-```{r}
-subCellsNewNNs = projectedNeighbors(curr.sub,proj.sub)
+```{r, include=TRUE, fig.width=3, fig.height=3 }
+subCellsNewNNs = projectedNeighbors(curr.sub,proj.sub,1)
 subAllDists = subCellsNewNNs$all_dists
 subCellsNewEdgeList = cbind(seq(1,ncells.sub),subCellsNewNNs$NNs)
 #subCellsNewNNs = projectedNeighbors(curr,proj)
@@ -375,7 +374,7 @@ text(scale(emb.test.sub)[rownames(g6FD),]+0.1,labels = seq(1,dim(g6FD)[1]))
 
 ```
 
-```{r look at distribution of distances and min distances }
+```{r look at distribution of distances and min distances, eval = FALSE }
 hist(subAllDists,breaks = 50)
 allDistsMins = sapply(seq(1:ncol(subAllDists)), function(x) min(subAllDists[x,], na.rm = TRUE))
 hist(allDistsMins,breaks = 50)
@@ -385,7 +384,7 @@ hist(subAllDists[1,],breaks = 69)
 ```
 
 #### Use PCA coords instead of gene expression to make graph 
-```{r calculate score of projected cell states}
+```{r calculate score of projected cell states, include=TRUE, fig.width=6, fig.height=3 }
 pca = pcaInfo$pca
 sigma = diag(pca$d)
 #plot(pca$d,ylab = "Variance Explained", xlab = "PC")
@@ -410,7 +409,7 @@ plot(proj.scores[,1:2], col = cell.color, main = 'Projected')
 ```
 
 G7: graph from PCA coordinates 
-```{r use PCA coordinates to make graph instead of coordinates in gene expression space}
+```{r use PCA coordinates to make graph instead of coordinates in gene expression space, include=TRUE, fig.width=3, fig.height=3}
 set.seed(1)
 curr.scores.cellsub = t(curr.scores[emb.test.sub.names,]) #### change here to change number of PCs included 
 proj.scores.cellsub = t(proj.scores[emb.test.sub.names,]) ####
@@ -451,7 +450,7 @@ text(scale(emb.test.sub)[rownames(g7FD),]+0.1,labels = seq(1,dim(g7FD)[1]))
 
 
 G8: Graph with k>1 from gene expression coordinates
-```{r k>1 gene expression coordinates}
+```{r k>1 gene expression coordinates, include=TRUE, fig.width=3, fig.height=3}
 set.seed(1)
 
 k = 20
@@ -483,13 +482,13 @@ text(scale(emb.test.sub)[rownames(g8FD),]+0.1,labels = seq(1,dim(g8FD)[1]))
 
 ```
 
-```{r}
+```{r, eval = FALSE }
 hist(gexpSubNNs$dist_comp$negVectSim,breaks  = 100)
 ```
 
 
 #### Distance distributions 
-```{r look at distribution of distances with increasing PCs }
+```{r look at distribution of distances with increasing PCs, eval = FALSE}
 
 curr.pc.dists = pcaSubNNs$all_dists
 hist(curr.pc.dists,breaks = 100, ylim = c(0,40))
@@ -504,7 +503,7 @@ curr.pc.negCos = pcaSubNNs$dist_comp$negCos
 hist(curr.pc.negCos, breaks = 100)
 ```
 
-```{r}
+```{r, eval = FALSE}
 plot(curr.scores.cellsub[1,],curr.scores.cellsub[2,])
 text(curr.scores.cellsub[1,c(1,2,171)],curr.scores.cellsub[2,c(1,2,171)],labels = colnames(curr.scores.cellsub)[c(1,2,171)])
 ```

@@ -196,7 +196,7 @@ myDist = function(cell_i,proj_i,nn_i,distance_metric="L2",similarity_metric="cos
     negVectSim = -1*(v %*% n)/(sqrt(sum(v^2))*sqrt(sum(n^2))) 
     #print(paste("negCos",negVectSim))
   } else if (similarity_metric=="pearson"){
-    negVectSim = 1 - cor(v,n)
+    negVectSim = 1 - cor(v,n, method = "pearson")
     #print(paste("pearsDist",negVectSim))
   }
   
@@ -392,11 +392,11 @@ plot(proj.scores[,1:2], col = cell.color, main = 'Projected')
 G7: graph from PCA coordinates 
 ```{r use PCA coordinates to make graph instead of coordinates in gene expression space}
 set.seed(1)
-curr.scores.cellsub = t(curr.scores[emb.test.sub.names,]) #### change here to change number of PCs included 
-proj.scores.cellsub = t(proj.scores[emb.test.sub.names,]) ####
+curr.scores.cellsub = t(curr.scores[emb.test.sub.names,c(1,2)]) #### change here to change number of PCs included 
+proj.scores.cellsub = t(proj.scores[emb.test.sub.names,c(1,2)]) ####
 
-k=50
-pcaSubNNs = projectedNeighbors(curr.scores.cellsub,proj.scores.cellsub,k)
+k=20
+pcaSubNNs = projectedNeighbors(curr.scores.cellsub,proj.scores.cellsub,k,"L2","pearson")
 pcaNewEdgeList = matrix(nrow = 0, ncol = 2)
 for (n in seq(1:k)){
   #print(n)
@@ -408,6 +408,7 @@ for (n in seq(1:k)){
 g7 = graph_from_edgelist(pcaNewEdgeList,directed =TRUE)
 V(g7)$color = cell.color.sub 
 #V(g6)$color = cell.color
+par(mfrow = c(1,2))
 plot(g7)
 g7FD = layout_with_fr(g7,dim=2)
 colnames(g7FD) = c("C1","C2")
@@ -432,7 +433,7 @@ G8: Graph with k>1 from gene expression coordinates
 set.seed(1)
 
 k = 20
-gexpSubNNs = projectedNeighbors(curr.sub,proj.sub,k)
+gexpSubNNs = projectedNeighbors(curr.sub,proj.sub,k,"L1","pearson")
 gexpNewEdgeList = matrix(nrow = 0, ncol = 2)
 for (n in seq(1:k)){
   #print(n)

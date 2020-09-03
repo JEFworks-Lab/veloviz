@@ -29,9 +29,7 @@ show.velocity.on.embedding.cor(scale(emb.test), rvel.cd, n=100, scale='sqrt', ce
 ```
 
 #### Constructing embedding from velocity projections:
-
 For each observed cell_i, find the nearest neighbor, cell_{nn,i}, to it's projected state p_i in the observed cells excluding cell_i. Build a force directed graph where edges are pointing from cell_i to cell_{nn,i}. 
-
 Find neighbors, calculate edge weights  
 ```{r}
 curr = rvel.cd$current #observed cells 
@@ -94,18 +92,19 @@ rownames(g3FD) = colnames(curr)
 show.velocity.on.embedding.cor(scale(g3FD), rvel.cd, n=100, scale='sqrt', cell.colors=cell.color,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2)
 ```
 
-#### Subsample U2O5 data:
+#### Subsample U2O5 data and construct graph from subset:
+Try on subset of the data to see what's happening. Want to sample cells across expression space (across cell cycles states) but not sure what order they're in in the data - order by angle from vertical in PC1vPC2 space and then uniform sample: 
 ```{r subsample}
 pcaAngle = acos(emb.test[,2]/sqrt(emb.test[,1]^2 + emb.test[,2]^2))
 pcaAngleOrd = order(pcaAngle)
 pcaAngle = pcaAngle[pcaAngleOrd]
 emb.test.ord = emb.test[pcaAngleOrd,]
-emb.test.sub.names = rownames(emb.test.ord)[seq(1,1368,by=5)]
+emb.test.sub.names = rownames(emb.test.ord)[seq(1,1368,by=5)] #### CHANGE HERE to change size of sample
 emb.test.sub = emb.test.ord[emb.test.sub.names,]
 cell.color.sub = cell.color[emb.test.sub.names]
 plot(emb.test.sub, col = cell.color.sub, pch = 16)
 
-show.velocity.on.embedding.cor(scale(emb.test.sub), rvel.cd, n=100, scale='sqrt', cell.colors=cell.color,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2)
+show.velocity.on.embedding.cor(scale(emb.test.sub), rvel.cd, n=100, scale='sqrt', cell.colors=cell.color,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2, return.details = TRUE)
 
 curr.sub = curr[,emb.test.sub.names]
 proj.sub = proj[,emb.test.sub.names]
@@ -114,7 +113,6 @@ ncells.sub = ncol(curr.sub)
 
 ```
 
-#### Construct graph for cell subset 
 Make graph for sample subset: 
 ```{r subsample graph}
 cellidx.sub = sapply(seq(1:ncells.sub), function(x) nn2(t(curr.sub[,-x]),t(proj.sub[,x]),k=1)$nn.idx) #index of cell_{nn,i}
@@ -158,8 +156,10 @@ show.velocity.on.embedding.cor(scale(g5FD), rvel.cd, n=100, scale='sqrt', cell.c
 text(scale(g5FD)+0.1,labels = seq(1,dim(g4FD)[1]))
 ```
 
-#### New distance function 
+This method likely results in some identified neighbors being "behind" the cell of interest, especially if the velocity vector is small. --> Make new projected nearest neighbor function that takes into account the direction from cell_i to the nearest neighbor as compared to the direction of the velocity vector. We're interested in neighbors where cell_i-->nn_i is in a similar direction to the velocity vector i.e. cell_i-->proj_i. 
 
+#### New distance function 
+In addition to minimizing distance between the projected state and the nearest neighbor, we also want to maximize similarity between the direction of the velocity vector and the vector between cell_i and its nearest neighbor. Combining them into one quantity to be minimized: -ve similarity * 1/distance. (Inverting the distance since the negative sign makes farther cells have a smaller quantity (more negative) than closer cells). For distance, we can use L1 norm (`distance_metric="L1"`) or L2 norm (`distance_metric="L2"`). For similarity, we can use cosine similarity (`similarity_metric="cosine"`) or pearson correlation (`similarity_metric="pearson"`). 
 ```{r new dist function}
 myDist = function(cell_i,proj_i,nn_i,distance_metric="L2",similarity_metric="cosine"){
   #cell_i: current cell
@@ -214,6 +214,7 @@ myDist = function(cell_i,proj_i,nn_i,distance_metric="L2",similarity_metric="cos
 }
 ```
 
+Testing `myDist` on toy data... 
 ```{r test new dist}
 
 pts = matrix(c(2,2,2,4,2,3,2,4,6,2,0,3), ncol =2)
@@ -234,12 +235,16 @@ legend(3.5,6,legend = c("cell_i","proj_i","nn_i"), col = c("black","blue","red")
 
 ```
 
+Finding k nearest projected neigbors by minimizing `myDist`...
 ```{r projected neighbor based on new dist}
 # k nearest neighbors based on projected states and given custom distance metric 
-projectedNeighbors = function(observed,projected,k,distance_metric="L2",similarity_metric="cosine"){
+projectedNeighbors = function(observed,projected,k,distance_metric="L2",similarity_metric="cosine",similarity_threshold = -1){
   #observed: genes x cells matrix of observed cells 
   #projected: genes x cells matrix of projected states of cells in observed (same order)
   #k: number of nearest neighbors 
+  #distance_metric: "L1" or "L2" 
+  #similarity_metric: "cosine" or "pearson". NOTE" pearson similarity behaves weird with two dimensions 
+  #similarity_threshold: minimum similarity between velocity vector and cell_i-->nn_i vector for edge to be included. default all included. 
   
   observed = t(observed)
   projected = t(projected)
@@ -279,15 +284,23 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
     min_dist_idx = which(nn_dists_i==min(nn_dists_i))
     #find indices of k nearest neighbors 
     k_min_dists_idx = order(nn_dists_i)[1:k]
+    #exclude neighbor if similarity below threshold 
+    sim_nn_k = nn_negVectSim_i[k_min_dists_idx] #similarities of minimum distance neighbors 
+    new_k_idx = k_min_dists_idx[sim_nn_k <= (-1*similarity_threshold)] #indices of minimum distane neighbors excluding those whose similarities are above threshold 
+    
     #correct min_idx
-    # if (min_dist_idx>=i){
-    #  min_dist_idx = min_dist_idx + 1
-    # }
     min_dist_idx[which(min_dist_idx>=i)] = min_dist_idx[which(min_dist_idx>=i)] + 1
-    nn_idx[i] = min_dist_idx
     #correct min k idx 
     k_min_dists_idx[which(k_min_dists_idx>=i)] = k_min_dists_idx[which(k_min_dists_idx>=i)] + 1
-    knn_idx[i,] = k_min_dists_idx
+    new_k_idx[which(new_k_idx>=i)] = new_k_idx[which(new_k_idx>=i)] + 1
+    
+    #add current cell's neighbors to all cell neighbors matrix
+    nn_idx[i] = min_dist_idx
+    #knn_idx[i,] = k_min_dists_idx
+    if (length(new_k_idx)>0){
+      knn_idx[i,c(1:length(new_k_idx))] = new_k_idx
+    }
+    
   }
   dist_comp = list()
   dist_comp[["invDist"]] = all_invDist
@@ -302,6 +315,7 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
 
 ```
 
+Testing `projectedNeighbors` on toy data...
 ```{r test new projected neighbor function}
 obs = t(matrix(c(2,2,2,3,4,0,2,6,3,2), ncol =2))
 exp = t(matrix(c(3,2,3,3,2,1,4,5,1,4), ncol =2))
@@ -313,13 +327,19 @@ points(t(exp), xlim = c(0,4.5),ylim = c(-0.5,6.5), pch = c(16,16,16), col = "blu
 text(t(obs)-0.2,labels = obs_lab)
 text(t(exp)-0.2,labels = exp_lab)
 
-nns = projectedNeighbors(obs,exp,1,"L2","pearson")
+nns = projectedNeighbors(obs,exp,4,"L2","cosine",0.75)
 
-text(t(obs)+c(0,-0.2), labels = paste("proj neighbor:",nns$NNs))
+#text(t(obs)+0.2, labels = paste("proj neighbor:",nns$NNs))
 #text(t(obs)+c(0.2,-0.2), labels = paste("invL1:",round(min(nns$dist_comp$invDist,na.rm = TRUE),2)))
 
-edgeListTest = cbind(seq(1:5),nns$kNNs[,1])
-#edgeListTest = rbind(cbind(seq(1:5),nns$kNNs[,1]),cbind(seq(1:5),nns$kNNs[,2]))
+#edgeListTest = cbind(seq(1:5),nns$kNNs[,1]) #k=1 
+k=4
+edgeListTest = matrix(nrow = 0, ncol = 2)
+for (n in seq(1:k)){
+  #print(n)
+  edgeListTest = rbind(edgeListTest, cbind(seq(1,5),nns$kNNs[,n]))
+}
+edgeListTest = na.omit(edgeListTest)
 newGtest = graph_from_edgelist(edgeListTest,directed =TRUE)
 plot(newGtest)
 gTestFD = layout_with_fr(newGtest)
@@ -392,17 +412,17 @@ plot(proj.scores[,1:2], col = cell.color, main = 'Projected')
 G7: graph from PCA coordinates 
 ```{r use PCA coordinates to make graph instead of coordinates in gene expression space}
 set.seed(1)
-curr.scores.cellsub = t(curr.scores[emb.test.sub.names,c(1,2)]) #### change here to change number of PCs included 
-proj.scores.cellsub = t(proj.scores[emb.test.sub.names,c(1,2)]) ####
+curr.scores.cellsub = t(curr.scores[emb.test.sub.names,]) #### change here to change number of PCs included 
+proj.scores.cellsub = t(proj.scores[emb.test.sub.names,]) ####
 
 k=20
-pcaSubNNs = projectedNeighbors(curr.scores.cellsub,proj.scores.cellsub,k,"L2","pearson")
+pcaSubNNs = projectedNeighbors(curr.scores.cellsub,proj.scores.cellsub,k,"L2","cosine",0.5)
 pcaNewEdgeList = matrix(nrow = 0, ncol = 2)
 for (n in seq(1:k)){
   #print(n)
   pcaNewEdgeList = rbind(pcaNewEdgeList, cbind(seq(1,ncells.sub),pcaSubNNs$kNNs[,n]))
 }
-
+pcaNewEdgeList = na.omit(pcaNewEdgeList)
 #pcaNewEdgeList = cbind(seq(1,ncells.sub),pcaSubNNs$NNs)
 
 g7 = graph_from_edgelist(pcaNewEdgeList,directed =TRUE)
@@ -428,21 +448,26 @@ text(scale(emb.test.sub)[rownames(g7FD),]+0.1,labels = seq(1,dim(g7FD)[1]))
 
 ```
 
+
+
 G8: Graph with k>1 from gene expression coordinates
 ```{r k>1 gene expression coordinates}
 set.seed(1)
 
 k = 20
-gexpSubNNs = projectedNeighbors(curr.sub,proj.sub,k,"L1","pearson")
+gexpSubNNs = projectedNeighbors(curr.sub,proj.sub,k,"L2","cosine",0.25)
 gexpNewEdgeList = matrix(nrow = 0, ncol = 2)
 for (n in seq(1:k)){
   #print(n)
   gexpNewEdgeList = rbind(gexpNewEdgeList, cbind(seq(1,ncells.sub),gexpSubNNs$kNNs[,n]))
 }
 
+gexpNewEdgeList = na.omit(gexpNewEdgeList)
+
 g8 = graph_from_edgelist(gexpNewEdgeList,directed =TRUE)
 V(g8)$color = cell.color.sub 
-plot(g7)
+par(mfrow = c(1,2))
+plot(g8)
 g8FD = layout_with_fr(g8,dim=2)
 colnames(g8FD) = c("C1","C2")
 rownames(g8FD) = colnames(curr.sub)
@@ -456,6 +481,10 @@ show.velocity.on.embedding.cor(scale(emb.test.sub), rvel.cd, n=100, scale='sqrt'
 text(scale(emb.test.sub)[rownames(g8FD),]+0.1,labels = seq(1,dim(g8FD)[1]))
 
 
+```
+
+```{r}
+hist(gexpSubNNs$dist_comp$negVectSim,breaks  = 100)
 ```
 
 

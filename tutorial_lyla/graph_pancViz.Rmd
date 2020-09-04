@@ -5,11 +5,11 @@ date: "9/3/2020"
 output: html_document
 ---
 
-Here I want to apply the projected neighbors graph visualization to the pancreas dataset that is used in the scVelo demo and compare it to the visualization on the U2OS dataset. 
+Here I want to apply the projected neighbors graph visualization to the pancreas dataset that is used in the scVelo demo and compare it to the visualization on the U2OS dataset.  
 
 ```{r setup, include=FALSE}
 #using velocyto2 evironment 
-knitr::opts_chunk$set(echo = FALSE,include = FALSE)
+knitr::opts_chunk$set(echo = FALSE,include = TRUE)
 library(reticulate)
 library(igraph)
 library(matie)
@@ -20,7 +20,7 @@ library(RSpectra)
 source("projectedNeighbors.R")
 ```
 
-Use the reticulate package to use scVelo from within R:
+Use the reticulate package to use scVelo from within R:   
 ```{r importing scvelo}
 use_condaenv("velo",required = TRUE)
 scv = import("scvelo")
@@ -39,15 +39,14 @@ col = rainbow(length(levels(clusters)),s = 0.8, v = 0.8)
 cell.cols = col[clusters] #color according to cluster
 names(cell.cols) = names(clusters)
 ```
-
-```{r plot panc data on umap }
+```{r plot panc data on umap}
 plot(emb_umap, col = cell.cols, pch=16, xlab = "UMAP X", ylab = "UMAP Y")
 legend(x=13, y=0, legend = levels(clusters), col = col, pch = 16)
 ```
 
 #### Compute velocities on pancreas data using velocyto
-Extract spliced and unspliced data 
-```{r, message = FALSE}
+Extract spliced and unspliced data  
+```{r extract counts, message = FALSE, results='hide'}
 spliced = as.matrix(t(adata$layers['spliced']))
 unspliced = as.matrix(t(adata$layers['unspliced']))
 cells = adata$obs_names$values
@@ -56,15 +55,15 @@ colnames(spliced) = colnames(unspliced) = cells
 rownames(spliced) = rownames(unspliced) = genes
 ```
 
-Extract PCA coordinates
-```{r, message = FALSE}
+Extract PCA coordinates  
+```{r scvelo pca, message = FALSE, results='hide'}
 pcs = adata$obsm['X_pca']
 rownames(pcs) = cells
 cell.dist = as.dist(1-cor(t(pcs))) #cell distance in PC space 
 ```
 
-Filter genes
-```{r, message = FALSE }
+Filter genes  
+```{r filter genes, message = FALSE }
 gexpS = log10(rowSums(spliced)+1)
 gexpU = log10(rowSums(unspliced)+2)
 #plot(gexpS,gexpU)
@@ -73,16 +72,16 @@ spliced = spliced[goodGenes,]
 unspliced = unspliced[goodGenes,]
 ```
 
-Downsample cells to make things easier 
-```{r}
+Downsample cells to make things easier  
+```{r downsample, results='hide'}
 spliced.sub = spliced[,seq(1,ncol(spliced),by=3)]
 unspliced.sub = unspliced[,seq(1,ncol(unspliced),by=3)]
 cell.dist.sub = as.dist(1-cor(t(pcs[seq(1,ncol(unspliced),by=3),])))
 cell.cols.sub = cell.cols[colnames(spliced.sub)]
 ```
 
-Normalize for dimensional reduction
-```{r}
+Normalize for dimensional reduction  
+```{r normalize, results='hide'}
 allExp = spliced.sub + unspliced.sub #use combined spliced and unspliced counts 
 all.cpm = MUDAN::normalizeCounts(allExp) #cpm normalize
 all.norm = MUDAN::normalizeVariance(all.cpm,details = TRUE, plot = TRUE) #variance stabilize 
@@ -92,8 +91,8 @@ all.logODS = log10(as.matrix(t(all.norm$mat[all.norm$ods,]))+1) #keep overdisper
 
 ```
 
-Dimensional reduction 
-```{r}
+Dimensional reduction  
+```{r dimensional reduction}
 pca = svds(A = all.logODS, k=50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
 var = pca$d
 plot(var) # ~5 components 
@@ -104,18 +103,27 @@ plot(emb.pca, col = cell.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2")
 
 ```
 
-Run velocyto on panc data
-```{r, message = FALSE}
+Run velocyto on panc data  
+```{r velocity, message = FALSE, results = 'hide'}
 #vel = gene.relative.velocity.estimates(spliced.sub,unspliced.sub,deltaT=1,kCells=30,cell.dist=cell.dist.sub,fit.quantile=0.1,mult=100)
 #saveRDS(vel,file = "panc_vel.rds")
-#vel = readRDS("panc_vel.rds")
+vel = readRDS("panc_vel.rds")
 curr = vel$current
 proj = vel$projected
-show.velocity.on.embedding.cor(scale(emb.pca), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE,min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2)
+
+#show velocity on PCA
+show.velocity.on.embedding.cor(scale(emb.pca), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE,min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2, main = "Velocities on PCA embedding")
+
+#show velocity on UMAP 
+emb.umap.sub = emb_umap[rownames(emb.pca),]
+show.velocity.on.embedding.cor(scale(emb.umap.sub), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE,min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2, main = "Velocities on UMAP embedding")
+
 ```
 
-Scores of observed and projected states in PC space 
-```{r}
+#### Graph visualization 
+
+Scores of observed and projected states in PC space  
+```{r pc scores}
 u = pca$u #scores
 v = pca$v #loads
 row.names(v) = odsGenes
@@ -135,44 +143,69 @@ plot(proj.scores[,1:2], col = cell.cols.sub, main = 'Projected',xlim = c(-0.55,0
 
 ```
 
-Graph visualization on subset of cells 
-```{r}
+Graph visualization on subset of cells from PC coordinates  
+```{r graph viz from PCs}
 set.seed(1)
 cell.names = colnames(curr)
-cell.names.sub = cell.names[seq(1,length(cell.names),10)]
+cell.names.sub = cell.names[seq(1,length(cell.names),5)] #downsample cells for speed 
 ncells.sub = length(cell.names.sub)
 cell.cols.grph = cell.cols[cell.names.sub]
 
 curr.scores.cellsub = t(curr.scores[cell.names.sub,]) #### change here to change number of PCs included 
 proj.scores.cellsub = t(proj.scores[cell.names.sub,]) ####
 
-k=10
-pcaSubNNs = projectedNeighbors(curr.scores.cellsub,proj.scores.cellsub,k,"L2","cosine",0.25)
-pcaNewEdgeList = matrix(nrow = 0, ncol = 2)
-for (n in seq(1:k)){
-  pcaNewEdgeList = rbind(pcaNewEdgeList, cbind(seq(1,ncells.sub),pcaSubNNs$kNNs[,n]))
+graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph)
+```
+
+Graph visualization on subset of cells from gene expression  
+using `common.genes` (intersect of oveerdispersed genes, `odsGenes`, and genes in velocity output)  
+```{r graph viz from gene exp}
+set.seed(1)
+curr.sub = curr[common.genes,cell.names.sub]
+proj.sub = proj[common.genes,cell.names.sub]
+
+graphViz(curr.sub,proj.sub,10,"L2","cosine",0.25,cell.cols.grph)
+
+
+```
+
+#### Graph parameters 
+Effects of changing k, distance measure, similarity measure, and similarity threshold:  
+Using PC generated graph  
+  
+L1 vs L2 as distance measure:  
+```{r changing distance measure, echo = TRUE}
+#using k=10, similarity=cosine, threshold=0.25
+set.seed(1)
+graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L1","cosine",0.25,cell.cols.grph,"L1 distance")
+graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,"L2 distance")
+```
+
+Pearson correlation vs Cosine similarity:  
+```{r changing similarity measure, echo = TRUE}
+#using k=10, distance=L2, threshold=0.25
+set.seed(1)
+graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,"Cosine Similarity")
+#graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","pearson",0.25,cell.cols.grph,"Pearson Correlation") #need to debug 
+```
+
+Number of out edges k:  
+```{r changing k, echo = TRUE}
+#using distance=L2, similarity=cosine, threshold=0.25
+ks = c(1,5,10,20,50)
+for (k in ks){
+  graphViz(curr.scores.cellsub,proj.scores.cellsub,k,"L2","cosine",0.25,cell.cols.grph,paste("K = ",k))
 }
-pcaNewEdgeList = na.omit(pcaNewEdgeList)
-#pcaNewEdgeList = cbind(seq(1,ncells.sub),pcaSubNNs$NNs)
 
-g7 = graph_from_edgelist(pcaNewEdgeList,directed =TRUE)
-V(g7)$color = cell.cols.grph
-#V(g6)$color = cell.color
-par(mfrow = c(1,2))
-plot(g7)
-g7FD = layout_with_fr(g7,dim=2)
-colnames(g7FD) = c("C1","C2")
-rownames(g7FD) = colnames(curr.scores.cellsub)
-#rownames(g6FD) = colnames(curr)
-#plot(g6FD, col = cell.color, pch = 16)
+```
 
-plot(scale(g7FD),col = cell.cols.grph, pch = 16, main = "FDG cell coordinates")
-
-show.velocity.on.embedding.cor(scale(g7FD), vel, n=100, scale='sqrt', cell.colors=cell.cols.grph,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = "FDG embedding")
-text(scale(g7FD)+0.1,labels = seq(1,dim(g7FD)[1]))
-
-# show.velocity.on.embedding.cor(scale(emb.test.sub), rvel.cd, n=100, scale='sqrt', cell.colors=cell.color,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = "PCA embedding")
-# text(scale(emb.test.sub)[rownames(g7FD),]+0.1,labels = seq(1,dim(g7FD)[1]))
+Similarity threshold: 
+```{r changing similarity threshold, echo = TRUE}
+#using k=10, distance=L2, similarity=cosine
+ts = c(-1, 0, 0.25, 0.5)
+for (t in ts){
+  graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",t,cell.cols.grph,paste("Similarity Threshold = ",t))
+}
 
 ```
 

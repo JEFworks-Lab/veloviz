@@ -135,10 +135,10 @@ graphViz = function(observed, projected, k, distance_metric, similarity_metric, 
   #plot both graphs 
   par(mfrow = c(1,2))
   plot(g)
-  plot(scale(fdg), col = cell.colors, pch = 16, main = "FDG cell coordinates")
+  plot(scale(fdg), col = cell.colors, pch = 16, main = paste("FDG cell coordinates: ", title))
   
   #plot velocity on FDG embedding 
-  show.velocity.on.embedding.cor(scale(fdg), vel, n=100, scale='sqrt', cell.colors=cell.colors,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = paste("FDG embedding",title))
+  show.velocity.on.embedding.cor(scale(fdg), vel, n=100, scale='sqrt', cell.colors=cell.colors,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = paste("FDG embedding: ",title))
   text(scale(fdg)+0.1,labels = seq(1,dim(fdg)[1]))
   
 }

@@ -1,0 +1,178 @@
+---
+title: "Graph Visualization on Pancreas"
+author: "LylaAtta"
+date: "9/3/2020"
+output: html_document
+---
+
+Here I want to apply the projected neighbors graph visualization to the pancreas dataset that is used in the scVelo demo and compare it to the visualization on the U2OS dataset. 
+
+```{r setup, include=FALSE}
+#using velocyto2 evironment 
+knitr::opts_chunk$set(echo = FALSE,include = FALSE)
+library(reticulate)
+library(igraph)
+library(matie)
+library(RANN)
+library(velocyto.R)
+library(MUDAN)
+library(RSpectra)
+source("projectedNeighbors.R")
+```
+
+Use the reticulate package to use scVelo from within R:
+```{r importing scvelo}
+use_condaenv("velo",required = TRUE)
+scv = import("scvelo")
+scv$logging$print_version()
+```
+```{r loading panc data, message=FALSE}
+adata = scv$datasets$pancreas()
+#scv$pl$scatter(adata,legend_loc = "lower left", size = 60)
+
+
+emb_umap = adata$obsm['X_umap'] #extract umap embedding 
+clusters = adata$obs$clusters #extract clusters 
+rownames(emb_umap) = names(clusters) = adata$obs_names$values
+
+col = rainbow(length(levels(clusters)),s = 0.8, v = 0.8) 
+cell.cols = col[clusters] #color according to cluster
+names(cell.cols) = names(clusters)
+```
+
+```{r plot panc data on umap }
+plot(emb_umap, col = cell.cols, pch=16, xlab = "UMAP X", ylab = "UMAP Y")
+legend(x=13, y=0, legend = levels(clusters), col = col, pch = 16)
+```
+
+#### Compute velocities on pancreas data using velocyto
+Extract spliced and unspliced data 
+```{r, message = FALSE}
+spliced = as.matrix(t(adata$layers['spliced']))
+unspliced = as.matrix(t(adata$layers['unspliced']))
+cells = adata$obs_names$values
+genes = adata$var_names$values
+colnames(spliced) = colnames(unspliced) = cells
+rownames(spliced) = rownames(unspliced) = genes
+```
+
+Extract PCA coordinates
+```{r, message = FALSE}
+pcs = adata$obsm['X_pca']
+rownames(pcs) = cells
+cell.dist = as.dist(1-cor(t(pcs))) #cell distance in PC space 
+```
+
+Filter genes
+```{r, message = FALSE }
+gexpS = log10(rowSums(spliced)+1)
+gexpU = log10(rowSums(unspliced)+2)
+#plot(gexpS,gexpU)
+goodGenes = genes[gexpS > 2 & gexpU > 1]
+spliced = spliced[goodGenes,]
+unspliced = unspliced[goodGenes,]
+```
+
+Downsample cells to make things easier 
+```{r}
+spliced.sub = spliced[,seq(1,ncol(spliced),by=3)]
+unspliced.sub = unspliced[,seq(1,ncol(unspliced),by=3)]
+cell.dist.sub = as.dist(1-cor(t(pcs[seq(1,ncol(unspliced),by=3),])))
+cell.cols.sub = cell.cols[colnames(spliced.sub)]
+```
+
+Normalize for dimensional reduction
+```{r}
+allExp = spliced.sub + unspliced.sub #use combined spliced and unspliced counts 
+all.cpm = MUDAN::normalizeCounts(allExp) #cpm normalize
+all.norm = MUDAN::normalizeVariance(all.cpm,details = TRUE, plot = TRUE) #variance stabilize 
+odsGenes = goodGenes[all.norm$ods] #overdispersed genes
+all.logODS = log10(as.matrix(t(all.norm$mat[all.norm$ods,]))+1) #keep overdispersed genes and log normalize
+
+
+```
+
+Dimensional reduction 
+```{r}
+pca = svds(A = all.logODS, k=50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
+var = pca$d
+plot(var) # ~5 components 
+
+emb.pca = pca$u[,1:2]
+row.names(emb.pca) = row.names(all.logODS)
+plot(emb.pca, col = cell.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2")
+
+```
+
+Run velocyto on panc data
+```{r, message = FALSE}
+#vel = gene.relative.velocity.estimates(spliced.sub,unspliced.sub,deltaT=1,kCells=30,cell.dist=cell.dist.sub,fit.quantile=0.1,mult=100)
+#saveRDS(vel,file = "panc_vel.rds")
+#vel = readRDS("panc_vel.rds")
+curr = vel$current
+proj = vel$projected
+show.velocity.on.embedding.cor(scale(emb.pca), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE,min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2)
+```
+
+Scores of observed and projected states in PC space 
+```{r}
+u = pca$u #scores
+v = pca$v #loads
+row.names(v) = odsGenes
+
+common.genes = sapply(row.names(curr), function(x) x %in% odsGenes)
+curr.pca = curr[common.genes,]
+v.sub = v[row.names(curr.pca),]
+
+par(mfrow = c(1,2))
+
+curr.scores = t(curr.pca) %*% v.sub
+plot(curr.scores[,1:2], col = cell.cols.sub, main = 'Observed',xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
+
+proj.pca = proj[common.genes,]
+proj.scores = t(proj.pca) %*% v.sub
+plot(proj.scores[,1:2], col = cell.cols.sub, main = 'Projected',xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
+
+```
+
+Graph visualization on subset of cells 
+```{r}
+set.seed(1)
+cell.names = colnames(curr)
+cell.names.sub = cell.names[seq(1,length(cell.names),10)]
+ncells.sub = length(cell.names.sub)
+cell.cols.grph = cell.cols[cell.names.sub]
+
+curr.scores.cellsub = t(curr.scores[cell.names.sub,]) #### change here to change number of PCs included 
+proj.scores.cellsub = t(proj.scores[cell.names.sub,]) ####
+
+k=10
+pcaSubNNs = projectedNeighbors(curr.scores.cellsub,proj.scores.cellsub,k,"L2","cosine",0.25)
+pcaNewEdgeList = matrix(nrow = 0, ncol = 2)
+for (n in seq(1:k)){
+  pcaNewEdgeList = rbind(pcaNewEdgeList, cbind(seq(1,ncells.sub),pcaSubNNs$kNNs[,n]))
+}
+pcaNewEdgeList = na.omit(pcaNewEdgeList)
+#pcaNewEdgeList = cbind(seq(1,ncells.sub),pcaSubNNs$NNs)
+
+g7 = graph_from_edgelist(pcaNewEdgeList,directed =TRUE)
+V(g7)$color = cell.cols.grph
+#V(g6)$color = cell.color
+par(mfrow = c(1,2))
+plot(g7)
+g7FD = layout_with_fr(g7,dim=2)
+colnames(g7FD) = c("C1","C2")
+rownames(g7FD) = colnames(curr.scores.cellsub)
+#rownames(g6FD) = colnames(curr)
+#plot(g6FD, col = cell.color, pch = 16)
+
+plot(scale(g7FD),col = cell.cols.grph, pch = 16, main = "FDG cell coordinates")
+
+show.velocity.on.embedding.cor(scale(g7FD), vel, n=100, scale='sqrt', cell.colors=cell.cols.grph,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = "FDG embedding")
+text(scale(g7FD)+0.1,labels = seq(1,dim(g7FD)[1]))
+
+# show.velocity.on.embedding.cor(scale(emb.test.sub), rvel.cd, n=100, scale='sqrt', cell.colors=cell.color,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = "PCA embedding")
+# text(scale(emb.test.sub)[rownames(g7FD),]+0.1,labels = seq(1,dim(g7FD)[1]))
+
+```
+

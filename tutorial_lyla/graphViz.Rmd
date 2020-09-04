@@ -48,7 +48,7 @@ for (c in seq(1,length(cellidx))){
 edgeList = cbind(seq(1,ncells),cellidx)
 edgeWeights = 1/(1+celldist)
 ```
-knit_exit()
+
 G0: force directed graph with no edge weights 
 ```{r G0, results='hide', fig.width=2, fig.height=2}
 g0 = graph_from_edgelist(edgeList,directed =TRUE)

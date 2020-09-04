@@ -34,12 +34,12 @@ myDist = function(cell_i,proj_i,nn_i,distance_metric="L2",similarity_metric="cos
 }
 
 projectedNeighbors = function(observed,projected,k,distance_metric="L2",similarity_metric="cosine",similarity_threshold = -1){
-  #observed: genes x cells matrix of observed cells 
-  #projected: genes x cells matrix of projected states of cells in observed (same order)
+  #observed: genes (rows) x cells (columns) matrix of observed cells 
+  #projected: genes (rows) x cells (columns) matrix of projected states of cells in observed (same order)
   #k: number of nearest neighbors 
   #distance_metric: "L1" or "L2" 
-  #similarity_metric: "cosine" or "pearson". NOTE" pearson similarity behaves weird with two dimensions 
-  #similarity_threshold: minimum similarity between velocity vector and cell_i-->nn_i vector for edge to be included. default all included. 
+  #similarity_metric: "cosine" or "pearson". NOTE: pearson similarity behaves weird with two dimensions 
+  #similarity_threshold: minimum similarity between velocity vector and cell_i-->nn_i vector for edge to be included. default: all edges included. 
   
   observed = t(observed)
   projected = t(projected)
@@ -106,4 +106,39 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
   out[['all_dists']] = all_dists
   out[["dist_comp"]] = dist_comp
   return(out)
+}
+
+graphViz = function(observed, projected, k, distance_metric, similarity_metric, similarity_threshold, cell.colors, title = NA){
+  ncells = ncol(observed)
+  if (is.na(title)){
+    title = ""
+  }
+  
+  #find projected neighbors 
+  nns = projectedNeighbors(observed, projected, k, distance_metric, similarity_metric, similarity_threshold)
+  
+  #make edge list 
+  edgeList = matrix(nrow = 0, ncol = 2)
+  for (n in seq(1:k)){
+    edgeList = rbind(edgeList, cbind(seq(1,ncells),nns$kNNs[,n]))
+  }
+  edgeList = na.omit(edgeList)
+  
+  #make graph 
+  g = graph_from_edgelist(edgeList,directed = TRUE)
+  V(g)$color = cell.colors
+  #make force directed graph 
+  fdg = layout_with_fr(g,dim=2)
+  colnames(fdg) = c("C1","C2")
+  rownames(fdg) = colnames(observed)
+  
+  #plot both graphs 
+  par(mfrow = c(1,2))
+  plot(g)
+  plot(scale(fdg), col = cell.colors, pch = 16, main = "FDG cell coordinates")
+  
+  #plot velocity on FDG embedding 
+  show.velocity.on.embedding.cor(scale(fdg), vel, n=100, scale='sqrt', cell.colors=cell.colors,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = paste("FDG embedding",title))
+  text(scale(fdg)+0.1,labels = seq(1,dim(fdg)[1]))
+  
 }

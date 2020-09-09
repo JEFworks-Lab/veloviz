@@ -157,7 +157,7 @@ cell.cols.grph = cell.cols[cell.names.sub]
 curr.scores.cellsub = t(curr.scores[cell.names.sub,]) #### change here to change number of PCs included 
 proj.scores.cellsub = t(proj.scores[cell.names.sub,]) ####
 
-graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph)
+graphViz(curr.scores.cellsub,proj.scores.cellsub,100,"L2","cosine",0.25,cell.cols.grph,title = "K = 100")
 ```
 
 Graph visualization on subset of cells from gene expression  
@@ -279,10 +279,10 @@ coords = fdg$fdg_coords
 nNeighbors = 10
 neighbors = nn2(coords,k=nNeighbors+1)$nn.idx[,2:(nNeighbors+1)]
 
-plot(coords)
+plot(coords,col = cell.cols.grph,pch = 16,xlab = "",ylab = "")
 cell = 5
-points(coords[cell,1],coords[cell,2],col = "blue",pch = 4)
-points(coords[neighbors[cell,],1],coords[neighbors[cell,],2], col = "red",pch = 4)
+points(coords[cell,1],coords[cell,2],col = "black",pch = 19)
+points(coords[neighbors[cell,],1],coords[neighbors[cell,],2], col = "black",pch = 4,cex = 1.3)
 
 ```
 
@@ -291,26 +291,76 @@ deltaExp = vel$deltaE[common.genes.names,cell.names.sub]
 neighborCors = t(sapply(seq(1:ncells.sub), function(i) sapply(seq(1:nNeighbors), function(n) cor(deltaExp[,i],deltaExp[,neighbors[i,n]]))))
 rownames(neighborCors) = cell.names.sub
 cellConsistency = rowMeans(neighborCors)
-hist(cellConsistency,breaks = 100)
+hist(cellConsistency,breaks = 150)
+cellcon = consistency(coords,deltaExp,20,FALSE)
+hist(cellcon,breaks = 150,xlab = "Cell Consistency Score",main = "")
 ```
 
 ```{r}
-consistency = function(fdg.coords,delta.exp,nNeighbors,plot.hist = FALSE){
-  ncells = nrow(fdg.coords)
-  cell.names = row.names(fdg.coords)
-  neighbors = nn2(fdg.coords,k=nNeighbors+1)$nn.idx[,2:(nNeighbors+1)]
-  neighbor.cors = t(sapply(seq(1:ncells), function(i) sapply(seq(1:nNeighbors), function(n) cor(delta.exp[,i],delta.exp[,neighbors[i,n]]))))
-  rownames(neighbor.cors) = cell.names
-  cell.consistency = rowMeans(neighbor.cors)
-  
-  if (plot.hist){
-    hist(cell.consistency,breaks = 100)
-  }
-  return(cell.consistency)
+col.gradient = colorRampPalette(c('blue','red'))
+cons.col = col.gradient(ncells.sub)[as.numeric(cut(cellcon,breaks = ncells.sub))]
+plot(coords,col = cons.col,pch = 16)
+
+
+```
+
+#### Graph parameters consistency scores
+Number of out edges k:  
+```{r changing k, echo = TRUE}
+#using distance=L2, similarity=cosine, threshold=0.25
+ks = c(1,5,10,20,50,100)
+conScores_k = matrix(NA,nrow = ncells.sub,ncol=length(ks))
+for (i in seq(1,length(ks))){
+  k = ks[i]
+  currG = graphViz(curr.scores.cellsub,proj.scores.cellsub,k,"L2","cosine",0.25,cell.cols.grph,paste("K = ",k),plot = FALSE,return_graph = TRUE)
+  currCoords = currG$fdg_coords
+  curr.con = consistency(currCoords, deltaExp,20,FALSE)
+  conScores_k[,i] = curr.con
+  # col.gradient = colorRampPalette(c('blue','red'))
+  # cons.col = col.gradient(ncells.sub)[as.numeric(cut(curr.con,breaks = ncells.sub))]
+  # plot(currCoords,col = cons.col,pch = 16)
 }
 
-cellcon = consistency(coords,deltaExp,10,TRUE)
+par(mfrow = c(3,2))
+hist(conScores_k[,1],col="red",breaks = 150,xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 1")
+hist(conScores_k[,2],col="blue",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 5")
+hist(conScores_k[,3],col="green",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 10")
+hist(conScores_k[,4],col="yellow",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 20")
+hist(conScores_k[,5],col="black",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 50") #add = TRUE
+hist(conScores_k[,6],col="cyan",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 100") #add = TRUE
 
+print("Mean consistency scores")
+print(colMeans(conScores_k))
+print("Median consistency scores")
+print(sapply(c(1:6), function(x) median(conScores_k[,x])))
+```
+
+Similarity threshold: 
+```{r changing similarity threshold, echo = TRUE}
+#using k=10, distance=L2, similarity=cosine
+ts = c(-1, 0, 0.25, 0.5)
+conScores_t = matrix(NA,nrow = ncells.sub,ncol=length(ts))
+for (i in seq(1,length(ts))){
+  t = ts[i]
+  currG = graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",t,cell.cols.grph,paste("Similarity Threshold = ",t),plot = FALSE,return_graph = TRUE)
+  currCoords = currG$fdg_coords
+  curr.con = consistency(currCoords, deltaExp,20,FALSE)
+  conScores_t[,i] = curr.con
+  # col.gradient = colorRampPalette(c('blue','red'))
+  # cons.col = col.gradient(ncells.sub)[as.numeric(cut(curr.con,breaks = ncells.sub))]
+  # plot(currCoords,col = cons.col,pch = 16)
+}
+
+par(mfrow = c(3,2))
+hist(conScores_t[,1],col="red",breaks = 125,xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = -1")
+hist(conScores_t[,2],col="blue",breaks = 125, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = 0")
+hist(conScores_t[,3],col="green",breaks = 125, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = 0.25")
+hist(conScores_t[,4],col="yellow",breaks = 125, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = 0.5")#add = TRUE
+
+print("Mean consistency scores")
+print(colMeans(conScores_t))
+print("Median consistency scores")
+print(sapply(c(1:4), function(x) median(conScores_t[,x])))
 
 ```
 

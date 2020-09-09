@@ -87,7 +87,10 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
     min_dist_idx[which(min_dist_idx>=i)] = min_dist_idx[which(min_dist_idx>=i)] + 1
     #correct min k idx 
     k_min_dists_idx[which(k_min_dists_idx>=i)] = k_min_dists_idx[which(k_min_dists_idx>=i)] + 1
-    new_k_idx[which(new_k_idx>=i)] = new_k_idx[which(new_k_idx>=i)] + 1
+    if (length(new_k_idx)>0){  #### CHANGED HERE
+      new_k_idx[which(new_k_idx>=i)] = new_k_idx[which(new_k_idx>=i)] + 1
+    }
+    
     
     #add current cell's neighbors to all cell neighbors matrix
     nn_idx[i] = min_dist_idx
@@ -116,6 +119,7 @@ graphViz = function(observed, projected, k, distance_metric, similarity_metric, 
   
   #find projected neighbors 
   nns = projectedNeighbors(observed, projected, k, distance_metric, similarity_metric, similarity_threshold)
+  print("Done finding neighbors")
   
   #make edge list 
   edgeList = matrix(nrow = 0, ncol = 2)
@@ -124,13 +128,19 @@ graphViz = function(observed, projected, k, distance_metric, similarity_metric, 
   }
   edgeList = na.omit(edgeList)
   
+  print("Done making edge list")
+  
   #make graph 
   g = graph_from_edgelist(edgeList,directed = TRUE)
   V(g)$color = cell.colors
   #make force directed graph 
+  #print(edgeList)
   fdg = layout_with_fr(g,dim=2)
+  #print("what's wrong")
   colnames(fdg) = c("C1","C2")
   rownames(fdg) = colnames(observed)
+  
+  print("Done making graph")
   
   if (plot){
     #plot both graphs 
@@ -153,6 +163,11 @@ graphViz = function(observed, projected, k, distance_metric, similarity_metric, 
 }
 
 consistency = function(fdg.coords,delta.exp,nNeighbors,plot.hist = FALSE){
+  #fdg.coords: coordinates of FDG in which consistency score is to be evaluated 
+  #delta.exp: change in gene expression based on velocity (part of velocyto output)
+  #nNeighbors: number of nearest neighbors in FDG to find and calculate correlation with 
+  
+  
   ncells = nrow(fdg.coords)
   cell.names = row.names(fdg.coords)
   neighbors = nn2(fdg.coords,k=nNeighbors+1)$nn.idx[,2:(nNeighbors+1)]

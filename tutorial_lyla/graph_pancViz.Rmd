@@ -25,7 +25,7 @@ Use the reticulate package to use scVelo from within R:
 ```{r importing scvelo}
 use_condaenv("velo",required = TRUE)
 scv = import("scvelo")
-scv$logging$print_version()
+#scv$logging$print_version()
 ```
 ```{r loading panc data, message=FALSE}
 adata = scv$datasets$pancreas()
@@ -77,6 +77,7 @@ unspliced = unspliced[goodGenes,]
 Downsample cells to make things easier  
 ```{r downsample, results='hide'}
 spliced.sub = spliced[,seq(1,ncol(spliced),by=3)]
+cell.names.sub = colnames(spliced.sub)
 unspliced.sub = unspliced[,seq(1,ncol(unspliced),by=3)]
 cell.dist.sub = as.dist(1-cor(t(pcs[seq(1,ncol(unspliced),by=3),])))
 cell.cols.sub = cell.cols[colnames(spliced.sub)]
@@ -100,10 +101,20 @@ var = pca$d
 plot(var) # ~5 components 
 
 emb.pca = pca$u[,1:2]
+
 row.names(emb.pca) = row.names(all.logODS)
 plot(emb.pca, col = cell.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2")
 
 ```
+
+```{r umap}
+pcs = pca$u
+emb.umap = umap(pcs)$layout
+row.names(emb.umap) = row.names(all.logODS)
+plot(scale(emb.umap),col = cell.cols.sub, pch = 16)
+```
+
+
 
 Run velocyto on panc data  
 ```{r velocity, message = FALSE, results = 'hide'}
@@ -361,6 +372,40 @@ print("Mean consistency scores")
 print(colMeans(conScores_t))
 print("Median consistency scores")
 print(sapply(c(1:4), function(x) median(conScores_t[,x])))
+
+```
+#### Consistency of fdg compared to other embeddings
+```{r}
+set.seed(1)
+
+deltaExp = vel$deltaE[,cell.names.sub]
+
+emb.pca.sub.grph = emb.pca[cell.names.sub,]
+pcaCon = consistency(emb.pca.sub.grph,deltaExp,20,FALSE)
+
+emb.umap.sub.grph = emb.umap.sub[cell.names.sub,]
+umapCon = consistency(emb.umap.sub.grph,deltaExp,20,FALSE)
+
+fdgCoords = graphViz(curr.scores.cellsub,proj.scores.cellsub,20,"L2","cosine",0.25,cell.cols.sub,plot = FALSE,return_graph = TRUE)$fdg_coords
+fdgCon = consistency(fdgCoords,deltaExp,20,FALSE)
+
+```
+```{r, fig.width = 5, fig.height = 7}
+par(mfrow = c(3,1))
+x = c(-0.2,1)
+y = c(0,15)
+xt = "Cell Consistency Score"
+hist(pcaCon,breaks = 100, col = "red",xlim = x, ylim = y, xlab =  xt, main = "PCA Embedding Consistency")
+hist(umapCon,breaks = 100, col = "green",xlim = x, ylim = y,xlab =  xt, main = "UMAP Embedding Consistency")
+hist(fdgCon, breaks = 100, col = "blue",xlim = x, ylim = y,xlab =  xt, main = "FDG Embedding Consistency")
+
+mean(pcaCon)
+mean(umapCon)
+mean(fdgCon)
+
+median(pcaCon)
+median(umapCon)
+median(fdgCon)
 
 ```
 

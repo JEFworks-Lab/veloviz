@@ -1,0 +1,220 @@
+---
+title: "graph_u2osViz"
+author: "LylaAtta"
+date: "9/8/2020"
+output: html_document
+---
+
+#### Setup and get data 
+```{r setup, include=FALSE}
+#using velocyto2 evironment 
+knitr::opts_chunk$set(echo = FALSE,include = TRUE)
+library(reticulate)
+library(igraph)
+library(matie)
+library(RANN)
+library(velocyto.R)
+library(MUDAN)
+library(RSpectra)
+library(umap)
+source("projectedNeighbors.R")
+
+rvel.cd = readRDS("rvelcd.rds")
+emb.test = readRDS("embTest.rds")
+cell.color = readRDS("cellColor.rds")
+pcaInfo = readRDS("pcaInfo.rds")
+
+curr = rvel.cd$current #observed cells 
+proj = rvel.cd$projected #projected states
+```
+
+#### Subsample 
+
+```{r subsample, results = 'hide', include=TRUE, fig.width=5, fig.height=5} 
+#fig.width=3, fig.height=3
+pcaAngle = acos(emb.test[,2]/sqrt(emb.test[,1]^2 + emb.test[,2]^2))
+pcaAngleOrd = order(pcaAngle)
+pcaAngle = pcaAngle[pcaAngleOrd]
+emb.test.ord = emb.test[pcaAngleOrd,]
+emb.test.sub.names = rownames(emb.test.ord)[seq(1,1368,by=5)] #### CHANGE HERE to change size of sample
+emb.test.sub = emb.test.ord[emb.test.sub.names,]
+cell.color.sub = cell.color[emb.test.sub.names]
+plot(emb.test.sub, col = cell.color.sub, pch = 16)
+
+#show.velocity.on.embedding.cor(scale(emb.test.sub), rvel.cd, n=100, scale='sqrt', cell.colors=cell.color,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, return.details = TRUE)
+
+curr.sub = curr[,emb.test.sub.names]
+proj.sub = proj[,emb.test.sub.names]
+
+ncells.sub = ncol(curr.sub)
+```
+```{r umap}
+set.seed(1)
+pcs = pcaInfo$pca$u
+emb.umap = umap(pcs)$layout
+rownames(emb.umap) = colnames(curr)
+
+emb.umap.sub = emb.umap[emb.test.sub.names,]
+plot(scale(emb.umap.sub), col = cell.color.sub, pch = 16)
+
+show.velocity.on.embedding.cor(scale(emb.umap.sub), rvel.cd, n=100, scale='sqrt', cell.colors=cell.color,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, return.details = TRUE)
+
+
+```
+
+
+```{r calculate score of projected cell states, include=TRUE, fig.width=6, fig.height=3 }
+pca = pcaInfo$pca
+sigma = diag(pca$d)
+#plot(pca$d,ylab = "Variance Explained", xlab = "PC")
+u = pca$u
+v = pca$v
+row.names(v) = pcaInfo$geneNames
+
+common.genes = sapply(row.names(curr), function(x) x %in% pcaInfo$geneNames)
+common.genes.names = rownames(curr)[common.genes]
+curr.pca = curr[common.genes,]
+vSub = v[row.names(curr.pca),]
+
+par(mfrow = c(1,2))
+
+curr.scores = t(curr.pca) %*% vSub
+plot(curr.scores[,1:2], col = cell.color, main = 'Observed')
+
+proj.pca = proj[common.genes,]
+proj.scores = t(proj.pca) %*% vSub
+plot(proj.scores[,1:2], col = cell.color, main = 'Projected')
+
+
+```
+```{r graph, fig.width=8, fig.height=5}
+vel = rvel.cd
+deltaExp = vel$deltaE[common.genes.names,emb.test.sub.names] 
+
+set.seed(1)
+curr.scores.cellsub = t(curr.scores[emb.test.sub.names,c(1,2)]) #### change here to change number of PCs included 
+proj.scores.cellsub = t(proj.scores[emb.test.sub.names,c(1,2)]) ####
+
+graphViz(curr.scores.cellsub,proj.scores.cellsub,20,"L2","cosine",0.25,cell.color.sub)
+
+
+```
+
+#### Compare FDG to PCA and UMAP embeddings
+```{r}
+#consistency scores for pca embedding 
+set.seed(1)
+
+pcaCon = consistency(emb.test.sub,deltaExp,20,FALSE)
+umapCon = consistency(emb.umap.sub,deltaExp,20,FALSE)
+
+fdgCoords = graphViz(curr.scores.cellsub,proj.scores.cellsub,20,"L2","cosine",0.25,cell.color.sub,plot = FALSE,return_graph = TRUE)$fdg_coords
+fdgCon = consistency(fdgCoords,deltaExp,20,FALSE)
+
+```
+
+```{r, fig.width = 5, fig.height = 7}
+par(mfrow = c(3,1))
+x = c(-0.2,1)
+y = c(0,15)
+xt = "Cell Consistency Score"
+hist(pcaCon,breaks = 100, col = "red",xlim = x, ylim = y,  xlab =  xt, main = "PCA Embedding Consistency")
+hist(umapCon,breaks = 100, col = "green",xlim = x, ylim = y, xlab =  xt, main = "UMAP Embedding Consistency")
+hist(fdgCon, breaks = 100, col = "blue",xlim = x, ylim = y, xlab =  xt, main = "FDG Embedding Consistency")
+
+
+mean(pcaCon)
+mean(umapCon)
+mean(fdgCon)
+
+median(pcaCon)
+median(umapCon)
+median(fdgCon)
+```
+
+
+
+#### Graph parameters consistency scores
+Number of out edges k:  
+```{r changing k, echo = TRUE}
+#using distance=L2, similarity=cosine, threshold=0.25
+ks = c(1,5,10,20,50,100)
+conScores_k = matrix(NA,nrow = ncells.sub,ncol=length(ks))
+for (i in seq(1,length(ks))){
+  k = ks[i]
+  set.seed(5)
+  currG = graphViz(curr.scores.cellsub,proj.scores.cellsub,k,"L2","cosine",0.25,cell.color.sub,paste("K = ",k),plot = FALSE,return_graph = TRUE)
+  currCoords = currG$fdg_coords
+  curr.con = consistency(currCoords, deltaExp,20,FALSE)
+  conScores_k[,i] = curr.con
+  # col.gradient = colorRampPalette(c('blue','red'))
+  # cons.col = col.gradient(ncells.sub)[as.numeric(cut(curr.con,breaks = ncells.sub))]
+  # plot(currCoords,col = cons.col,pch = 16)
+}
+
+par(mfrow = c(3,2))
+y = c(0,17)
+hist(conScores_k[,1],col="red",breaks = 100,xlim=c(-0.5,1),ylim=y,xlab = "Cell Consistency Score",main="K = 1")
+hist(conScores_k[,2],col="blue",breaks = 100, xlim=c(-0.5,1),ylim=y,xlab = "Cell Consistency Score",main="K = 5")
+hist(conScores_k[,3],col="green",breaks = 100, xlim=c(-0.5,1),ylim=y,xlab = "Cell Consistency Score",main="K = 10")
+hist(conScores_k[,4],col="yellow",breaks = 100, xlim=c(-0.5,1),ylim=y,xlab = "Cell Consistency Score",main="K = 20")
+hist(conScores_k[,5],col="black",breaks = 100, xlim=c(-0.5,1),ylim=y,xlab = "Cell Consistency Score",main="K = 50") #add = TRUE
+hist(conScores_k[,6],col="cyan",breaks = 100, xlim=c(-0.5,1),ylim = y,xlab = "Cell Consistency Score",main="K = 100") #add = TRUE
+
+print("Mean consistency scores")
+print(colMeans(conScores_k))
+print("Median consistency scores")
+print(sapply(c(1:6), function(x) median(conScores_k[,x])))
+```
+
+Similarity threshold: 
+```{r changing similarity threshold, echo = TRUE}
+#using k=10, distance=L2, similarity=cosine
+ts = c(-1, 0, 0.25, 0.5)
+conScores_t = matrix(NA,nrow = ncells.sub,ncol=length(ts))
+for (i in seq(1,length(ts))){
+  set.seed(1)
+  t = ts[i]
+  currG = graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",t,cell.color.sub,paste("Similarity Threshold = ",t),plot = FALSE,return_graph = TRUE)
+  currCoords = currG$fdg_coords
+  curr.con = consistency(currCoords, deltaExp,20,FALSE)
+  conScores_t[,i] = curr.con
+  # col.gradient = colorRampPalette(c('blue','red'))
+  # cons.col = col.gradient(ncells.sub)[as.numeric(cut(curr.con,breaks = ncells.sub))]
+  # plot(currCoords,col = cons.col,pch = 16)
+}
+
+par(mfrow = c(3,2))
+y = c(0,15)
+hist(conScores_t[,1],col="red",breaks = 100,xlim=c(-0.5,1),xlab = "Cell Consistency Score",main="t = -1")
+hist(conScores_t[,2],col="blue",breaks = 100, xlim=c(-0.5,1),ylim = y,xlab = "Cell Consistency Score",main="t = 0")
+hist(conScores_t[,3],col="green",breaks = 100, xlim=c(-0.5,1),ylim = y,xlab = "Cell Consistency Score",main="t = 0.25")
+hist(conScores_t[,4],col="yellow",breaks = 100, xlim=c(-0.5,1),ylim = y,xlab = "Cell Consistency Score",main="t = 0.5")#add = TRUE
+
+print("Mean consistency scores")
+print(colMeans(conScores_t))
+print("Median consistency scores")
+print(sapply(c(1:4), function(x) median(conScores_t[,x])))
+
+```
+#### Graphs with different parameters
+```{r,fig.width=7.5, fig.height=5}
+#k=1 and k=50 
+set.seed(5)
+k=1
+graphViz(curr.scores.cellsub,proj.scores.cellsub,k,"L2","cosine",0.25,cell.color.sub,paste("K = ",k),plot = TRUE,return_graph = FALSE)
+k=50
+graphViz(curr.scores.cellsub,proj.scores.cellsub,k,"L2","cosine",0.25,cell.color.sub,paste("K = ",k),plot = TRUE,return_graph = FALSE)
+
+```
+```{r,fig.width=7.5, fig.height=5}
+#t=-1 and t=0.5
+set.seed(1)
+t=-1
+graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",t,cell.color.sub,paste("",t),plot = TRUE,return_graph = FALSE)
+t=0.5
+graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",t,cell.color.sub,paste("",t),plot = TRUE,return_graph = FALSE)
+
+
+```
+

@@ -6,7 +6,7 @@ output:
   html_document: default
   pdf_document: default
 ---
-
+#### Setup
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE,include = FALSE)
 library(igraph)

@@ -82,8 +82,13 @@ emb.test = pcs[,1:2]
 
 #community detection 
 com = getComMembership(pcs, k=300, method = igraph::cluster_louvain)
+cluster.label = factor(com)
+cell.color = MUDAN:::fac2col(cluster.label)
+
 par(mfrow = c(1,1),mar=rep(5,4))
-plotEmbedding(emb.test, groups = com, mark.clusters = TRUE, show.legend = TRUE, xlab = 'PC1', ylab = 'PC2', main = 'clustering', verbose = FALSE)
+plotEmbedding(emb.test, groups = com, mark.clusters = TRUE, show.legend = TRUE, xlab = 'PC1', ylab = 'PC2', 
+              main = 'clustering', verbose = FALSE)
+plot(scale(emb.test), pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.color)
 plotEmbedding(emb.test, groups=batch, show.legend = TRUE,
               xlab = 'PC1', ylab = 'PC2', main = 'batch', verbose = FALSE)
 
@@ -122,7 +127,7 @@ gene.relative.velocity.estimates(emat, nmat, kCells = 30,
 #plot velocity projections on PCs
 show.velocity.on.embedding.cor(scale(emb.test), rvel.cd, n=100, scale='sqrt', cell.colors=cell.color,
                                cex=1, arrow.scale=1, show.grid.flow=TRUE,
-                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2)
+                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1)
 
 
 #plot velocity projections on tsne embedding 
@@ -146,10 +151,12 @@ show.velocity.on.embedding.cor(scale(emb.destiny), rvel.cd, n=100, scale='sqrt',
 #plot velocity projection on umap embedding 
 
 emb.umap = umap(pcs)
+plot(scale(emb.umap$layout), pch=16, xlab = 'UMAP X', ylab = 'UMAP Y', col = cell.color)
 
 show.velocity.on.embedding.cor(scale(emb.umap$layout), rvel.cd, n=100, scale='sqrt', cell.colors=cell.color,
                                cex=1, arrow.scale=1, show.grid.flow=TRUE,
                                min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2)
+
 
 
 

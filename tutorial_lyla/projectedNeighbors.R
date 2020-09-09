@@ -108,7 +108,7 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
   return(out)
 }
 
-graphViz = function(observed, projected, k, distance_metric, similarity_metric, similarity_threshold, cell.colors, title = NA){
+graphViz = function(observed, projected, k, distance_metric, similarity_metric, similarity_threshold, cell.colors, title = NA, plot = TRUE, return_graph = FALSE){
   ncells = ncol(observed)
   if (is.na(title)){
     title = ""
@@ -132,13 +132,36 @@ graphViz = function(observed, projected, k, distance_metric, similarity_metric, 
   colnames(fdg) = c("C1","C2")
   rownames(fdg) = colnames(observed)
   
-  #plot both graphs 
-  par(mfrow = c(1,2))
-  plot(g)
-  plot(scale(fdg), col = cell.colors, pch = 16, main = paste("FDG cell coordinates: \n", title))
+  if (plot){
+    #plot both graphs 
+    par(mfrow = c(1,2))
+    plot(g)
+    plot(scale(fdg), col = cell.colors, pch = 16, main = paste("FDG cell coordinates: \n", title))
+    
+    #plot velocity on FDG embedding 
+    show.velocity.on.embedding.cor(scale(fdg), vel, n=100, scale='sqrt', cell.colors=cell.colors,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = paste("FDG embedding: ",title))
+    text(scale(fdg)+0.1,labels = seq(1,dim(fdg)[1]))
+  }
   
-  #plot velocity on FDG embedding 
-  show.velocity.on.embedding.cor(scale(fdg), vel, n=100, scale='sqrt', cell.colors=cell.colors,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = paste("FDG embedding: ",title))
-  text(scale(fdg)+0.1,labels = seq(1,dim(fdg)[1]))
+  if (return_graph){
+    out = list()
+    out[['graph']] = g
+    out[['fdg_coords']] = fdg
+    return(out)
+  }
   
+}
+
+consistency = function(fdg.coords,delta.exp,nNeighbors,plot.hist = FALSE){
+  ncells = nrow(fdg.coords)
+  cell.names = row.names(fdg.coords)
+  neighbors = nn2(fdg.coords,k=nNeighbors+1)$nn.idx[,2:(nNeighbors+1)]
+  neighbor.cors = t(sapply(seq(1:ncells), function(i) sapply(seq(1:nNeighbors), function(n) cor(delta.exp[,i],delta.exp[,neighbors[i,n]]))))
+  rownames(neighbor.cors) = cell.names
+  cell.consistency = rowMeans(neighbor.cors)
+  
+  if (plot.hist){
+    hist(cell.consistency,breaks = 100)
+  }
+  return(cell.consistency)
 }

@@ -7,6 +7,7 @@ output: html_document
 
 Here I want to apply the projected neighbors graph visualization to the pancreas dataset that is used in the scVelo demo and compare it to the visualization on the U2OS dataset.  
 
+#### Setup and get data from scVelo
 ```{r setup, include=FALSE}
 #using velocyto2 evironment 
 knitr::opts_chunk$set(echo = FALSE,include = TRUE)
@@ -39,9 +40,10 @@ col = rainbow(length(levels(clusters)),s = 0.8, v = 0.8)
 cell.cols = col[clusters] #color according to cluster
 names(cell.cols) = names(clusters)
 ```
+
 ```{r plot panc data on umap}
-plot(emb_umap, col = cell.cols, pch=16, xlab = "UMAP X", ylab = "UMAP Y")
-legend(x=13, y=0, legend = levels(clusters), col = col, pch = 16)
+plot(emb_umap, col = cell.cols, pch=16, xlab = "UMAP X", ylab = "UMAP Y", xlim = c(-15,20))
+legend(x=10, y=6, legend = levels(clusters), col = col, pch = 16)
 ```
 
 #### Compute velocities on pancreas data using velocyto
@@ -129,6 +131,7 @@ v = pca$v #loads
 row.names(v) = odsGenes
 
 common.genes = sapply(row.names(curr), function(x) x %in% odsGenes)
+common.genes.names = rownames(curr)[common.genes]
 curr.pca = curr[common.genes,]
 v.sub = v[row.names(curr.pca),]
 
@@ -158,7 +161,7 @@ graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols
 ```
 
 Graph visualization on subset of cells from gene expression  
-using `common.genes` (intersect of oveerdispersed genes, `odsGenes`, and genes in velocity output)  
+using `common.genes` (intersect of overdispersed genes, `odsGenes`, and genes in velocity output)  
 ```{r graph viz from gene exp}
 set.seed(1)
 curr.sub = curr[common.genes,cell.names.sub]
@@ -209,5 +212,105 @@ for (t in ts){
 
 ```
 
+#### Velocity confidence from scvelo 
+```{r make ann data object}
+# k=10, thresh = 0.25 --> export FDG coordinates to scvelo 
+fdgcoords = graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,plot=FALSE,return_coords = TRUE)$fdg
+#plot(fdgcoords,col = cell.cols.grph,pch=16)
 
+#subset all objects to only include cells in the cell.names.sub
+clusters.sub = clusters[cell.names.sub]
+dfobs = data.frame(clusters.sub)
+rownames(dfobs) = cell.names.sub
+spliced.sub.grph = spliced[common.genes.names,cell.names.sub]
+unspliced.sub.grph = unspliced[rownames(curr)[common.genes],cell.names.sub]
+dfvar = data.frame(rownames(spliced.sub.grph))
+rownames(dfvar) = rownames(spliced.sub.grph)
+allexp.sub.grph = allExp[rownames(curr)[common.genes],cell.names.sub]
+emb.umap.sub.grph = emb_umap[cell.names.sub,]
+emb.pca.sub.grph = emb.pca[cell.names.sub,]
+
+
+ad = import("anndata",convert = FALSE)
+adata.sub = ad$AnnData(
+  X= t(allexp.sub.grph),
+  obs = dfobs,
+  var = dfvar,
+  layers = list('spliced'=t(spliced.sub.grph),'unspliced'=t(unspliced.sub.grph)),
+  obsm = list('X_pca'=emb.pca.sub.grph,'X_umap'=emb.umap.sub.grph,'X_fdg'=fdgcoords)
+)
+
+```
+
+```{r plot on different embeddings}
+scv$pl$scatter(adata.sub,color = 'clusters.sub', basis='pca',legend_loc = 'upper right')
+scv$pl$scatter(adata.sub,color = 'clusters.sub', basis='umap',legend_loc = 'upper right')
+scv$pl$scatter(adata.sub,color = 'clusters.sub', basis='fdg',legend_loc = 'upper right')
+```
+
+```{r calculate velocity in scvelo}
+scv$pp$filter_genes(adata.sub)
+scv$pp$moments(adata.sub)
+scv$tl$recover_dynamics(adata.sub)
+```
+
+```{r}
+scv$tl$velocity(adata.sub,mode='dynamical')
+scv$tl$velocity_graph(adata.sub)
+scv$pl$velocity_embedding_stream(adata.sub,color = 'clusters.sub',basis='pca',legend_loc = 'upper right')
+scv$pl$velocity_embedding_stream(adata.sub,color = 'clusters.sub',basis='umap',legend_loc = 'upper right')
+scv$pl$velocity_embedding_stream(adata.sub,color = 'clusters.sub',basis='fdg',legend_loc = 'upper right')
+```
+
+```{r}
+scv$tl$velocity_confidence(adata.sub)
+scv$pl$scatter(adata.sub,color='velocity_confidence',cmap='coolwarm',perc = c(5,95),basis = 'fdg')
+```
+
+
+
+
+#### Consistency score
+```{r neighbors on fdg }
+fdg = graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,plot=FALSE,return_graph = TRUE)
+g = fdg$graph
+V(g)$label = cell.names.sub
+coords = fdg$fdg_coords
+nNeighbors = 10
+neighbors = nn2(coords,k=nNeighbors+1)$nn.idx[,2:(nNeighbors+1)]
+
+plot(coords)
+cell = 5
+points(coords[cell,1],coords[cell,2],col = "blue",pch = 4)
+points(coords[neighbors[cell,],1],coords[neighbors[cell,],2], col = "red",pch = 4)
+
+```
+
+```{r correlation}
+deltaExp = vel$deltaE[common.genes.names,cell.names.sub]
+neighborCors = t(sapply(seq(1:ncells.sub), function(i) sapply(seq(1:nNeighbors), function(n) cor(deltaExp[,i],deltaExp[,neighbors[i,n]]))))
+rownames(neighborCors) = cell.names.sub
+cellConsistency = rowMeans(neighborCors)
+hist(cellConsistency,breaks = 100)
+```
+
+```{r}
+consistency = function(fdg.coords,delta.exp,nNeighbors,plot.hist = FALSE){
+  ncells = nrow(fdg.coords)
+  cell.names = row.names(fdg.coords)
+  neighbors = nn2(fdg.coords,k=nNeighbors+1)$nn.idx[,2:(nNeighbors+1)]
+  neighbor.cors = t(sapply(seq(1:ncells), function(i) sapply(seq(1:nNeighbors), function(n) cor(delta.exp[,i],delta.exp[,neighbors[i,n]]))))
+  rownames(neighbor.cors) = cell.names
+  cell.consistency = rowMeans(neighbor.cors)
+  
+  if (plot.hist){
+    hist(cell.consistency,breaks = 100)
+  }
+  return(cell.consistency)
+}
+
+cellcon = consistency(coords,deltaExp,10,TRUE)
+
+
+```
 

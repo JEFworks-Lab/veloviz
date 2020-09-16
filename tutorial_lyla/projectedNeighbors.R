@@ -112,6 +112,11 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
 }
 
 graphViz = function(observed, projected, k, distance_metric, similarity_metric, similarity_threshold, cell.colors, title = NA, plot = TRUE, return_graph = FALSE){
+  #observed, projected, k, distance_metric, similarity_metric, similarity_threshold: same arguments needed for projected neighbors
+  #cell.colors: list of length nCells with colors corresponding to cluster IDs
+  #return_graph: logical indicating whether to return graph object g and fdg coordinates fdg
+  #
+  #
   ncells = ncol(observed)
   if (is.na(title)){
     title = ""
@@ -128,18 +133,23 @@ graphViz = function(observed, projected, k, distance_metric, similarity_metric, 
   }
   edgeList = na.omit(edgeList)
   
-  print("Done making edge list")
-  
   #make graph 
-  g = graph_from_edgelist(edgeList,directed = TRUE)
+  #initialize empty graph with all cells 
+  g = make_empty_graph(n=ncells,directed = TRUE)
+  #add edges defined in edgeList
+  edgeList = as.vector(t(edgeList)) #changing to required format for add_edges
+  g = add_edges(g,edges = edgeList)
+  #g = graph_from_edgelist(edgeList,directed = TRUE)    #old edgeList format
+
+  
+  if (gsize(g)==0){
+    print("WARNING: graph has no edges. Try lowering the similarity threshold.")
+  }
   V(g)$color = cell.colors
   #make force directed graph 
-  #print(edgeList)
   fdg = layout_with_fr(g,dim=2)
-  #print("what's wrong")
   colnames(fdg) = c("C1","C2")
   rownames(fdg) = colnames(observed)
-  
   print("Done making graph")
   
   if (plot){

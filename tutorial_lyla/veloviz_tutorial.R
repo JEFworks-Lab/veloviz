@@ -50,10 +50,11 @@ mat.bc[mat.bc<0] = 0 #set negative expression to 0
 mat.cpm = normalizeCounts(mat.bc)
 
 #Normalize variance 
-mat.norm = normalizeVariance(mat.cpm, details = TRUE, plot = TRUE)
+mat.norm = normalizeVariance(mat.cpm, details = TRUE, plot = FALSE)
 
 #Over dispersed genes, log normalize
 mat = log10(as.matrix(t(mat.norm$mat[mat.norm$ods,]))+1)
+#saveRDS(mat,file = "mat_u2os.rds")
 
 #### DIM REDUCTION ####
 #PCA 

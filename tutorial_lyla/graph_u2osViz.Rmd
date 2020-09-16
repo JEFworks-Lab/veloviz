@@ -102,10 +102,32 @@ graphViz(curr.scores.cellsub,proj.scores.cellsub,20,"L2","cosine",0.25,cell.colo
 
 #### Compare FDG to PCA and UMAP embeddings
 ```{r}
+#pca and umap on subsample 
+#pca
+all.logODS = readRDS("mat_u2os.rds")
+all.logODS.sub = all.logODS[emb.test.sub.names,]
+pca.sub = svds(A = all.logODS.sub,k = 50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
+var.sub = pca.sub$d
+#plot(var.sub) # 3 components
+emb.pca.sub = pca.sub$u[,1:2]
+row.names(emb.pca.sub) = row.names(all.logODS.sub)
+plot(emb.pca.sub,col = cell.color.sub, pch = 16, xlab = "PC1", ylab = "PC2")
+
+
+#umap
+set.seed(1)
+pcs.sub = pca.sub$u
+emb.umap.sub = umap(emb.pca.sub)$layout
+row.names(emb.umap.sub) = row.names(all.logODS.sub)
+plot(scale(emb.umap.sub),col = cell.color.sub, pch = 16)
+```
+
+
+```{r}
 #consistency scores for pca embedding 
 set.seed(1)
 
-pcaCon = consistency(emb.test.sub,deltaExp,20,FALSE)
+pcaCon = consistency(emb.pca.sub,deltaExp,20,FALSE)
 umapCon = consistency(emb.umap.sub,deltaExp,20,FALSE)
 
 fdgCoords = graphViz(curr.scores.cellsub,proj.scores.cellsub,20,"L2","cosine",0.25,cell.color.sub,plot = FALSE,return_graph = TRUE)$fdg_coords

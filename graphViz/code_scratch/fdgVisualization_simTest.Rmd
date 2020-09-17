@@ -1,0 +1,53 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+Testing Euclidean based nearest neighbor assignment and graph construction on simulated data.
+
+
+#### Setup: 
+igraph and nearest neighbor packages 
+```{r setup}
+library(igraph)
+library(RANN)
+```
+
+#### Toy data: 
+6 observed points, 6 projected points in the same position such that points are moving counter-clockwise
+```{r}
+obs = t(cbind(c(1,2,3,3,2,1),c(2,1,2,3,4,3)))
+exp = t(cbind(c(2,3,3,2,1,1),c(1,2,3,4,3,2)))
+par(mfrow = c(1,1))
+plot(t(obs),col = "black",main = "Sim",xlim = c(0.5,3.5),ylim = c(0.5,4.5), pch = 16)
+text(t(obs)[,1]-0.1,t(obs)[,2],labels = c("A","B","C","D","E","F"), col = "black")
+points(t(exp),col = "red", cex = 2)
+text(t(exp)[,1]+0.1,t(exp)[,2],labels = c("A","B","C","D","E","F"), col = "red")
+legend(2.5,4.5, legend = c("Observed", "Projected"), pch = c(1,1), col = c("black","red"))
+```
+
+#### Graph construction: 
+For each observed cell_i, find the nearest neighbor, cell_{nn,i}, to it's projected state p_i in the observed cells excluding cell_i. Build a force directed graph where edges are pointing from cell_i to cell_{nn,i}. 
+```{r}
+i = sapply(seq(1:ncol(obs)), function(x) nn2(t(obs[,-x]),t(exp[,x]),k=1)$nn.idx)
+d = sapply(seq(1:ncol(obs)), function(x) nn2(t(obs[,-x]),t(exp[,x]),k=1)$nn.dist)
+w = 1/(1+d)
+
+#since current observed cell is being excluded when searching for nearest neighbor
+#any index >= i will be off by 1. 
+for (c in seq(1,length(i))){
+  #correcting indices
+  if (i[c]>=c){
+    i[c] = i[c] + 1
+  }
+}
+
+el = cbind(seq(1,ncol(obs)),i) #edge list 
+gsim = graph_from_edgelist(el,directed =TRUE)
+gsimFD = layout_with_fr(gsim)
+par(mfrow = c(1,2))
+plot(gsim, main = "Default directed graph")
+plot(gsimFD, main = "FDG: vertex coordinates")
+text(gsimFD+0.1, labels = seq(1:6))
+
+```
+

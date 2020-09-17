@@ -1,0 +1,167 @@
+---
+title: "2020_09_RotationPresSims"
+author: "LylaAtta"
+date: "9/7/2020"
+output: html_document
+---
+### Simple simulations to show rationale behind composite distance. 
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(igraph)
+library(RANN)
+source('projectedNeighbors.R')
+library(velocyto.R)
+```
+
+##### Ideal neighbor assignment 
+Given a simulated set of observed and projected states, what do we want a graph to like.  
+In this graph, each cell only has one neighbor but we'll change that later.  
+```{r ideal single neighbor assignment}
+obs = cbind(c(1,3,4,4),c(3,3,1,5))
+proj = cbind(c(2.7,3.7,4.2,3.2),c(3.2,0.8,4.8,2.8))
+
+#plot observed, projected, and velocity
+plot(obs,pch = c(18,19,17,15),cex=3, col = "red",xlim = c(0,6), ylim= c(0,6),xlab = "PC1",ylab = "PC2", ann=FALSE,bty='n')
+points(proj,pch = c(18,19,17,15),cex=3, col = "blue")
+arrows(x0=obs[,1],y0=obs[,2],x1=proj[,1],y1=proj[,2],col = "blue", lwd = 2)
+legend("topleft",legend = c("observed cell","projected state","velocity vector"),pch = c(16,16,NA),lty = c(NA,NA,1)  ,col = c("red","blue","blue"), cex = 1.3, bty='n')
+
+plot(obs,pch = c(18,19,17,15),cex=3, col = "red",xlim = c(0,6), ylim= c(0,6),xlab = "",ylab = "",xaxt='n', ann=FALSE,yaxt='n',bty = 'n')
+arrows(x0=obs[,1],y0=obs[,2],x1=obs[c(2,3,4,2),1],y1=obs[c(2,3,4,2),2],col = "black", lwd = 2)
+legend("topleft",legend = c("observed cell","directed edge to \nprojected neighbor"), pch = c(16,NA), lty = c(NA,1), col = c("red","black"), cex = 1.3, bty='n')
+
+```
+
+##### Euclidean nearest neighbor
+Assigning nearest neighbor based on closest Euclidean distance to projected state.  
+```{r euclidean distance based assignment }
+obs = t(cbind(c(1,3,4,4),c(3,3,1,5)))
+proj = t(cbind(c(2.7,3.7,4.2,3.2),c(3.2,0.8,4.8,2.8)))
+
+i = sapply(seq(1:ncol(obs)), function(x) nn2(t(obs[,-x]),t(proj[,x]),k=1)$nn.idx)
+d = sapply(seq(1:ncol(obs)), function(x) nn2(t(obs[,-x]),t(proj[,x]),k=1)$nn.dist)
+w = 1/(1+d)
+
+#since current observed cell is being excluded when searching for nearest neighbor
+#any index >= i will be off by 1.
+for (c in seq(1,length(i))){
+  #correcting indices
+  if (i[c]>=c){
+    i[c] = i[c] + 1
+  }
+}
+
+el = cbind(seq(1,ncol(obs)),i) #edge list
+gsim = graph_from_edgelist(el,directed =TRUE)
+gsimFD = layout_with_fr(gsim)
+plot(gsimFD,pch = c(18,19,17,15),cex=3, col = "red",xaxt = 'n',yaxt='n',bty='n',xlab = "",ylab="") #"Force directed graph\nusing Euclidean distances"
+edgeheads = unlist(gsim[[1:4]])
+arrows(x0=gsimFD[,1],y0=gsimFD[,2],x1=gsimFD[edgeheads,1],y1=gsimFD[edgeheads,2],col = "black", lwd = 2,main="Directed graph using Euclidean distances")
+```
+
+This method may identify neighbors that are "behind" the cell i.e. cell-->neighbor vector is in the opposite direction to velocity vector.  
+```{r when euclidean distance fails}
+obs = cbind(c(3.5,3.5,6,7,7),c(2,3,3,1,5))
+proj = cbind(c(3.5,4.5,6.5,7,6.5),c(2.9,3,2,4,4))
+
+#plot observed, projected, and velocity
+plot(obs,pch = c(18,19,17,15),cex=3, col = "red",xlim = c(0,8), ylim= c(0,6),xlab = "PC1",ylab = "PC2", ann=FALSE,bty='n')
+points(proj,pch = c(18,19,17,15),cex=3, col = "blue")
+arrows(x0=obs[,1],y0=obs[,2],x1=proj[,1],y1=proj[,2],col = "blue", lwd = 2)
+legend("topleft",legend = c("observed cell","projected state","velocity vector"),pch = c(16,16,NA),lty = c(NA,NA,1)  ,col = c("red","blue","blue"), cex = 1.3, bty='n')
+
+
+obs =t(obs)
+proj=t(proj)
+
+i = sapply(seq(1:ncol(obs)), function(x) nn2(t(obs[,-x]),t(proj[,x]),k=1)$nn.idx)
+d = sapply(seq(1:ncol(obs)), function(x) nn2(t(obs[,-x]),t(proj[,x]),k=1)$nn.dist)
+w = 1/(1+d)
+
+#since current observed cell is being excluded when searching for nearest neighbor
+#any index >= i will be off by 1.
+for (c in seq(1,length(i))){
+  #correcting indices
+  if (i[c]>=c){
+    i[c] = i[c] + 1
+  }
+}
+
+el = cbind(seq(1,ncol(obs)),i) #edge list
+gsim = graph_from_edgelist(el,directed =TRUE)
+gsimFD = layout_with_fr(gsim)
+plot(gsimFD,pch = c(18,19,17,15),cex=3, col = "red",xaxt = 'n',yaxt='n',bty='n',xlab = "",ylab="") #"Force directed graph\nusing Euclidean distances"
+edgeheads = unlist(gsim[[1:5]])
+arrows(x0=gsimFD[,1],y0=gsimFD[,2],x1=gsimFD[edgeheads,1],y1=gsimFD[edgeheads,2],col = "black", lwd = 2,main="Directed graph using Euclidean distances")
+```
+
+##### Incorporating cosine similarity 
+Combining Euclidean distance (between projected state and neighbor) and cosine similarity (between velocity and cell-->neighbor) allows us to assess both distance and direction of putative nearest neighbors.  
+```{r adding cosine similarity}
+obs = cbind(c(3.5,3.5,6,7,7),c(2,3,3,1,5))
+proj = cbind(c(3.5,4.5,6.5,7,6.5),c(2.9,3,2,4,4))
+sim1nns = projectedNeighbors(t(obs),t(proj),k=1,distance_metric = "L2",similarity_metric = "cosine")
+
+el = cbind(seq(1,nrow(obs)),sim1nns$NNs) #edge list
+gsim = graph_from_edgelist(el,directed =TRUE)
+gsimFD = layout_with_fr(gsim)
+plot(gsimFD,pch = c(18,19,17,15),cex=3, col = "red",xaxt = 'n',yaxt='n',bty='n',xlab = "",ylab="") #"Force directed graph\nusing Euclidean distances"
+edgeheads = sim1nns$NNs
+arrows(x0=gsimFD[,1],y0=gsimFD[,2],x1=gsimFD[edgeheads,1],y1=gsimFD[edgeheads,2],col = "black", lwd = 2,main="Directed graph using Euclidean distances")
+#graphViz(t(obs),t(proj),1,"L2","cosine",0.25,cell.colors = "green")
+
+
+```
+
+##### Multiple neighbors 
+Finding k nearest neighbors allows branching structure to be captured in the graph.  
+Imposing a cosine similarity threshold on putative neighbors allows for terminal states (cells with no outgoing edges) to be identified.  
+```{r simulate branches and termini}
+obs = cbind(c(2,2,2,3,4),c(0,2,5,3,2))
+proj = cbind(c(2,3.5,2,2,3),c(1,2.5,6,2.5,4))
+
+obs = cbind(c(3,2,4,3),c(2,4,4,6))
+proj = cbind(c(3,2.5,3.5,3),c(3,6,6,7))
+
+#plot observed, projected, and velocity
+plot(obs,pch = c(18,19,17,15,13),cex=3, col = "red",xlim = c(0,5), ylim= c(0,7),xlab = "PC1",ylab = "PC2", ann=FALSE,bty='n')
+points(proj,pch = c(18,19,17,15,13),cex=3, col = "blue")
+arrows(x0=obs[,1],y0=obs[,2],x1=proj[,1],y1=proj[,2],col = "blue", lwd = 2)
+legend("topleft",legend = c("observed cell","projected state","velocity vector"),pch = c(16,16,NA),lty = c(NA,NA,1)  ,col = c("red","blue","blue"), cex = 1.3, bty='n')
+
+k=2
+sim2nns = projectedNeighbors(t(obs),t(proj),k,distance_metric = "L2",similarity_metric = "cosine",similarity_threshold = 0.75)
+
+#make edge list 
+el = matrix(nrow = 0, ncol = 2)
+for (n in seq(1:k)){
+  el = rbind(el, cbind(seq(1,nrow(obs)),sim2nns$kNNs[,n]))
+}
+el = na.omit(el)
+
+
+
+#el = cbind(seq(1,nrow(obs)),sim2nns$NNs) #edge list
+gsim = graph_from_edgelist(el,directed =TRUE)
+plot(gsim)
+gsimFD = layout_with_fr(gsim)
+plot(gsimFD,pch = c(18,19,17,15,13),cex=3, col = "red",xaxt = 'n',yaxt='n',bty='n',xlab = "",ylab="") #"Force directed graph\nusing Euclidean distances"
+edgeheads = el[,2]
+edgetails = el[,1]
+arrows(x0=gsimFD[edgetails,1],y0=gsimFD[edgetails,2],x1=gsimFD[edgeheads,1],y1=gsimFD[edgeheads,2],col = "black", lwd = 2,main="Directed graph using Euclidean distances")
+```
+
+
+
+```{r}
+-1*sim2nns$dist_comp$negVectSim
+
+obs = cbind(c(3,2,4,3),c(2,4,4,6))
+proj = cbind(c(3,2.5,3.5,3),c(3,6,6,7))
+
+#plot observed, projected, and velocity
+plot(obs,pch = c(18,19,17,15,13),cex=3, col = "red",xlim = c(0,5), ylim= c(0,7),xlab = "PC1",ylab = "PC2", ann=FALSE,bty='n')
+```
+

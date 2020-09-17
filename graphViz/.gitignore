@@ -1,0 +1,11 @@
+#ignore anything in data directory
+/data/*
+
+#ignore files in saved_objects (used to speed thing locally, but should generated in relevant scripts)
+/saved_objects/*
+
+#ignore old/scratch scripts
+/code_scratch/*
+
+#ignore outputs old/scratch scripts 
+/outputs/old/*

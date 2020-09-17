@@ -1,0 +1,23 @@
+---
+title: "Comparing projectedNeighbors to velocity graph from scVelo"
+author: "LylaAtta"
+date: "9/17/2020"
+output: html_document
+---
+
+scVelo builds a "velocity graph" based on a similarity matrix. Entries in the similarity matrix are the cosine similarity between the velocity vector and the cell difference vector. Additionally, scVelo computes a transition matrix, in which entries represent the probabilities of cell-->cell transitions. These probabilities are calculated based on the similarities from above. Here, we want to build a graph using these two matrices as adjacency matrices and compare the resulting force-directed embeddings to the embedding that we build using the composite distance function. 
+
+#### Setup and get data from scVelo
+```{r setup, include=FALSE}
+#using velocyto2 evironment 
+knitr::opts_chunk$set(echo = FALSE)
+library(reticulate)
+library(igraph)
+library(matie)
+library(RANN)
+library(velocyto.R)
+library(MUDAN)
+library(RSpectra)
+library(umap)
+source("projectedNeighbors.R")
+```

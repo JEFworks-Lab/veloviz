@@ -1,4 +1,4 @@
-# graphViz latest scripts and outputs \
+# graphViz latest scripts and outputs
 \
 **projectedNeighbors.R**  \
 contains functions for creating and visualizing velocity based embedding  \

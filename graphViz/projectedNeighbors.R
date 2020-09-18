@@ -45,8 +45,8 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
   projected = t(projected)
   n = nrow(observed)
   
-  nn_idx = matrix(NA,nrow=nrow(observed), ncol = 1) #projected nearest neighbor 
-  knn_idx = matrix(NA,nrow=nrow(observed), ncol = k) #projected k nearest neighbors 
+  nn_idx = matrix(NA,nrow=n, ncol = 1) #projected nearest neighbor 
+  knn_idx = matrix(NA,nrow=n, ncol = k) #projected k nearest neighbors 
   all_dists = matrix(NA,nrow = n, ncol = n)
   all_invDist = matrix(NA,nrow = n, ncol = n)
   all_negVectSim = matrix(NA,nrow = n, ncol = n)
@@ -103,15 +103,21 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
   dist_comp = list()
   dist_comp[["invDist"]] = all_invDist
   dist_comp[["negVectSim"]] = all_negVectSim
+  ## adding edge weights 
+  edge_weights = t(sapply(c(1:n), function(x) all_dists[x,knn_idx[x,]]))
+  #print(dim(edge_weights))
+  #print(edge_weights[1:4,])
+  
   out = list()
   out[['NNs']] = nn_idx
   out[['kNNs']] = knn_idx
+  out[['edge_weights']] = edge_weights
   out[['all_dists']] = all_dists
   out[["dist_comp"]] = dist_comp
   return(out)
 }
 
-graphViz = function(observed, projected, k, distance_metric, similarity_metric, similarity_threshold, cell.colors, title = NA, plot = TRUE, return_graph = FALSE){
+graphViz = function(observed, projected, k, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = -1, weighted = FALSE, cell.colors, title = NA, plot = TRUE, return_graph = FALSE){
   #observed, projected, k, distance_metric, similarity_metric, similarity_threshold: same arguments needed for projected neighbors
   #cell.colors: list of length nCells with colors corresponding to cluster IDs
   #return_graph: logical indicating whether to return graph object g and fdg coordinates fdg
@@ -128,10 +134,13 @@ graphViz = function(observed, projected, k, distance_metric, similarity_metric, 
   
   #make edge list 
   edgeList = matrix(nrow = 0, ncol = 2)
+  edgeWeights = c()
   for (n in seq(1:k)){
     edgeList = rbind(edgeList, cbind(seq(1,ncells),nns$kNNs[,n]))
+    edgeWeights = c(edgeWeights, nns$edge_weights[,n])
   }
   edgeList = na.omit(edgeList)
+  edgeWeights = na.omit(edgeWeights)
   
   #make graph 
   #initialize empty graph with all cells 
@@ -140,12 +149,17 @@ graphViz = function(observed, projected, k, distance_metric, similarity_metric, 
   edgeList = as.vector(t(edgeList)) #changing to required format for add_edges
   g = add_edges(g,edges = edgeList)
   #g = graph_from_edgelist(edgeList,directed = TRUE)    #old edgeList format
-
+  #add edge weights if specified 
+  if (weighted){
+    E(g)$weight = abs(edgeWeights)
+  }
+  #add vertex colors corresponding to cluster
+  V(g)$color = cell.colors
   
   if (gsize(g)==0){
     print("WARNING: graph has no edges. Try lowering the similarity threshold.")
   }
-  V(g)$color = cell.colors
+  
   #make force directed graph 
   fdg = layout_with_fr(g,dim=2)
   colnames(fdg) = c("C1","C2")
@@ -155,7 +169,7 @@ graphViz = function(observed, projected, k, distance_metric, similarity_metric, 
   if (plot){
     #plot both graphs 
     par(mfrow = c(1,2))
-    plot(g)
+    plot.igraph(g,layout = fdg) #####
     plot(scale(fdg), col = cell.colors, pch = 16, main = paste("FDG cell coordinates: \n", title))
     
     #plot velocity on FDG embedding 
@@ -167,6 +181,7 @@ graphViz = function(observed, projected, k, distance_metric, similarity_metric, 
     out = list()
     out[['graph']] = g
     out[['fdg_coords']] = fdg
+    out[['projected_neighbors']] = nns
     return(out)
   }
   

@@ -15,5 +15,9 @@ Visualization of graph based velocity embedding using pancreas data from scVelo.
 Visualization of graph based velocity embedding using U2OS data. Looks at effects of changing parameters: k, simThresh, L1 vs L2 distance, cosine similarity vs correlation.\
 *Output in ./outputs/graphall_u2osViz.html*\
 \
+**projectedNeighbor_vs_velocityGraph.Rmd**  
+Comparison of embedding made using our workflow vs using velocity graph from scVelo, which is based on similarity matrix.  
+*Output in ./outputs/projectedNeighbor_vs_velocityGraph.html*   
+
 **2020_09_RotationPresSims.Rmd**\
 Toy data simulations showing rationale behind composite distance.

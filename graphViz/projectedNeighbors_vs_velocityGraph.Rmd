@@ -49,7 +49,7 @@ legend(x=10, y=6, legend = levels(clusters), col = col, pch = 16)
 
 #### Make fdg embedding 
 
-Extract count data..
+Extract count data..  
 ```{r extract counts, message = FALSE, results='hide', included = FALSE}
 spliced = as.matrix(t(adata$layers['spliced']))
 unspliced = as.matrix(t(adata$layers['unspliced']))
@@ -115,7 +115,9 @@ show.velocity.on.embedding.cor(scale(emb.pca), vel, n=100, scale='sqrt', cell.co
 # emb.umap.sub = emb_umap[rownames(emb.pca),]
 # show.velocity.on.embedding.cor(scale(emb.umap.sub), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE,min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2, main = "Velocities on UMAP embedding")
 
-```
+```  
+
+
 Scores of observed and projected states in PC space  
 ```{r pc scores, included = FALSE}
 u = pca$u #scores
@@ -194,7 +196,7 @@ rownames(vGraph.sub) = cell.names.pca
 
 ```
 
-Run scvelo velocity on same subset used to make fdg graph
+Run scvelo velocity on same subset used to make fdg graph  
 ```{r}
 #create anndata object with subsampled data
 # ad = import("anndata",convert = FALSE)
@@ -237,7 +239,7 @@ rownames(vGraph.sub.sub) = cell.names.sub
 # scv$pl$velocity_embedding_stream(adata.sub.sub,basis ='umap')
 ```
 
-Make graph 
+Make graph  
 ```{r, fig.width=8, fig.height=8}
 vGraphUnweighted = vGraph.sub.sub>0
 vGraphUnweighted = vGraphUnweighted*1
@@ -342,7 +344,8 @@ first, look at distribution of all similarities to help pick threshold..
 all.sims = vGraph.sub.sub[which(vGraph.sub.sub>0)]
 hist(all.sims, breaks = 300,xlab = 'Similarities from scvelo velocity graph') #looks like there's a natural cutoff at 0.3
 
-```
+```  
+
 ..looks like there are at least a couple of "populations" here..  
 
 Let's try a few thresholds up to 0.3..  
@@ -373,5 +376,8 @@ for (t in ts){
   plot(scale(fdg_thresh_wt), col = cell.cols.grph, pch = 16, main = paste("scvelo velocity graph: weighted,\n similarity threshold =",as.character(t)), xlab = "", ylab = "")
 }
 
-```
-..looks like similarities betweenn ductal cells is generally lower than others -- are they cycling? We might not have enough cells rn to capture cycling behavior..  
+```  
+
+As we increase the threshold, the number of unconnected cells increases as expected. But this seems to be primarily affecting ductal cells (red/orange cluster).  
+..looks like similarities between ductal cells are generally lower than in other cell types -- are they cycling? We might not have enough cells to capture cycling behavior..  
+In weighted graph, ductal cells appear more spread out than other cell types. This makes sense given their lower similarities.  

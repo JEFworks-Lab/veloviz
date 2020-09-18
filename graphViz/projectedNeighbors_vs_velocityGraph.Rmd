@@ -249,12 +249,12 @@ set.seed(5)
 fdg1 = layout_with_fr(g, dim = 2)
 colnames(fdg1) = c("C1","C2")
 rownames(fdg1) = cell.names.sub
-plot(fdg1, col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - unweighted", xlab = "", ylab = "")
+plot(scale(fdg1), col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - unweighted", xlab = "", ylab = "")
 set.seed(30)
 fdg = layout_with_fr(g, dim = 2)
 colnames(fdg) = c("C1","C2")
 rownames(fdg) = cell.names.sub
-plot(fdg, col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - unweighted", xlab = "", ylab = "")
+plot(scale(fdg), col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - unweighted", xlab = "", ylab = "")
 
 g_wts = graph_from_adjacency_matrix(vGraph.sub.sub,mode = "directed",weighted = TRUE)
 #plot(g_wts)
@@ -262,12 +262,12 @@ set.seed(1)
 fdg_wts1 = layout_with_fr(g_wts, dim = 2)
 colnames(fdg_wts1) = c("C1","C2")
 rownames(fdg_wts1) = cell.names.sub
-plot(fdg_wts1, col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - weighted", xlab = "", ylab = "")
+plot(scale(fdg_wts1), col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - weighted", xlab = "", ylab = "")
 set.seed(5)
 fdg_wts = layout_with_fr(g_wts, dim = 2)
 colnames(fdg_wts) = c("C1","C2")
 rownames(fdg_wts) = cell.names.sub
-plot(fdg_wts, col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - weighted", xlab = "", ylab = "")
+plot(scale(fdg_wts), col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - weighted", xlab = "", ylab = "")
 ```
 
 ```{r velocity projections, results = "hide"}
@@ -277,7 +277,7 @@ show.velocity.on.embedding.cor(scale(fdg_wts1), vel, n=100, scale='sqrt', cell.c
 
 
 #### Compare consistency scores
-```{r consistency scores, results = "hide", fig.width = 8, fig.height=10}
+```{r consistency scores, results = "hide", fig.width = 8, fig.height=8}
 deltaExp = vel$deltaE[,cell.names.sub]
 
 #our graph 1
@@ -316,22 +316,62 @@ g5_scores = consistency(g5_coords,deltaExp,20,FALSE)
 
 par(mfrow = c(3,2))
 x = c(-0.2,1)
-y = c(0,7)
+y = c(0,12)
 xt = "Cell Consistency Score"
-hist(g0_scores,col="red",breaks = 150,xlab = xt, xlim = x, ylim = y, main="Our embedding 1")
-text(x = c(0.05,0.05),y = c(7,6),labels = c(paste("Mean:",mean(g0_scores)),paste("Median:",median(g0_scores))))
-hist(g1_scores,col="red",breaks = 150,xlab = xt, xlim = x, ylim = y,main="Our embedding 2")
-text(x = c(0.05,0.05),y = c(7,6),labels = c(paste("Mean:",mean(g1_scores)),paste("Median:",median(g1_scores))))
+hist(g0_scores,col="red",breaks = 100,xlab = xt, xlim = x, ylim = y, main="Our embedding 1")
+text(x = c(0.05,0.05),y = c(11,10),labels = c(paste("Mean:",mean(g0_scores)),paste("Median:",median(g0_scores))))
+hist(g1_scores,col="red",breaks = 100,xlab = xt, xlim = x, ylim = y,main="Our embedding 2")
+text(x = c(0.05,0.05),y = c(11,10),labels = c(paste("Mean:",mean(g1_scores)),paste("Median:",median(g1_scores))))
 
-hist(g2_scores,col="red",breaks = 150,xlab = xt, xlim = x, ylim = y, main="scVelo graph - unweighted 1")
-text(x = c(0.05,0.05),y = c(7,6),labels = c(paste("Mean:",mean(g2_scores)),paste("Median:",median(g2_scores))))
-hist(g3_scores,col="red",breaks = 150,xlab = xt, xlim = x, ylim = y, main="scVelo graph - unweighted 2")
-text(x = c(0.05,0.05),y = c(7,6),labels = c(paste("Mean:",mean(g3_scores)),paste("Median:",median(g3_scores))))
+hist(g2_scores,col="red",breaks = 100,xlab = xt, xlim = x, ylim = y, main="scVelo graph - unweighted 1")
+text(x = c(0.05,0.05),y = c(11,10),labels = c(paste("Mean:",mean(g2_scores)),paste("Median:",median(g2_scores))))
+hist(g3_scores,col="red",breaks = 100,xlab = xt, xlim = x, ylim = y, main="scVelo graph - unweighted 2")
+text(x = c(0.05,0.05),y = c(11,10),labels = c(paste("Mean:",mean(g3_scores)),paste("Median:",median(g3_scores))))
 
-hist(g4_scores,col="red",breaks = 150,xlab = xt, xlim = x, ylim = y, main="scVelo graph - weighted 1")
-text(x = c(0.05,0.05),y = c(7,6),labels = c(paste("Mean:",mean(g4_scores)),paste("Median:",median(g4_scores))))
-hist(g5_scores,col="red",breaks = 150,xlab = xt, xlim = x, ylim = y,main= "scVelo graph - weighted 2")
-text(x = c(0.05,0.05),y = c(7,6),labels = c(paste("Mean:",mean(g5_scores)),paste("Median:",median(g5_scores))))
+hist(g4_scores,col="red",breaks = 100,xlab = xt, xlim = x, ylim = y, main="scVelo graph - weighted 1")
+text(x = c(0.05,0.05),y = c(11,10),labels = c(paste("Mean:",mean(g4_scores)),paste("Median:",median(g4_scores))))
+hist(g5_scores,col="red",breaks = 100,xlab = xt, xlim = x, ylim = y,main= "scVelo graph - weighted 2")
+text(x = c(0.05,0.05),y = c(11,10),labels = c(paste("Mean:",mean(g5_scores)),paste("Median:",median(g5_scores))))
 
 ```
 
+#### Threshold similarities 
+first, look at distribution of all similarities to help pick threshold..  
+```{r similarity distributions, fig.width = 6, fig.height=3}
+#look at distribution of similarities 
+all.sims = vGraph.sub.sub[which(vGraph.sub.sub>0)]
+hist(all.sims, breaks = 300,xlab = 'Similarities from scvelo velocity graph') #looks like there's a natural cutoff at 0.3
+
+```
+..looks like there are at least a couple of "populations" here..  
+
+Let's try a few thresholds up to 0.3..  
+```{r try multiple thresholds, fig.width=6, fig.height=8}
+#make graphs with different thresholds 
+ts = c(0,0.1,0.2,0.3)
+par(mfrow = c(4,2))
+for (t in ts){
+  vGraph.thresh = (vGraph.sub.sub>t)*vGraph.sub.sub
+  vGraph.thresh.unwt = (vGraph.sub.sub>t)*1
+  
+  #unweighted 
+  g_thresh = graph_from_adjacency_matrix(vGraph.thresh.unwt,mode = "directed")
+  #plot(g_thresh)
+  set.seed(5)
+  fdg_thresh = layout_with_fr(g_thresh, dim = 2)
+  colnames(fdg_thresh) = c("C1","C2")
+  rownames(fdg_thresh) = cell.names.sub
+  plot(scale(fdg_thresh), col = cell.cols.grph, pch = 16, main = paste("scvelo velocity graph: unweighted,\n similarity threshold =",as.character(t)), xlab = "", ylab = "")
+  
+  #weighted 
+  g_thresh_wt = graph_from_adjacency_matrix(vGraph.thresh,mode = "directed",weighted =  TRUE)
+  #plot(g_thresh_wt)
+  set.seed(5)
+  fdg_thresh_wt = layout_with_fr(g_thresh_wt, dim = 2)
+  colnames(fdg_thresh_wt) = c("C1","C2")
+  rownames(fdg_thresh_wt) = cell.names.sub
+  plot(scale(fdg_thresh_wt), col = cell.cols.grph, pch = 16, main = paste("scvelo velocity graph: weighted,\n similarity threshold =",as.character(t)), xlab = "", ylab = "")
+}
+
+```
+..looks like similarities betweenn ductal cells is generally lower than others -- are they cycling? We might not have enough cells rn to capture cycling behavior..  

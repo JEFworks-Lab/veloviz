@@ -21,3 +21,317 @@ library(RSpectra)
 library(umap)
 source("projectedNeighbors.R")
 ```
+
+Use the reticulate package to use scVelo from within R:   
+```{r importing scvelo}
+use_condaenv("velo",required = TRUE)
+scv = import("scvelo")
+#scv$logging$print_version()
+```
+
+```{r loading panc data, message=FALSE}
+adata = scv$datasets$pancreas()
+#scv$pl$scatter(adata,legend_loc = "lower left", size = 60)
+
+emb_umap = adata$obsm['X_umap'] #extract umap embedding 
+clusters = adata$obs$clusters #extract clusters 
+rownames(emb_umap) = names(clusters) = adata$obs_names$values
+
+col = rainbow(length(levels(clusters)),s = 0.8, v = 0.8) 
+cell.cols = col[clusters] #color according to cluster
+names(cell.cols) = names(clusters)
+```
+
+```{r plot panc data on umap, included = FALSE}
+plot(emb_umap, col = cell.cols, pch=16, xlab = "UMAP X", ylab = "UMAP Y", xlim = c(-15,20))
+legend(x=10, y=6, legend = levels(clusters), col = col, pch = 16)
+```
+
+#### Make fdg embedding 
+
+Extract count data..
+```{r extract counts, message = FALSE, results='hide', included = FALSE}
+spliced = as.matrix(t(adata$layers['spliced']))
+unspliced = as.matrix(t(adata$layers['unspliced']))
+cells = adata$obs_names$values
+genes = adata$var_names$values
+colnames(spliced) = colnames(unspliced) = cells
+rownames(spliced) = rownames(unspliced) = genes
+```
+
+Filter genes  
+```{r filter genes, message = FALSE , included = FALSE}
+gexpS = log10(rowSums(spliced)+1)
+gexpU = log10(rowSums(unspliced)+2)
+#plot(gexpS,gexpU)
+goodGenes = genes[gexpS > 2 & gexpU > 1]
+spliced = spliced[goodGenes,]
+unspliced = unspliced[goodGenes,]
+```
+
+Downsample cells to make things easier  
+```{r downsample, results='hide', included = FALSE}
+spliced.sub = spliced[,seq(1,ncol(spliced),by=3)]
+cell.names.pca = colnames(spliced.sub)
+unspliced.sub = unspliced[,seq(1,ncol(unspliced),by=3)]
+#cell.dist.sub = as.dist(1-cor(t(pcs[seq(1,ncol(unspliced),by=3),])))
+cell.cols.sub = cell.cols[colnames(spliced.sub)]
+```
+
+Normalize for dimensional reduction  
+```{r normalize, results='hide', included = FALSE}
+allExp = spliced.sub + unspliced.sub #use combined spliced and unspliced counts 
+all.cpm = MUDAN::normalizeCounts(allExp) #cpm normalize
+all.norm = MUDAN::normalizeVariance(all.cpm,details = TRUE, plot = FALSE) #variance stabilize 
+odsGenes = goodGenes[all.norm$ods] #overdispersed genes
+all.logODS = log10(as.matrix(t(all.norm$mat[all.norm$ods,]))+1) #keep overdispersed genes and log normalize
+```
+
+Dimensional reduction  
+```{r dimensional reduction, included = FALSE}
+pca = svds(A = all.logODS, k=50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
+var = pca$d
+#plot(var) # ~5 components 
+
+emb.pca = pca$u[,1:2]
+row.names(emb.pca) = row.names(all.logODS)
+plot(emb.pca, col = cell.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data")
+
+```
+
+
+Run velocyto on panc data  
+```{r velocity, message = FALSE, results = 'hide', included = FALSE}
+#vel = gene.relative.velocity.estimates(spliced.sub,unspliced.sub,deltaT=1,kCells=30,cell.dist=cell.dist.sub,fit.quantile=0.1,mult=100)
+#saveRDS(vel,file = "panc_vel.rds")
+vel = readRDS("./saved_objects/panc_vel.rds")
+curr = vel$current
+proj = vel$projected
+
+#show velocity on PCA
+show.velocity.on.embedding.cor(scale(emb.pca), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE,min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2, main = "Velocities on PCA embedding")
+
+# #show velocity on UMAP 
+# emb.umap.sub = emb_umap[rownames(emb.pca),]
+# show.velocity.on.embedding.cor(scale(emb.umap.sub), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE,min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2, main = "Velocities on UMAP embedding")
+
+```
+Scores of observed and projected states in PC space  
+```{r pc scores, included = FALSE}
+u = pca$u #scores
+v = pca$v #loads
+row.names(v) = odsGenes
+
+common.genes = sapply(row.names(curr), function(x) x %in% odsGenes)
+common.genes.names = rownames(curr)[common.genes]
+curr.pca = curr[common.genes,]
+v.sub = v[row.names(curr.pca),]
+
+par(mfrow = c(1,2))
+
+curr.scores = t(curr.pca) %*% v.sub
+plot(curr.scores[,1:2], col = cell.cols.sub, main = 'Observed',xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
+
+proj.pca = proj[common.genes,]
+proj.scores = t(proj.pca) %*% v.sub
+plot(proj.scores[,1:2], col = cell.cols.sub, main = 'Projected',xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
+
+```
+
+Graph visualization on subset of cells from PC coordinates  
+```{r graph viz from PCs, results = "hide"}
+set.seed(1)
+cell.names = colnames(curr)
+cell.names.sub = cell.names[seq(1,length(cell.names),5)] #downsample cells for speed 
+ncells.sub = length(cell.names.sub)
+cell.cols.grph = cell.cols[cell.names.sub]
+
+curr.scores.cellsub = t(curr.scores[cell.names.sub,]) #### change here to change number of PCs included 
+proj.scores.cellsub = t(proj.scores[cell.names.sub,]) ####
+
+graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,title = "K = 10")
+
+```
+
+#### Calculate velocity on subsampled data 
+1232 cells  
+
+```{r, include = FALSE, eval = FALSE}
+#create anndata object with subsampled data
+# gene.names.sub = rownames(spliced.sub)
+# clusters.pca = clusters[cell.names.pca]
+# dfobs = data.frame(as.character(clusters.sub),row.names = as.character(cell.names.pca))
+# colnames(dfobs) = "clusters"
+# dfvar = data.frame(as.character(gene.names.sub),row.names = as.character(gene.names.sub))
+# colnames(dfvar) = "Genes"
+# ad = import("anndata",convert = FALSE)
+# 
+# adata.sub = ad$AnnData(
+#   X = t(allExp),
+#   obs = dfobs,
+#   layers = list('spliced' = t(spliced.sub),'unspliced' = t(unspliced.sub))
+# )
+
+# scv$pp$filter_genes(adata.sub)
+# scv$pp$moments(adata.sub)
+# scv$tl$recover_dynamics(adata.sub)
+
+# adata.sub$write('./data/pancreas_sub.h5ad')
+adata.sub = scv$read('./data/pancreas_sub.h5ad')
+
+scv$tl$velocity(adata.sub, mode = 'dynamical')
+scv$tl$velocity_graph(adata.sub)
+
+vGraph.sub = py_to_r(adata.sub$uns['velocity_graph'])
+colnames(vGraph.sub) = cell.names.pca
+rownames(vGraph.sub) = cell.names.pca
+
+```
+
+```{r, include = FALSE, eval = FALSE}
+# scv$tl$umap(adata.sub)
+# scv$pl$velocity_embedding_stream(adata.sub,basis ='umap')
+
+```
+
+Run scvelo velocity on same subset used to make fdg graph
+```{r}
+#create anndata object with subsampled data
+# ad = import("anndata",convert = FALSE)
+# 
+# allExp.sub = allExp[,cell.names.sub]
+# spliced.sub.sub = spliced[,cell.names.sub]
+# unspliced.sub.sub = unspliced[,cell.names.sub]
+# 
+# gene.names.sub = rownames(spliced.sub)
+# clusters.sub = clusters[cell.names.sub]
+# dfobs = data.frame(as.character(clusters.sub),row.names = as.character(cell.names.sub))
+# colnames(dfobs) = "clusters"
+# dfvar = data.frame(as.character(gene.names.sub),row.names = as.character(gene.names.sub))
+# colnames(dfvar) = "Genes"
+# 
+# adata.sub.sub = ad$AnnData(
+#   X = t(allExp.sub),
+#   obs = dfobs,
+#   layers = list('spliced' = t(spliced.sub.sub),'unspliced' = t(unspliced.sub.sub))
+# )
+# 
+# scv$pp$filter_genes(adata.sub.sub)
+# scv$pp$moments(adata.sub.sub)
+# scv$tl$recover_dynamics(adata.sub.sub)
+# 
+# adata.sub.sub$write('./data/pancreas_sub_sub.h5ad')
+adata.sub.sub = scv$read('./data/pancreas_sub_sub.h5ad')
+
+scv$tl$velocity(adata.sub.sub, mode = 'dynamical')
+scv$tl$velocity_graph(adata.sub.sub)
+
+vGraph.sub.sub = as.matrix(adata.sub.sub$uns['velocity_graph'])
+colnames(vGraph.sub.sub) = cell.names.sub
+rownames(vGraph.sub.sub) = cell.names.sub
+
+```
+
+```{r, include = FALSE, eval = FALSE}
+# scv$tl$umap(adata.sub.sub)
+# scv$pl$velocity_embedding_stream(adata.sub.sub,basis ='umap')
+```
+
+Make graph 
+```{r, fig.width=8, fig.height=8}
+vGraphUnweighted = vGraph.sub.sub>0
+vGraphUnweighted = vGraphUnweighted*1
+
+g = graph_from_adjacency_matrix(vGraphUnweighted,mode = "directed")
+#plot(g)
+par(mfrow = c(2,2))
+set.seed(5)
+fdg1 = layout_with_fr(g, dim = 2)
+colnames(fdg1) = c("C1","C2")
+rownames(fdg1) = cell.names.sub
+plot(fdg, col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - unweighted", xlab = "", ylab = "")
+set.seed(30)
+fdg = layout_with_fr(g, dim = 2)
+colnames(fdg) = c("C1","C2")
+rownames(fdg) = cell.names.sub
+plot(fdg, col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - unweighted", xlab = "", ylab = "")
+
+g_wts = graph_from_adjacency_matrix(vGraph.sub.sub,mode = "directed",weighted = TRUE)
+#plot(g_wts)
+set.seed(1)
+fdg_wts1 = layout_with_fr(g_wts, dim = 2)
+colnames(fdg_wts1) = c("C1","C2")
+rownames(fdg_wts1) = cell.names.sub
+plot(fdg_wts, col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - weighted", xlab = "", ylab = "")
+set.seed(5)
+fdg_wts = layout_with_fr(g_wts, dim = 2)
+colnames(fdg_wts) = c("C1","C2")
+rownames(fdg_wts) = cell.names.sub
+plot(fdg_wts, col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - weighted", xlab = "", ylab = "")
+```
+
+```{r velocity projections, results = "hide"}
+show.velocity.on.embedding.cor(scale(fdg1), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = "scvelo graph unweighted")
+show.velocity.on.embedding.cor(scale(fdg_wts1), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = "scvelo graph weighted")
+```
+
+
+#### Compare consistency scores
+```{r consistency scores, results = "hide", fig.width = 8, fig.height=10}
+deltaExp = vel$deltaE[,cell.names.sub]
+
+#our graph 1
+set.seed(1)
+g0 = graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,title = "K = 10", plot = FALSE, return_graph = TRUE)
+g0_coords = g0$fdg_coords
+g0_scores = consistency(g0_coords,deltaExp,20,FALSE)
+
+#our graph 2
+set.seed(20)
+g1 = graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,title = "K = 10", plot = FALSE, return_graph = TRUE)
+g1_coords = g0$fdg_coords
+g1_scores = consistency(g0_coords,deltaExp,20,FALSE)
+
+#scvelo graph unweighted 1
+set.seed(5)
+g2_coords = layout_with_fr(g, dim = 2)
+g2_scores = consistency(g2_coords,deltaExp,20,FALSE)
+
+#scvelo graph unweighted 2
+set.seed(30)
+g3_coords = layout_with_fr(g, dim = 2)
+g3_scores = consistency(g3_coords,deltaExp,20,FALSE)
+
+#scvelo graph weighted 1
+set.seed(1)
+g4_coords = layout_with_fr(g_wts, dim = 2)
+g4_scores = consistency(g4_coords,deltaExp,20,FALSE)
+
+#scvelo graph weighted 2
+set.seed(5)
+g5_coords = layout_with_fr(g_wts, dim = 2)
+g5_scores = consistency(g5_coords,deltaExp,20,FALSE)
+
+
+
+par(mfrow = c(3,2))
+x = c(-0.2,1)
+y = c(0,7)
+xt = "Cell Consistency Score"
+hist(g0_scores,col="red",breaks = 150,xlab = xt, xlim = x, ylim = y, main="Our embedding 1")
+text(x = c(0.05,0.05),y = c(7,6),labels = c(paste("Mean:",mean(g0_scores)),paste("Median:",median(g0_scores))))
+hist(g1_scores,col="red",breaks = 150,xlab = xt, xlim = x, ylim = y,main="Our embedding 2")
+text(x = c(0.05,0.05),y = c(7,6),labels = c(paste("Mean:",mean(g1_scores)),paste("Median:",median(g1_scores))))
+
+hist(g2_scores,col="red",breaks = 150,xlab = xt, xlim = x, ylim = y, main="scVelo graph - unweighted 1")
+text(x = c(0.05,0.05),y = c(7,6),labels = c(paste("Mean:",mean(g2_scores)),paste("Median:",median(g2_scores))))
+hist(g3_scores,col="red",breaks = 150,xlab = xt, xlim = x, ylim = y, main="scVelo graph - unweighted 2")
+text(x = c(0.05,0.05),y = c(7,6),labels = c(paste("Mean:",mean(g3_scores)),paste("Median:",median(g3_scores))))
+
+hist(g4_scores,col="red",breaks = 150,xlab = xt, xlim = x, ylim = y, main="scVelo graph - weighted 1")
+text(x = c(0.05,0.05),y = c(7,6),labels = c(paste("Mean:",mean(g4_scores)),paste("Median:",median(g4_scores))))
+hist(g5_scores,col="red",breaks = 150,xlab = xt, xlim = x, ylim = y,main= "scVelo graph - weighted 2")
+text(x = c(0.05,0.05),y = c(7,6),labels = c(paste("Mean:",mean(g5_scores)),paste("Median:",median(g5_scores))))
+
+```
+

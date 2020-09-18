@@ -19,5 +19,9 @@ Visualization of graph based velocity embedding using U2OS data. Looks at effect
 Comparison of embedding made using our workflow vs using velocity graph from scVelo, which is based on similarity matrix.  
 *Output in ./outputs/projectedNeighbor_vs_velocityGraph.html*   
 
+**addingEdgeWeights.Rmd**  
+Adding edge weights to graph used to make force directed embedding and comparing consistency scores between embeddings made with and without edge weights.  
+*Output in ./outputs/addingEdgeWeights.html*
+
 **2020_09_RotationPresSims.Rmd**\
 Toy data simulations showing rationale behind composite distance.

@@ -309,7 +309,7 @@ legend(x=1, y=-1, legend = levels(clusters), col = col, pch = 16)
 ```
 
 Let's try removing multiple subsets, Ngn3 highEP and Pre-endocrine  
-```{r removing ngn3 high EP cells}
+```{r removing ngn3 high EP and preendocrine cells}
 not.epHighORpreend.bars = names(clusters)[which(clusters != "Ngn3 high EP"  & clusters != "Pre-endocrine")]
 pca.names.sub = cell.names[cell.names %in% not.epHighORpreend.bars]
 all.logODS.sub = all.logODS[pca.names.sub,]
@@ -322,8 +322,8 @@ var.sub = pca.sub$d
 
 emb.pca.sub = pca.sub$u[,1:2]
 row.names(emb.pca.sub) = row.names(all.logODS.sub)
-plot(emb.pca.sub, col = pca.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data \nw/o EP high cells", xlim = c(-0.04,0.07))
-legend(x=0.04, y=0.08, legend = levels(clusters), col = col, pch = 16)
+plot(emb.pca.sub, col = pca.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data \nw/o EP high or preendocrine cells", xlim = c(-0.04,0.08))
+legend(x=0.05, y=0.08, legend = levels(clusters), col = col, pch = 16)
 
 ## scores of current and projected 
 u.currTypes = pca.sub$u #scores

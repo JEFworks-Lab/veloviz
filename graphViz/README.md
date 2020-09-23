@@ -21,7 +21,11 @@ Comparison of embedding made using our workflow vs using velocity graph from scV
 
 **addingEdgeWeights.Rmd**  
 Adding edge weights to graph used to make force directed embedding and comparing consistency scores between embeddings made with and without edge weights.  
-*Output in ./outputs/addingEdgeWeights.html*
+*Output in ./outputs/addingEdgeWeights.html*  
+
+**disconnectedTrajectories_panc.Rmd**  
+Looking at the effect on graph based visualization of removing intermediate cell types in the endocrine development trajectory.  
+*Output in ./outputs/disconnectedTrajectories.html*  
 
 **2020_09_RotationPresSims.Rmd**\
 Toy data simulations showing rationale behind composite distance.

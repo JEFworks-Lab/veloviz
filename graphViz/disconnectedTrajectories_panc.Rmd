@@ -64,7 +64,7 @@ Extract PCA coordinates
 ```{r scvelo pca, message = FALSE, results='hide'}
 pcs = adata$obsm['X_pca']
 rownames(pcs) = cells
-cell.dist = as.dist(1-cor(t(pcs))) #cell distance in PC space 
+cell.dist = as.dist(1-cor(t(pcs))) #cell distance in PC space --- I should probably use the dist calculated from PCA below 
 ```
 
 Filter genes  
@@ -181,7 +181,7 @@ legend(x=-1.75, y=0, legend = levels(clusters), col = col, pch = 16)
 
 ```
 
-#### Removing cell types
+#### Removing intermediate cell types
 First, we'll see if removing Ngn3 low EP cell types affects the visualization. Given that there are only relatively few of these cells, I suspect that the effect won't be noticeable in the visualization.  
 ```{r removing Ngn3 low EP, eval = FALSE}
 not.epLow.bars = names(clusters)[which(clusters != "Ngn3 low EP")]
@@ -360,5 +360,121 @@ graphViz(observed = currSub.currScores, projected = currSub.projScores,
 legend(x=2, y=0, legend = levels(clusters), col = col, pch = 16)
 
 ```
+
+#### Removing terminal cell types 
+```{r removing beta cells}
+not.beta.bars = names(clusters)[which(clusters != "Beta")]
+pca.names.sub = cell.names[cell.names %in% not.beta.bars]
+all.logODS.sub = all.logODS[pca.names.sub,]
+pca.cols.sub = cell.cols[pca.names.sub]
+
+## run pca without current cell type 
+pca.sub = svds(A = all.logODS.sub, k=50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
+var.sub = pca.sub$d
+#plot(var.sub) # ~4 components 
+
+emb.pca.sub = pca.sub$u[,1:2]
+row.names(emb.pca.sub) = row.names(all.logODS.sub)
+plot(emb.pca.sub, col = pca.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data \nw/o alpha cells", xlim = c(-0.05,0.07))
+legend(x=0.04, y=0.06, legend = levels(clusters), col = col, pch = 16)
+
+## scores of current and projected 
+u.currTypes = pca.sub$u #scores
+v.currTypes = pca.sub$v #loads
+row.names(v.currTypes) = odsGenes
+
+common.genes = sapply(row.names(curr), function(x) x %in% odsGenes)
+common.genes.names = rownames(curr)[common.genes]
+curr.pca = curr[common.genes,pca.names.sub]
+v.sub = v.currTypes[row.names(curr.pca),]
+
+par(mfrow = c(1,2))
+
+curr.scores = t(curr.pca) %*% v.sub
+plot(curr.scores[,1:2], col = pca.cols.sub, main = 'Observed',xlim = c(-0.5,0.3),ylim = c(-0.4,0.5))
+
+proj.pca = proj[common.genes,pca.names.sub]
+proj.scores = t(proj.pca) %*% v.sub
+plot(proj.scores[,1:2], col = pca.cols.sub, main = 'Projected',xlim = c(-0.5,0.3),ylim = c(-0.4,0.5))
+
+## make graph using new current and projected scores 
+currSub.names = cell.names.sub[cell.names.sub %in% not.beta.bars]
+currSub.n = length(currSub.names)
+currSub.cols = cell.cols[currSub.names]
+
+currSub.currScores = t(curr.scores[currSub.names,])
+currSub.projScores = t(proj.scores[currSub.names,])
+
+set.seed(1)
+graphViz(observed = currSub.currScores, projected = currSub.projScores,
+         k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = TRUE,
+         cell.colors = currSub.cols, title = "K = 10",
+         plot = TRUE, return_graph = FALSE)
+legend(x=-3, y=0, legend = levels(clusters), col = col, pch = 16)
+
+```
+
+
+Remove a proportion of cells from one of the terminal cell types..  
+```{r removing some beta cells}
+not.beta.bars = names(clusters)[which(clusters != "Beta")]
+set.seed(2)
+some.beta.bars = sample(names(clusters)[which(clusters == "Beta")],200)
+some.beta.bars = names(clusters)[which(clusters == "Beta")][seq(1,length(which(clusters == "Beta")),by=4)]
+curr.bars = c(not.beta.bars,some.beta.bars)
+pca.names.sub = cell.names[cell.names %in% curr.bars]
+all.logODS.sub = all.logODS[pca.names.sub,]
+pca.cols.sub = cell.cols[pca.names.sub]
+
+## run pca without current cell type 
+pca.sub = svds(A = all.logODS.sub, k=50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
+var.sub = pca.sub$d
+#plot(var.sub) # ~4 components 
+
+emb.pca.sub = pca.sub$u[,1:2]
+row.names(emb.pca.sub) = row.names(all.logODS.sub)
+plot(emb.pca.sub, col = pca.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data \nw/o EP high cells", xlim = c(-0.05,0.07))
+legend(x=0.04, y=0.06, legend = levels(clusters), col = col, pch = 16)
+
+## scores of current and projected 
+u.currTypes = pca.sub$u #scores
+v.currTypes = pca.sub$v #loads
+row.names(v.currTypes) = odsGenes
+
+common.genes = sapply(row.names(curr), function(x) x %in% odsGenes)
+common.genes.names = rownames(curr)[common.genes]
+curr.pca = curr[common.genes,pca.names.sub]
+v.sub = v.currTypes[row.names(curr.pca),]
+
+par(mfrow = c(1,2))
+
+curr.scores = t(curr.pca) %*% v.sub
+plot(curr.scores[,1:2], col = pca.cols.sub, main = 'Observed')
+
+proj.pca = proj[common.genes,pca.names.sub]
+proj.scores = t(proj.pca) %*% v.sub
+plot(proj.scores[,1:2], col = pca.cols.sub, main = 'Projected')
+
+## make graph using new current and projected scores 
+currSub.names = cell.names.sub[cell.names.sub %in% curr.bars]
+currSub.n = length(currSub.names)
+currSub.cols = cell.cols[currSub.names]
+
+currSub.currScores = t(curr.scores[currSub.names,])
+currSub.projScores = t(proj.scores[currSub.names,])
+
+set.seed(1)
+graphViz(observed = currSub.currScores, projected = currSub.projScores,
+         k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = TRUE,
+         cell.colors = currSub.cols, title = "K = 10",
+         plot = TRUE, return_graph = FALSE)
+legend(x=1.5, y=2.2, legend = levels(clusters), col = col, pch = 16)
+
+```
+
+
+
+
+
 
 

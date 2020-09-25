@@ -101,7 +101,7 @@ Dimensional reduction
 ```{r dimensional reduction, fig.height = 4, fig.width=7}
 pca = svds(A = all.logODS, k=50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
 var = pca$d
-plot(var) # ~6 components 
+#plot(var) # ~6 components 
 
 emb.pca = pca$u[,1:2]
 row.names(emb.pca) = row.names(all.logODS)
@@ -114,11 +114,12 @@ cell.dist = as.dist(1-cor(t(pca$u))) #cell distance in PC space
 ```
 
 ```{r umap}
-pcsToKeep = pca$u[,1:20]
+pcsToKeep = pca$u[,1:15]
+set.seed(1)
 emb.umap = umap(pcsToKeep)$layout
 row.names(emb.umap) = row.names(all.logODS)
-plot(scale(emb.umap),col = cell.cols.sub, pch = 16, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP on subsampled data", xlim = c(-4,7))
-legend(x=3.5, y=3.5, legend = levels(clusters), col = col, pch =16, cex = 0.8)
+plot(scale(emb.umap),col = cell.cols.sub, pch = 16, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP on subsampled data", xlim = c(-4,4))
+legend(x=-4, y=4, legend = levels(clusters), col = col, pch =16, cex = 0.7)
 ```
 
 
@@ -143,7 +144,7 @@ show.velocity.on.embedding.cor(scale(emb.umap.sub), vel, n=100, scale='sqrt', ce
 #### Graph visualization 
 
 Scores of observed and projected states in PC space  
-```{r pc scores, fig.width= 5, fig.height=8}
+```{r pc scores, fig.width= 9.5, fig.height=4.5}
 u = pca$u #scores
 v = pca$v #loads
 row.names(v) = odsGenes
@@ -153,7 +154,7 @@ common.genes.names = rownames(curr)[common.genes]
 curr.pca = curr[common.genes,]
 v.sub = v[row.names(curr.pca),]
 
-par(mfrow = c(2,1))
+par(mfrow = c(1,2))
 
 curr.scores = t(curr.pca) %*% v.sub
 plot(curr.scores[,1:2], col = cell.cols.sub, pch = 16, main = 'Observed',xlim = c(-0.5,4),ylim = c(-3,1.25))
@@ -171,7 +172,7 @@ Graph visualization on subset of cells from PC coordinates
 source("projectedNeighbors.R")
 set.seed(1)
 cell.names = colnames(curr)
-cell.names.sub = cell.names[sample(c(1:length(cell.names)),500)] #downsample cells for speed 
+cell.names.sub = cell.names[sample(c(1:length(cell.names)),400)] #downsample cells for speed 
 #cell.names.sub = cell.names #no downsampling 
 ncells.sub = length(cell.names.sub)
 cell.cols.grph = cell.cols[cell.names.sub]
@@ -257,13 +258,14 @@ for (t in ts){
 #### Graph parameters consistency scores
 Number of out edges k:  
 L2 distance, cosine similarity, similarity threshold = 0  
-```{r, results = "hide"}
+```{r consistency vs k, results = "hide"}
+deltaExp = vel$deltaE[,cell.names.sub]
 #using distance=L2, similarity=cosine, threshold=0
 ks = c(1,5,10,20,50,100)
 conScores_k = matrix(NA,nrow = ncells.sub,ncol=length(ks))
 for (i in seq(1,length(ks))){
   k = ks[i]
-  currG = graphViz(curr.scores.cellsub,proj.scores.cellsub,k,"L2","cosine",0,cell.cols.grph,paste("K = ",k),plot = FALSE,return_graph = TRUE)
+  currG = graphViz(curr.scores.cellsub,proj.scores.cellsub,k,"L2","cosine",0,weighted = TRUE, cell.colors = cell.cols.grph,paste("K = ",k),plot = FALSE,return_graph = TRUE)
   currCoords = currG$fdg_coords
   curr.con = consistency(currCoords, deltaExp,20,FALSE)
   conScores_k[,i] = curr.con
@@ -288,13 +290,13 @@ print(sapply(c(1:6), function(x) median(conScores_k[,x])))
 
   
 Similarity threshold:  
-```{r, results = "hide"}
+```{r consistency vs thresh, results = "hide"}
 #using k=10, distance=L2, similarity=cosine
 ts = c(-1, 0, 0.25, 0.5)
 conScores_t = matrix(NA,nrow = ncells.sub,ncol=length(ts))
 for (i in seq(1,length(ts))){
   t = ts[i]
-  currG = graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",t,cell.cols.grph,paste("Similarity Threshold = ",t),plot = FALSE,return_graph = TRUE)
+  currG = graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",t,weighted = TRUE, cell.colors = cell.cols.grph,paste("Similarity Threshold = ",t),plot = FALSE,return_graph = TRUE)
   currCoords = currG$fdg_coords
   curr.con = consistency(currCoords, deltaExp,20,FALSE)
   conScores_t[,i] = curr.con
@@ -318,7 +320,7 @@ print(sapply(c(1:4), function(x) median(conScores_t[,x])))
 
 #### Consistency of fdg compared to other embeddings
 Consistency score in FDG compared to PCA and UMAP computed on same cell subset  
-```{r}
+```{r consistency vs embeds}
 #pca and umap on subsample 
 #pca
 all.logODS.sub = all.logODS[cell.names.sub,]
@@ -351,7 +353,7 @@ pcaCon = consistency(emb.pca.sub,deltaExp,20,FALSE)
 #emb.umap.sub.grph = emb.umap.sub[cell.names.sub,]
 umapCon = consistency(emb.umap.sub,deltaExp,20,FALSE)
 
-fdgCoords = graphViz(curr.scores.cellsub,proj.scores.cellsub,20,"L2","cosine",0.25,cell.cols.sub,plot = FALSE,return_graph = TRUE)$fdg_coords
+fdgCoords = graphViz(curr.scores.cellsub,proj.scores.cellsub,20,"L2","cosine",0, weighted = TRUE, cell.colors = cell.cols.sub,plot = FALSE,return_graph = TRUE)$fdg_coords
 fdgCon = consistency(fdgCoords,deltaExp,20,FALSE)
 
 ```

@@ -62,9 +62,10 @@ rownames(spliced) = rownames(unspliced) = genes
 
 Extract PCA coordinates  
 ```{r scvelo pca, message = FALSE, results='hide'}
-pcs = adata$obsm['X_pca']
-rownames(pcs) = cells
-cell.dist = as.dist(1-cor(t(pcs))) #cell distance in PC space 
+# pcs = adata$obsm['X_pca']
+# rownames(pcs) = cells
+# cell.dist = as.dist(1-cor(t(pcs))) #cell distance in PC space 
+# plot(pcs[,1:2], col = cell.cols, pch = 16)
 ```
 
 Filter genes  
@@ -79,10 +80,10 @@ unspliced = unspliced[goodGenes,]
 
 Downsample cells to make things easier  
 ```{r downsample, results='hide'}
-spliced.sub = spliced[,seq(1,ncol(spliced),by=3)]
+spliced.sub = spliced[,seq(1,ncol(spliced),by=1)]   ### CHANGE HERE TO CHANGE SUBSAMPLE SIZE 
 cell.names.sub = colnames(spliced.sub)
 unspliced.sub = unspliced[,seq(1,ncol(unspliced),by=3)]
-cell.dist.sub = as.dist(1-cor(t(pcs[seq(1,ncol(unspliced),by=3),])))
+#cell.dist.sub = as.dist(1-cor(t(pcs[seq(1,ncol(unspliced),by=3),])))
 cell.cols.sub = cell.cols[colnames(spliced.sub)]
 ```
 
@@ -107,6 +108,9 @@ emb.pca = pca$u[,1:2]
 row.names(emb.pca) = row.names(all.logODS)
 plot(emb.pca, col = cell.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data")
 
+#pairwise cell dists for velocity calculation 
+cell.dist = as.dist(1-cor(t(pca$u)))
+
 ```
 
 ```{r umap}
@@ -120,9 +124,9 @@ plot(scale(emb.umap),col = cell.cols.sub, pch = 16, xlab = "UMAP X", ylab = "UMA
 
 Run velocyto on panc data  
 ```{r velocity, message = FALSE, results = 'hide'}
-#vel = gene.relative.velocity.estimates(spliced.sub,unspliced.sub,deltaT=1,kCells=30,cell.dist=cell.dist.sub,fit.quantile=0.1,mult=100)
+vel = gene.relative.velocity.estimates(spliced.sub,unspliced.sub,deltaT=1,kCells=30,cell.dist=cell.dist,fit.quantile=0.1,mult=100)
 #saveRDS(vel,file = "panc_vel.rds")
-vel = readRDS("./saved_objects/panc_vel.rds")
+#vel = readRDS("./saved_objects/panc_vel.rds")
 curr = vel$current
 proj = vel$projected
 
@@ -163,14 +167,18 @@ Graph visualization on subset of cells from PC coordinates
 ```{r graph viz from PCs, results = "hide"}
 set.seed(1)
 cell.names = colnames(curr)
-cell.names.sub = cell.names[seq(1,length(cell.names),5)] #downsample cells for speed 
+cell.names.sub = cell.names[seq(1,length(cell.names),1)] #downsample cells for speed ### CHANGE HERE TO CHANGE SUBSAMPLE SIZE
 ncells.sub = length(cell.names.sub)
 cell.cols.grph = cell.cols[cell.names.sub]
 
 curr.scores.cellsub = t(curr.scores[cell.names.sub,]) #### change here to change number of PCs included 
 proj.scores.cellsub = t(proj.scores[cell.names.sub,]) ####
 
-graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,title = "K = 10")
+graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+         k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+         cell.colors = cell.cols.grph, title = "graph using PCA coordinates", 
+         plot = TRUE, return_graph = FALSE)
+
 ```
 
 Graph visualization on subset of cells from gene expression  
@@ -180,8 +188,10 @@ set.seed(1)
 curr.sub = curr[common.genes,cell.names.sub]
 proj.sub = proj[common.genes,cell.names.sub]
 
-graphViz(curr.sub,proj.sub,10,"L2","cosine",0.25,cell.cols.grph)
-
+graphViz(observed = curr.sub, projected = proj.sub,
+         k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+         cell.colors = cell.cols.grph, title = "graph using gene exp coordinates",
+         plot = TRUE, return_graph = FALSE)
 
 ```
 
@@ -200,9 +210,22 @@ graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols
 Pearson correlation vs Cosine similarity:  
 ```{r changing similarity measure, results = "hide", echo = TRUE}
 set.seed(1)
-graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,"Cosine Similarity")
-graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","pearson",-0.5,cell.cols.grph,"Pearson Correlation") 
-```
+#graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,"Cosine Similarity")
+
+graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+         k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+         cell.colors = cell.cols.grph, title = "Cosine Similarity",
+         plot = TRUE, return_graph = FALSE)
+
+
+
+set.seed(1)
+graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+         k = 10, distance_metric = "L2", similarity_metric = "pearson", similarity_threshold = -0.5, weighted = FALSE, 
+         cell.colors = cell.cols.grph, title = "Pearson Correlation",
+         plot = TRUE, return_graph = FALSE)
+```  
+
 ..looks like correlation is more conservative than cosine similarity.
 
 Number of out edges k:  
@@ -210,7 +233,11 @@ Number of out edges k:
 #using distance=L2, similarity=cosine, threshold=0.25
 ks = c(1,5,10,20,50)
 for (k in ks){
-  graphViz(curr.scores.cellsub,proj.scores.cellsub,k,"L2","cosine",0.25,cell.cols.grph,paste("K = ",k))
+  graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+         k = k, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+         cell.colors = cell.cols.grph, title = paste("K = ",k),
+         plot = TRUE, return_graph = FALSE)
+  
 }
 
 ```
@@ -220,7 +247,11 @@ Similarity threshold:
 #using k=10, distance=L2, similarity=cosine
 ts = c(-1, 0, 0.25, 0.5, 0.7, 0.9)
 for (t in ts){
-  graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",t,cell.cols.grph,paste("Similarity Threshold = ",t))
+  graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+         k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = t, weighted = FALSE, 
+         cell.colors = cell.cols.grph, title = paste("Similarity Threshold = ",t),
+         plot = TRUE, return_graph = FALSE)
+  
 }
 
 ```
@@ -287,7 +318,12 @@ scv$pl$scatter(adata.sub,color='velocity_confidence',cmap='coolwarm',perc = c(5,
 Cell consistency score: mean correlation b/w cell's velocity and velocities of nearest neighbors  
 .. find n nearest neighbors for each cell e.g...  
 ```{r neighbors on fdg, results = 'hide'}
-fdg = graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,plot=TRUE,return_graph = TRUE)
+fdg = graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+               k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+               cell.colors = cell.cols.grph, title = NA,
+               plot = TRUE, return_graph = TRUE)
+
+
 g = fdg$graph
 V(g)$label = cell.names.sub
 coords = fdg$fdg_coords
@@ -330,7 +366,13 @@ ks = c(1,5,10,20,50,100)
 conScores_k = matrix(NA,nrow = ncells.sub,ncol=length(ks))
 for (i in seq(1,length(ks))){
   k = ks[i]
-  currG = graphViz(curr.scores.cellsub,proj.scores.cellsub,k,"L2","cosine",0.25,cell.cols.grph,paste("K = ",k),plot = FALSE,return_graph = TRUE)
+  
+  currG = graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+                   k = k, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+                   cell.colors = cell.cols.grph, title = paste("K = ",k),
+                   plot = FALSE, return_graph = TRUE)
+  
+  
   currCoords = currG$fdg_coords
   curr.con = consistency(currCoords, deltaExp,20,FALSE)
   conScores_k[,i] = curr.con
@@ -341,11 +383,17 @@ for (i in seq(1,length(ks))){
 
 par(mfrow = c(3,2))
 hist(conScores_k[,1],col="red",breaks = 150,xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 1")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_k[,1]))),paste("Median:\n",as.character(median(conScores_k[,1])))))
 hist(conScores_k[,2],col="blue",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 5")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_k[,2]))),paste("Median:\n",as.character(median(conScores_k[,2])))))
 hist(conScores_k[,3],col="green",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 10")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_k[,3]))),paste("Median:\n",as.character(median(conScores_k[,3])))))
 hist(conScores_k[,4],col="yellow",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 20")
-hist(conScores_k[,5],col="black",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 50") #add = TRUE
-hist(conScores_k[,6],col="cyan",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 100") #add = TRUE
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_k[,4]))),paste("Median:\n",as.character(median(conScores_k[,4])))))
+hist(conScores_k[,5],col="black",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 50") 
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_k[,5]))),paste("Median:\n",as.character(median(conScores_k[,5])))))
+hist(conScores_k[,6],col="cyan",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 100") 
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_k[,6]))),paste("Median:\n",as.character(median(conScores_k[,6])))))
 
 print("Mean consistency scores")
 print(colMeans(conScores_k))
@@ -357,11 +405,15 @@ print(sapply(c(1:6), function(x) median(conScores_k[,x])))
 Similarity threshold:  
 ```{r, results = "hide"}
 #using k=10, distance=L2, similarity=cosine
-ts = c(-1, 0, 0.25, 0.5)
+ts = c(-1, 0, 0.25, 0.5, 0.7, 0.9)
 conScores_t = matrix(NA,nrow = ncells.sub,ncol=length(ts))
 for (i in seq(1,length(ts))){
   t = ts[i]
-  currG = graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",t,cell.cols.grph,paste("Similarity Threshold = ",t),plot = FALSE,return_graph = TRUE)
+  currG = graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+                   k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = t, weighted = FALSE, 
+                   cell.colors = cell.cols.grph, title = paste("Similarity Threshold = ",t),
+                   plot = FALSE, return_graph = TRUE)
+  
   currCoords = currG$fdg_coords
   curr.con = consistency(currCoords, deltaExp,20,FALSE)
   conScores_t[,i] = curr.con
@@ -372,14 +424,22 @@ for (i in seq(1,length(ts))){
 
 par(mfrow = c(3,2))
 hist(conScores_t[,1],col="red",breaks = 125,xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = -1")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_t[,1]))),paste("Median:\n",as.character(median(conScores_t[,1])))))
 hist(conScores_t[,2],col="blue",breaks = 125, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = 0")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_t[,2]))),paste("Median:\n",as.character(median(conScores_t[,2])))))
 hist(conScores_t[,3],col="green",breaks = 125, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = 0.25")
-hist(conScores_t[,4],col="yellow",breaks = 125, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = 0.5")#add = TRUE
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_t[,3]))),paste("Median:\n",as.character(median(conScores_t[,3])))))
+hist(conScores_t[,4],col="yellow",breaks = 125, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = 0.5")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_t[,4]))),paste("Median:\n",as.character(median(conScores_t[,4])))))
+hist(conScores_t[,5],col="black",breaks = 125, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = 0.7")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_t[,5]))),paste("Median:\n",as.character(median(conScores_t[,5])))))
+hist(conScores_t[,6],col="cyan",breaks = 125, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = 0.9")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_t[,6]))),paste("Median:\n",as.character(median(conScores_t[,6])))))
 
 print("Mean consistency scores")
 print(colMeans(conScores_t))
 print("Median consistency scores")
-print(sapply(c(1:4), function(x) median(conScores_t[,x])))
+print(sapply(c(1:6), function(x) median(conScores_t[,x])))
 
 ```
 
@@ -398,8 +458,9 @@ plot(emb.pca.sub,col = cell.cols.grph, pch = 16, xlab = "PC1", ylab = "PC2", mai
 
 
 #umap
-set.seed(1)
+
 pcs.sub = pca.sub$u
+set.seed(1)
 emb.umap.sub = umap(emb.pca.sub)$layout
 row.names(emb.umap.sub) = row.names(all.logODS.sub)
 plot(scale(emb.umap.sub),col = cell.cols.grph, pch = 16, xlab = "UMAP X", ylab = "UMAP Y", main = "UMAP on cell subset")
@@ -417,8 +478,12 @@ pcaCon = consistency(emb.pca.sub,deltaExp,20,FALSE)
 
 #emb.umap.sub.grph = emb.umap.sub[cell.names.sub,]
 umapCon = consistency(emb.umap.sub,deltaExp,20,FALSE)
+fdgCoords = graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+                     k = 20, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+                     cell.colors = cell.cols.grph, title = NA,
+                     plot = FALSE, return_graph = TRUE)$fdg_coords
 
-fdgCoords = graphViz(curr.scores.cellsub,proj.scores.cellsub,20,"L2","cosine",0.25,cell.cols.sub,plot = FALSE,return_graph = TRUE)$fdg_coords
+
 fdgCon = consistency(fdgCoords,deltaExp,20,FALSE)
 
 ```
@@ -428,8 +493,11 @@ x = c(-0.2,1)
 y = c(0,15)
 xt = "Cell Consistency Score"
 hist(pcaCon,breaks = 100, col = "red",xlim = x, ylim = y, xlab =  xt, main = "PCA Embedding Consistency")
+text(x = c(-0.05,-0.05), y = c(13,10), c(paste("Mean:\n",as.character(mean(pcaCon))),paste("Median:\n",as.character(median(pcaCon)))))
 hist(umapCon,breaks = 100, col = "green",xlim = x, ylim = y,xlab =  xt, main = "UMAP Embedding Consistency")
+text(x = c(-0.05,-0.05), y = c(13,10), c(paste("Mean:\n",as.character(mean(umapCon))),paste("Median:\n",as.character(median(umapCon)))))
 hist(fdgCon, breaks = 100, col = "blue",xlim = x, ylim = y,xlab =  xt, main = "FDG Embedding Consistency")
+text(x = c(-0.05,-0.05), y = c(13,10), c(paste("Mean:\n",as.character(mean(fdgCon))),paste("Median:\n",as.character(median(fdgCon)))))
 
 print("Mean consistency scores for PCA, UMAP, FDG")
 mean(pcaCon)

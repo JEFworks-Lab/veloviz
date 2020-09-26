@@ -62,9 +62,9 @@ rownames(spliced) = rownames(unspliced) = genes
 
 Extract PCA coordinates  
 ```{r scvelo pca, message = FALSE, results='hide'}
-pcs = adata$obsm['X_pca']
-rownames(pcs) = cells
-cell.dist = as.dist(1-cor(t(pcs))) #cell distance in PC space --- I should probably use the dist calculated from PCA below 
+# pcs = adata$obsm['X_pca']
+# rownames(pcs) = cells
+# cell.dist = as.dist(1-cor(t(pcs))) #cell distance in PC space --- I should probably use the dist calculated from PCA below 
 ```
 
 Filter genes  
@@ -79,10 +79,10 @@ unspliced = unspliced[goodGenes,]
 
 Downsample cells to make things easier  
 ```{r downsample, results='hide'}
-spliced.sub = spliced[,seq(1,ncol(spliced),by=3)]
+spliced.sub = spliced[,seq(1,ncol(spliced),by=3)]  ### CHANGE HERE TO CHANGE SUBSAMPLE SIZE
 cell.names.sub = colnames(spliced.sub)
 unspliced.sub = unspliced[,seq(1,ncol(unspliced),by=3)]
-cell.dist.sub = as.dist(1-cor(t(pcs[seq(1,ncol(unspliced),by=3),])))
+#cell.dist.sub = as.dist(1-cor(t(pcs[seq(1,ncol(unspliced),by=3),])))
 cell.cols.sub = cell.cols[colnames(spliced.sub)]
 ```
 
@@ -106,6 +106,9 @@ row.names(emb.pca) = row.names(all.logODS)
 plot(emb.pca, col = cell.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data", xlim = c(-0.04,0.07))
 legend(x=0.04, y=0, legend = levels(clusters), col = col, pch = 16)
 
+#pairwise cell dists for velocity calculation 
+cell.dist = as.dist(1-cor(t(pca$u)))
+
 ```
 
 ```{r umap, fig.height=5, fig.width=7}
@@ -121,9 +124,9 @@ legend(x=1.75, y=0.75, legend = levels(clusters), col = col, pch = 16)
 
 Run velocyto on panc data  
 ```{r velocity, message = FALSE, results = 'hide'}
-#vel = gene.relative.velocity.estimates(spliced.sub,unspliced.sub,deltaT=1,kCells=30,cell.dist=cell.dist.sub,fit.quantile=0.1,mult=100)
+vel = gene.relative.velocity.estimates(spliced.sub,unspliced.sub,deltaT=1,kCells=30,cell.dist=cell.dist,fit.quantile=0.1,mult=100)
 #saveRDS(vel,file = "panc_vel.rds")
-vel = readRDS("./saved_objects/panc_vel.rds")
+#vel = readRDS("./saved_objects/panc_vel.rds")
 curr = vel$current
 proj = vel$projected
 
@@ -212,12 +215,20 @@ pca.cols.sub = cell.cols[pca.names.sub]
 ## run pca without current cell type 
 pca.sub = svds(A = all.logODS.sub, k=50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
 var.sub = pca.sub$d
-#plot(var.sub) # ~4 components 
+plot(var.sub) # ~4 components 
 
 emb.pca.sub = pca.sub$u[,1:2]
 row.names(emb.pca.sub) = row.names(all.logODS.sub)
 plot(emb.pca.sub, col = pca.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data \nw/o preendocrine cells", xlim = c(-0.04,0.07))
 legend(x=0.04, y=0.08, legend = levels(clusters), col = col, pch = 16)
+
+#run umap 
+pcsToKeep = pca.sub$u[,1:20]
+set.seed(1)
+emb.umap = umap(pcsToKeep)$layout
+row.names(emb.umap) = row.names(all.logODS.sub)
+plot(scale(emb.umap),col = pca.cols.sub, pch = 16, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP on subsampled data \nw/o preendocrine cells")
+legend(x=1.75, y=0.75, legend = levels(clusters), col = col, pch = 16)
 
 ## scores of current and projected 
 u.currTypes = pca.sub$u #scores
@@ -253,7 +264,10 @@ graphViz(observed = currSub.currScores, projected = currSub.projScores,
          plot = TRUE, return_graph = FALSE)
 legend(x=1.5, y=1.5, legend = levels(clusters), col = col, pch = 16)
 
-```
+```  
+
+
+
 
 ...and now Ngn3 high EP  
 ```{r removing ngn3 high EP cells}
@@ -271,6 +285,14 @@ emb.pca.sub = pca.sub$u[,1:2]
 row.names(emb.pca.sub) = row.names(all.logODS.sub)
 plot(emb.pca.sub, col = pca.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data \nw/o EP high cells", xlim = c(-0.04,0.07))
 legend(x=0.04, y=0.08, legend = levels(clusters), col = col, pch = 16)
+
+#run umap 
+pcsToKeep = pca.sub$u[,1:20]
+set.seed(1)
+emb.umap = umap(pcsToKeep)$layout
+row.names(emb.umap) = row.names(all.logODS.sub)
+plot(scale(emb.umap),col = pca.cols.sub, pch = 16, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP on subsampled data \nw/o EP high cells")
+legend(x=1.75, y=0.75, legend = levels(clusters), col = col, pch = 16)
 
 ## scores of current and projected 
 u.currTypes = pca.sub$u #scores
@@ -325,6 +347,14 @@ row.names(emb.pca.sub) = row.names(all.logODS.sub)
 plot(emb.pca.sub, col = pca.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data \nw/o EP high or preendocrine cells", xlim = c(-0.04,0.08))
 legend(x=0.05, y=0.08, legend = levels(clusters), col = col, pch = 16)
 
+#run umap 
+pcsToKeep = pca.sub$u[,1:20]
+set.seed(1)
+emb.umap = umap(pcsToKeep)$layout
+row.names(emb.umap) = row.names(all.logODS.sub)
+plot(scale(emb.umap),col = pca.cols.sub, pch = 16, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP on subsampled data \nw/o EP high or preendocrine cells")
+legend(x=-2, y=1.5, legend = levels(clusters), col = col, pch = 16, cex = 0.8)
+
 ## scores of current and projected 
 u.currTypes = pca.sub$u #scores
 v.currTypes = pca.sub$v #loads
@@ -363,7 +393,7 @@ legend(x=2, y=0, legend = levels(clusters), col = col, pch = 16)
 
 #### Removing terminal cell types 
 ```{r removing beta cells}
-not.beta.bars = names(clusters)[which(clusters != "Beta")]
+not.beta.bars = names(clusters)[which(clusters != "Alpha")]
 pca.names.sub = cell.names[cell.names %in% not.beta.bars]
 all.logODS.sub = all.logODS[pca.names.sub,]
 pca.cols.sub = cell.cols[pca.names.sub]
@@ -377,6 +407,14 @@ emb.pca.sub = pca.sub$u[,1:2]
 row.names(emb.pca.sub) = row.names(all.logODS.sub)
 plot(emb.pca.sub, col = pca.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data \nw/o alpha cells", xlim = c(-0.05,0.07))
 legend(x=0.04, y=0.06, legend = levels(clusters), col = col, pch = 16)
+
+#run umap 
+pcsToKeep = pca.sub$u[,1:20]
+set.seed(1)
+emb.umap = umap(pcsToKeep)$layout
+row.names(emb.umap) = row.names(all.logODS.sub)
+plot(scale(emb.umap),col = pca.cols.sub, pch = 16, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP on subsampled data \nw/o alpha cells")
+legend(x=-2, y=1.5, legend = levels(clusters), col = col, pch = 16, cex = 0.8)
 
 ## scores of current and projected 
 u.currTypes = pca.sub$u #scores
@@ -417,10 +455,10 @@ legend(x=-3, y=0, legend = levels(clusters), col = col, pch = 16)
 
 Remove a proportion of cells from one of the terminal cell types..  
 ```{r removing some beta cells}
-not.beta.bars = names(clusters)[which(clusters != "Beta")]
+not.beta.bars = names(clusters)[which(clusters != "Alpha")]
 set.seed(2)
-some.beta.bars = sample(names(clusters)[which(clusters == "Beta")],200)
-some.beta.bars = names(clusters)[which(clusters == "Beta")][seq(1,length(which(clusters == "Beta")),by=4)]
+some.beta.bars = sample(names(clusters)[which(clusters == "Alpha")],200)
+some.beta.bars = names(clusters)[which(clusters == "Alpha")][seq(1,length(which(clusters == "Alpha")),by=4)]
 curr.bars = c(not.beta.bars,some.beta.bars)
 pca.names.sub = cell.names[cell.names %in% curr.bars]
 all.logODS.sub = all.logODS[pca.names.sub,]
@@ -433,8 +471,17 @@ var.sub = pca.sub$d
 
 emb.pca.sub = pca.sub$u[,1:2]
 row.names(emb.pca.sub) = row.names(all.logODS.sub)
-plot(emb.pca.sub, col = pca.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data \nw/o EP high cells", xlim = c(-0.05,0.07))
+plot(emb.pca.sub, col = pca.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data \nw/o some alpha cells", xlim = c(-0.05,0.07))
 legend(x=0.04, y=0.06, legend = levels(clusters), col = col, pch = 16)
+
+
+#run umap 
+pcsToKeep = pca.sub$u[,1:20]
+set.seed(1)
+emb.umap = umap(pcsToKeep)$layout
+row.names(emb.umap) = row.names(all.logODS.sub)
+plot(scale(emb.umap),col = pca.cols.sub, pch = 16, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP on subsampled data \nw/o some alpha cells")
+legend(x=-2, y=1.5, legend = levels(clusters), col = col, pch = 16, cex = 0.8)
 
 ## scores of current and projected 
 u.currTypes = pca.sub$u #scores

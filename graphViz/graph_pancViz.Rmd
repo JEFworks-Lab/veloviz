@@ -82,7 +82,7 @@ Downsample cells to make things easier
 ```{r downsample, results='hide'}
 spliced.sub = spliced[,seq(1,ncol(spliced),by=1)]   ### CHANGE HERE TO CHANGE SUBSAMPLE SIZE 
 cell.names.sub = colnames(spliced.sub)
-unspliced.sub = unspliced[,seq(1,ncol(unspliced),by=3)]
+unspliced.sub = unspliced[,seq(1,ncol(unspliced),by=1)]
 #cell.dist.sub = as.dist(1-cor(t(pcs[seq(1,ncol(unspliced),by=3),])))
 cell.cols.sub = cell.cols[colnames(spliced.sub)]
 ```

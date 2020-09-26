@@ -79,9 +79,9 @@ unspliced = unspliced[goodGenes,]
 
 Downsample cells to make things easier  
 ```{r downsample, results='hide'}
-spliced.sub = spliced[,seq(1,ncol(spliced),by=3)]  ### CHANGE HERE TO CHANGE SUBSAMPLE SIZE
+spliced.sub = spliced[,seq(1,ncol(spliced),by=1)]  ### CHANGE HERE TO CHANGE SUBSAMPLE SIZE
 cell.names.sub = colnames(spliced.sub)
-unspliced.sub = unspliced[,seq(1,ncol(unspliced),by=3)]
+unspliced.sub = unspliced[,seq(1,ncol(unspliced),by=1)]
 #cell.dist.sub = as.dist(1-cor(t(pcs[seq(1,ncol(unspliced),by=3),])))
 cell.cols.sub = cell.cols[colnames(spliced.sub)]
 ```
@@ -168,7 +168,7 @@ plot(proj.scores[,1:2], col = cell.cols.sub, main = 'Projected',xlim = c(-0.55,0
 Graph visualization on subset of cells from PC coordinates  
 ```{r graph viz from PCs, results = "hide"}
 cell.names = colnames(curr)
-cell.names.sub = cell.names[seq(1,length(cell.names),3)] #downsample cells for speed 
+cell.names.sub = cell.names[seq(1,length(cell.names),1)] #downsample cells for speed 
 ncells.sub = length(cell.names.sub)
 cell.cols.grph = cell.cols[cell.names.sub]
 

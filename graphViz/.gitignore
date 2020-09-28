@@ -1,0 +1,10 @@
+#ignore anything in data directory
+/data/*
+
+#ignore files in saved_objects (used to speed thing locally, but should generated in relevant scripts)
+/saved_objects/*
+
+#R stuff
+.DS_Store
+.Rapp.history
+.Rhistory

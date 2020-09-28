@@ -1,0 +1,512 @@
+---
+title: "Graph Visualization on Pancreas"
+author: "LylaAtta"
+date: "9/3/2020"
+output: html_document
+---
+
+Here I want to apply the projected neighbors graph visualization to the pancreas dataset that is used in the scVelo demo and compare it to the visualization on the U2OS dataset.  
+Note: added edge weights function to `graphViz` function, after running this analysis, so need to update all function calls here to include `weighted = TRUE` vs. `weighted = FALSE` to fix errors.  
+
+#### Setup and get data from scVelo
+```{r setup, include=FALSE}
+#using velocyto2 evironment 
+knitr::opts_chunk$set(echo = FALSE)
+library(reticulate)
+library(igraph)
+library(matie)
+library(RANN)
+library(velocyto.R)
+library(MUDAN)
+library(RSpectra)
+library(umap)
+source("projectedNeighbors.R")
+```
+
+Use the reticulate package to use scVelo from within R:   
+```{r importing scvelo}
+use_condaenv("velo",required = TRUE)
+scv = import("scvelo")
+#scv$logging$print_version()
+```
+
+```{r loading panc data, message=FALSE}
+adata = scv$datasets$pancreas()
+#scv$pl$scatter(adata,legend_loc = "lower left", size = 60)
+
+
+emb_umap = adata$obsm['X_umap'] #extract umap embedding 
+clusters = adata$obs$clusters #extract clusters 
+rownames(emb_umap) = names(clusters) = adata$obs_names$values
+
+col = rainbow(length(levels(clusters)),s = 0.8, v = 0.8) 
+cell.cols = col[clusters] #color according to cluster
+names(cell.cols) = names(clusters)
+```
+
+```{r plot panc data on umap}
+plot(emb_umap, col = cell.cols, pch=16, xlab = "UMAP X", ylab = "UMAP Y", xlim = c(-15,20))
+legend(x=10, y=6, legend = levels(clusters), col = col, pch = 16)
+```
+
+#### Compute velocities on pancreas data using velocyto
+Extract spliced and unspliced data  
+```{r extract counts, message = FALSE, results='hide'}
+spliced = as.matrix(t(adata$layers['spliced']))
+unspliced = as.matrix(t(adata$layers['unspliced']))
+cells = adata$obs_names$values
+genes = adata$var_names$values
+colnames(spliced) = colnames(unspliced) = cells
+rownames(spliced) = rownames(unspliced) = genes
+```
+
+Extract PCA coordinates  
+```{r scvelo pca, message = FALSE, results='hide'}
+# pcs = adata$obsm['X_pca']
+# rownames(pcs) = cells
+# cell.dist = as.dist(1-cor(t(pcs))) #cell distance in PC space 
+# plot(pcs[,1:2], col = cell.cols, pch = 16)
+```
+
+Filter genes  
+```{r filter genes, message = FALSE }
+gexpS = log10(rowSums(spliced)+1)
+gexpU = log10(rowSums(unspliced)+1)
+#plot(gexpS,gexpU)
+goodGenes = genes[gexpS > 2 & gexpU > 1]
+spliced = spliced[goodGenes,]
+unspliced = unspliced[goodGenes,]
+```
+
+Downsample cells to make things easier  
+```{r downsample, results='hide'}
+spliced.sub = spliced[,seq(1,ncol(spliced),by=1)]   ### CHANGE HERE TO CHANGE SUBSAMPLE SIZE 
+cell.names.sub = colnames(spliced.sub)
+unspliced.sub = unspliced[,seq(1,ncol(unspliced),by=1)]
+#cell.dist.sub = as.dist(1-cor(t(pcs[seq(1,ncol(unspliced),by=3),])))
+cell.cols.sub = cell.cols[colnames(spliced.sub)]
+```
+
+Normalize for dimensional reduction  
+```{r normalize, results='hide'}
+allExp = spliced.sub + unspliced.sub #use combined spliced and unspliced counts 
+all.cpm = MUDAN::normalizeCounts(allExp) #cpm normalize
+all.norm = MUDAN::normalizeVariance(all.cpm,details = TRUE, plot = FALSE) #variance stabilize 
+odsGenes = goodGenes[all.norm$ods] #overdispersed genes
+all.logODS = log10(as.matrix(t(all.norm$mat[all.norm$ods,]))+1) #keep overdispersed genes and log normalize
+
+
+```
+
+Dimensional reduction  
+```{r dimensional reduction}
+pca = svds(A = all.logODS, k=50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
+var = pca$d
+#plot(var) # ~5 components 
+
+emb.pca = pca$u[,1:2]
+row.names(emb.pca) = row.names(all.logODS)
+plot(emb.pca, col = cell.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data")
+
+#pairwise cell dists for velocity calculation 
+cell.dist = as.dist(1-cor(t(pca$u)))
+
+```
+
+```{r umap}
+pcsToKeep = pca$u[,1:20]
+emb.umap = umap(pcsToKeep)$layout
+row.names(emb.umap) = row.names(all.logODS)
+plot(scale(emb.umap),col = cell.cols.sub, pch = 16, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP on subsampled data")
+```
+
+
+
+Run velocyto on panc data  
+```{r velocity, message = FALSE, results = 'hide'}
+vel = gene.relative.velocity.estimates(spliced.sub,unspliced.sub,deltaT=1,kCells=30,cell.dist=cell.dist,fit.quantile=0.1,mult=100)
+#saveRDS(vel,file = "panc_vel.rds")
+#vel = readRDS("./saved_objects/panc_vel.rds")
+curr = vel$current
+proj = vel$projected
+
+#show velocity on PCA
+show.velocity.on.embedding.cor(scale(emb.pca), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE,min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2, main = "Velocities on PCA embedding")
+
+#show velocity on UMAP 
+emb.umap.sub = emb_umap[rownames(emb.pca),]
+show.velocity.on.embedding.cor(scale(emb.umap.sub), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE,min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2, main = "Velocities on UMAP embedding")
+
+```
+
+#### Graph visualization 
+
+Scores of observed and projected states in PC space  
+```{r pc scores}
+u = pca$u #scores
+v = pca$v #loads
+row.names(v) = odsGenes
+
+common.genes = sapply(row.names(curr), function(x) x %in% odsGenes)
+common.genes.names = rownames(curr)[common.genes]
+curr.pca = curr[common.genes,]
+v.sub = v[row.names(curr.pca),]
+
+par(mfrow = c(1,2))
+
+curr.scores = t(curr.pca) %*% v.sub
+plot(curr.scores[,1:2], col = cell.cols.sub, main = 'Observed',xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
+
+proj.pca = proj[common.genes,]
+proj.scores = t(proj.pca) %*% v.sub
+plot(proj.scores[,1:2], col = cell.cols.sub, main = 'Projected',xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
+
+```
+
+Graph visualization on subset of cells from PC coordinates  
+```{r graph viz from PCs, results = "hide"}
+set.seed(1)
+cell.names = colnames(curr)
+cell.names.sub = cell.names[seq(1,length(cell.names),1)] #downsample cells for speed ### CHANGE HERE TO CHANGE SUBSAMPLE SIZE
+ncells.sub = length(cell.names.sub)
+cell.cols.grph = cell.cols[cell.names.sub]
+
+curr.scores.cellsub = t(curr.scores[cell.names.sub,]) #### change here to change number of PCs included 
+proj.scores.cellsub = t(proj.scores[cell.names.sub,]) ####
+
+graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+         k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+         cell.colors = cell.cols.grph, title = "graph using PCA coordinates", 
+         plot = TRUE, return_graph = FALSE)
+
+```
+
+Graph visualization on subset of cells from gene expression  
+using `common.genes` (intersect of overdispersed genes, `odsGenes`, and genes in velocity output (genes with high correlation b/w spliced and unspliced))  
+```{r graph viz from gene exp, results = "hide"}
+set.seed(1)
+curr.sub = curr[common.genes,cell.names.sub]
+proj.sub = proj[common.genes,cell.names.sub]
+
+graphViz(observed = curr.sub, projected = proj.sub,
+         k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+         cell.colors = cell.cols.grph, title = "graph using gene exp coordinates",
+         plot = TRUE, return_graph = FALSE)
+
+```
+
+#### Graph parameters 
+Effects of changing k, distance measure, similarity measure, and similarity threshold:  
+Using PC generated graph  
+  
+L1 vs L2 as distance measure:  
+```{r changing distance measure, echo = TRUE, results = "hide"}
+#using k=10, similarity=cosine, threshold=0.25
+set.seed(1)
+graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L1","cosine",0.25,cell.cols.grph,"L1 distance")
+graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,"L2 distance")
+```
+
+Pearson correlation vs Cosine similarity:  
+```{r changing similarity measure, results = "hide", echo = TRUE}
+set.seed(1)
+#graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,"Cosine Similarity")
+
+graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+         k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+         cell.colors = cell.cols.grph, title = "Cosine Similarity",
+         plot = TRUE, return_graph = FALSE)
+
+
+
+set.seed(1)
+graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+         k = 10, distance_metric = "L2", similarity_metric = "pearson", similarity_threshold = -0.5, weighted = FALSE, 
+         cell.colors = cell.cols.grph, title = "Pearson Correlation",
+         plot = TRUE, return_graph = FALSE)
+```  
+
+..looks like correlation is more conservative than cosine similarity.
+
+Number of out edges k:  
+```{r changing k, results = "hide"}
+#using distance=L2, similarity=cosine, threshold=0.25
+ks = c(1,5,10,20,50)
+for (k in ks){
+  graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+         k = k, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+         cell.colors = cell.cols.grph, title = paste("K = ",k),
+         plot = TRUE, return_graph = FALSE)
+  
+}
+
+```
+
+Similarity threshold: 
+```{r changing similarity threshold}
+#using k=10, distance=L2, similarity=cosine
+ts = c(-1, 0, 0.25, 0.5, 0.7, 0.9)
+for (t in ts){
+  graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+         k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = t, weighted = FALSE, 
+         cell.colors = cell.cols.grph, title = paste("Similarity Threshold = ",t),
+         plot = TRUE, return_graph = FALSE)
+  
+}
+
+```
+
+#### Velocity confidence from scvelo 
+```{r make ann data object, eval=FALSE}
+# k=10, thresh = 0.25 --> export FDG coordinates to scvelo 
+fdgcoords = graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,plot=FALSE,return_coords = TRUE)$fdg
+#plot(fdgcoords,col = cell.cols.grph,pch=16)
+
+#subset all objects to only include cells in the cell.names.sub
+clusters.sub = clusters[cell.names.sub]
+dfobs = data.frame(clusters.sub)
+rownames(dfobs) = cell.names.sub
+spliced.sub.grph = spliced[common.genes.names,cell.names.sub]
+unspliced.sub.grph = unspliced[rownames(curr)[common.genes],cell.names.sub]
+dfvar = data.frame(rownames(spliced.sub.grph))
+rownames(dfvar) = rownames(spliced.sub.grph)
+allexp.sub.grph = allExp[rownames(curr)[common.genes],cell.names.sub]
+emb.umap.sub.grph = emb_umap[cell.names.sub,]
+emb.pca.sub.grph = emb.pca[cell.names.sub,]
+
+
+ad = import("anndata",convert = FALSE)
+adata.sub = ad$AnnData(
+  X= t(allexp.sub.grph),
+  obs = dfobs,
+  var = dfvar,
+  layers = list('spliced'=t(spliced.sub.grph),'unspliced'=t(unspliced.sub.grph)),
+  obsm = list('X_pca'=emb.pca.sub.grph,'X_umap'=emb.umap.sub.grph,'X_fdg'=fdgcoords)
+)
+
+```
+
+```{r plot on different embeddings, eval=FALSE}
+scv$pl$scatter(adata.sub,color = 'clusters.sub', basis='pca',legend_loc = 'upper right')
+scv$pl$scatter(adata.sub,color = 'clusters.sub', basis='umap',legend_loc = 'upper right')
+scv$pl$scatter(adata.sub,color = 'clusters.sub', basis='fdg',legend_loc = 'upper right')
+```
+
+```{r calculate velocity in scvelo, eval=FALSE}
+scv$pp$filter_genes(adata.sub)
+scv$pp$moments(adata.sub)
+scv$tl$recover_dynamics(adata.sub)
+```
+
+```{r, eval = FALSE}
+scv$tl$velocity(adata.sub,mode='dynamical')
+scv$tl$velocity_graph(adata.sub)
+scv$pl$velocity_embedding_stream(adata.sub,color = 'clusters.sub',basis='pca',legend_loc = 'upper right')
+scv$pl$velocity_embedding_stream(adata.sub,color = 'clusters.sub',basis='umap',legend_loc = 'upper right')
+scv$pl$velocity_embedding_stream(adata.sub,color = 'clusters.sub',basis='fdg',legend_loc = 'upper right')
+```
+
+```{r, eval = FALSE}
+scv$tl$velocity_confidence(adata.sub)
+scv$pl$scatter(adata.sub,color='velocity_confidence',cmap='coolwarm',perc = c(5,95),basis = 'fdg')
+```
+
+
+
+
+#### Consistency score
+Cell consistency score: mean correlation b/w cell's velocity and velocities of nearest neighbors  
+.. find n nearest neighbors for each cell e.g...  
+```{r neighbors on fdg, results = 'hide'}
+fdg = graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+               k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+               cell.colors = cell.cols.grph, title = NA,
+               plot = TRUE, return_graph = TRUE)
+
+
+g = fdg$graph
+V(g)$label = cell.names.sub
+coords = fdg$fdg_coords
+nNeighbors = 10
+neighbors = nn2(coords,k=nNeighbors+1)$nn.idx[,2:(nNeighbors+1)]
+
+plot(coords,col = cell.cols.grph,pch = 16,xlab = "",ylab = "")
+cell = 5
+points(coords[cell,1],coords[cell,2],col = "black",pch = 19)
+points(coords[neighbors[cell,],1],coords[neighbors[cell,],2], col = "black",pch = 4,cex = 1.3)
+
+```
+
+.. calculate consistency score for each cell..  
+```{r correlation}
+deltaExp = vel$deltaE[common.genes.names,cell.names.sub]
+neighborCors = t(sapply(seq(1:ncells.sub), function(i) sapply(seq(1:nNeighbors), function(n) cor(deltaExp[,i],deltaExp[,neighbors[i,n]]))))
+rownames(neighborCors) = cell.names.sub
+cellConsistency = rowMeans(neighborCors)
+#hist(cellConsistency,breaks = 150)
+cellcon = consistency(coords,deltaExp,20,FALSE)
+hist(cellcon,breaks = 150,xlab = "Cell Consistency Score",main = "")
+```
+
+Cell consistency scores on embedding 
+Blue=low, Red=high
+```{r, eval =FALSE, include = FALSE}
+col.gradient = colorRampPalette(c('blue','red'))
+cons.col = col.gradient(ncells.sub)[as.numeric(cut(cellcon,breaks = ncells.sub))]
+plot(coords,col = cons.col,pch = 16)
+
+
+```
+
+#### Graph parameters consistency scores
+Number of out edges k:  
+```{r, results = "hide"}
+#using distance=L2, similarity=cosine, threshold=0.25
+ks = c(1,5,10,20,50,100)
+conScores_k = matrix(NA,nrow = ncells.sub,ncol=length(ks))
+for (i in seq(1,length(ks))){
+  k = ks[i]
+  
+  currG = graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+                   k = k, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+                   cell.colors = cell.cols.grph, title = paste("K = ",k),
+                   plot = FALSE, return_graph = TRUE)
+  
+  
+  currCoords = currG$fdg_coords
+  curr.con = consistency(currCoords, deltaExp,20,FALSE)
+  conScores_k[,i] = curr.con
+  # col.gradient = colorRampPalette(c('blue','red'))
+  # cons.col = col.gradient(ncells.sub)[as.numeric(cut(curr.con,breaks = ncells.sub))]
+  # plot(currCoords,col = cons.col,pch = 16)
+}
+
+par(mfrow = c(3,2))
+hist(conScores_k[,1],col="red",breaks = 150,xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 1")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_k[,1]))),paste("Median:\n",as.character(median(conScores_k[,1])))))
+hist(conScores_k[,2],col="blue",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 5")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_k[,2]))),paste("Median:\n",as.character(median(conScores_k[,2])))))
+hist(conScores_k[,3],col="green",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 10")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_k[,3]))),paste("Median:\n",as.character(median(conScores_k[,3])))))
+hist(conScores_k[,4],col="yellow",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 20")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_k[,4]))),paste("Median:\n",as.character(median(conScores_k[,4])))))
+hist(conScores_k[,5],col="black",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 50") 
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_k[,5]))),paste("Median:\n",as.character(median(conScores_k[,5])))))
+hist(conScores_k[,6],col="cyan",breaks = 150, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="K = 100") 
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_k[,6]))),paste("Median:\n",as.character(median(conScores_k[,6])))))
+
+print("Mean consistency scores")
+print(colMeans(conScores_k))
+print("Median consistency scores")
+print(sapply(c(1:6), function(x) median(conScores_k[,x])))
+```
+
+  
+Similarity threshold:  
+```{r, results = "hide"}
+#using k=10, distance=L2, similarity=cosine
+ts = c(-1, 0, 0.25, 0.5, 0.7, 0.9)
+conScores_t = matrix(NA,nrow = ncells.sub,ncol=length(ts))
+for (i in seq(1,length(ts))){
+  t = ts[i]
+  currG = graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+                   k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = t, weighted = FALSE, 
+                   cell.colors = cell.cols.grph, title = paste("Similarity Threshold = ",t),
+                   plot = FALSE, return_graph = TRUE)
+  
+  currCoords = currG$fdg_coords
+  curr.con = consistency(currCoords, deltaExp,20,FALSE)
+  conScores_t[,i] = curr.con
+  # col.gradient = colorRampPalette(c('blue','red'))
+  # cons.col = col.gradient(ncells.sub)[as.numeric(cut(curr.con,breaks = ncells.sub))]
+  # plot(currCoords,col = cons.col,pch = 16)
+}
+
+par(mfrow = c(3,2))
+hist(conScores_t[,1],col="red",breaks = 125,xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = -1")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_t[,1]))),paste("Median:\n",as.character(median(conScores_t[,1])))))
+hist(conScores_t[,2],col="blue",breaks = 125, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = 0")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_t[,2]))),paste("Median:\n",as.character(median(conScores_t[,2])))))
+hist(conScores_t[,3],col="green",breaks = 125, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = 0.25")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_t[,3]))),paste("Median:\n",as.character(median(conScores_t[,3])))))
+hist(conScores_t[,4],col="yellow",breaks = 125, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = 0.5")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_t[,4]))),paste("Median:\n",as.character(median(conScores_t[,4])))))
+hist(conScores_t[,5],col="black",breaks = 125, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = 0.7")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_t[,5]))),paste("Median:\n",as.character(median(conScores_t[,5])))))
+hist(conScores_t[,6],col="cyan",breaks = 125, xlim=c(-0.5,1),ylim=c(0,9),xlab = "Cell Consistency Score",main="t = 0.9")
+text(x = c(-0.25,-0.25), y = c(8,4), c(paste("Mean:\n",as.character(mean(conScores_t[,6]))),paste("Median:\n",as.character(median(conScores_t[,6])))))
+
+print("Mean consistency scores")
+print(colMeans(conScores_t))
+print("Median consistency scores")
+print(sapply(c(1:6), function(x) median(conScores_t[,x])))
+
+```
+
+#### Consistency of fdg compared to other embeddings
+Consistency score in FDG compared to PCA and UMAP computed on same cell subset  
+```{r}
+#pca and umap on subsample 
+#pca
+all.logODS.sub = all.logODS[cell.names.sub,]
+pca.sub = svds(A = all.logODS.sub,k = 50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
+var.sub = pca.sub$d
+#plot(var.sub) # 5 components
+emb.pca.sub = pca.sub$u[,1:2]
+row.names(emb.pca.sub) = row.names(all.logODS.sub)
+plot(emb.pca.sub,col = cell.cols.grph, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on cell subset")
+
+
+#umap
+
+pcs.sub = pca.sub$u
+set.seed(1)
+emb.umap.sub = umap(emb.pca.sub)$layout
+row.names(emb.umap.sub) = row.names(all.logODS.sub)
+plot(scale(emb.umap.sub),col = cell.cols.grph, pch = 16, xlab = "UMAP X", ylab = "UMAP Y", main = "UMAP on cell subset")
+
+```
+
+
+```{r, results="hide"}
+set.seed(1)
+
+deltaExp = vel$deltaE[,cell.names.sub]
+
+#emb.pca.sub.grph = emb.pca[cell.names.sub,]
+pcaCon = consistency(emb.pca.sub,deltaExp,20,FALSE)
+
+#emb.umap.sub.grph = emb.umap.sub[cell.names.sub,]
+umapCon = consistency(emb.umap.sub,deltaExp,20,FALSE)
+fdgCoords = graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+                     k = 20, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+                     cell.colors = cell.cols.grph, title = NA,
+                     plot = FALSE, return_graph = TRUE)$fdg_coords
+
+
+fdgCon = consistency(fdgCoords,deltaExp,20,FALSE)
+
+```
+```{r, fig.width = 5, fig.height = 7}
+par(mfrow = c(3,1))
+x = c(-0.2,1)
+y = c(0,15)
+xt = "Cell Consistency Score"
+hist(pcaCon,breaks = 100, col = "red",xlim = x, ylim = y, xlab =  xt, main = "PCA Embedding Consistency")
+text(x = c(-0.05,-0.05), y = c(13,10), c(paste("Mean:\n",as.character(mean(pcaCon))),paste("Median:\n",as.character(median(pcaCon)))))
+hist(umapCon,breaks = 100, col = "green",xlim = x, ylim = y,xlab =  xt, main = "UMAP Embedding Consistency")
+text(x = c(-0.05,-0.05), y = c(13,10), c(paste("Mean:\n",as.character(mean(umapCon))),paste("Median:\n",as.character(median(umapCon)))))
+hist(fdgCon, breaks = 100, col = "blue",xlim = x, ylim = y,xlab =  xt, main = "FDG Embedding Consistency")
+text(x = c(-0.05,-0.05), y = c(13,10), c(paste("Mean:\n",as.character(mean(fdgCon))),paste("Median:\n",as.character(median(fdgCon)))))
+
+print("Mean consistency scores for PCA, UMAP, FDG")
+mean(pcaCon)
+mean(umapCon)
+mean(fdgCon)
+print("Median consistency scores for PCA, UMAP, FDG")
+median(pcaCon)
+median(umapCon)
+median(fdgCon)
+
+```
+

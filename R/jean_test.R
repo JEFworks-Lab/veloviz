@@ -193,3 +193,79 @@ show.velocity.on.embedding.cor(scale(velograph$fdg_coords), vel, n=100,
                                cex=1, arrow.scale=2, show.grid.flow=TRUE,
                                min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2,
                                main = "Velocities on velograph embedding", n.cores=10)
+
+
+
+
+
+
+
+
+
+################## Building on Lyla's simple simulation
+set.seed(1)
+obs = jitter(t(cbind(c(1,2,3,3,2,1, 2, 2, 2),c(2,1,2,3,4,3,0, -1, -2))))
+exp = jitter(t(cbind(c(2,3,3,2,1,1, 2, 2, 2),c(1,2,3,4,3,2,1,0,-1))))
+labels = c("A","B","C","D","E","F","X","Y","Z")
+par(mfrow = c(1,1))
+plot(t(obs),col = "black",main = "Sim", pch = 16)
+text(t(obs)[,1]-0.1,t(obs)[,2],labels = labels, col = "black")
+points(t(exp),col = "red", cex = 2)
+text(t(exp)[,1]+0.1,t(exp)[,2],labels = labels, col = "red")
+legend(2.5,4.5, legend = c("Observed", "Projected"), pch = c(1,1), col = c("black","red"))
+
+i = sapply(seq(1:ncol(obs)), function(x) nn2(t(obs[,-x]),t(exp[,x]),k=1)$nn.idx)
+d = sapply(seq(1:ncol(obs)), function(x) nn2(t(obs[,-x]),t(exp[,x]),k=1)$nn.dist)
+w = 1/(1+d)
+
+#since current observed cell is being excluded when searching for nearest neighbor
+#any index >= i will be off by 1.
+for (c in seq(1,length(i))){
+  #correcting indices
+  if (i[c]>=c){
+    i[c] = i[c] + 1
+  }
+}
+
+el = cbind(seq(1,ncol(obs)),i) #edge list
+rownames(el) <- labels
+gsim = graph_from_edgelist(el,directed =TRUE)
+V(gsim)$label <- labels
+V(gsim)$size = 10
+
+set.seed(1)
+gsimFD = layout_with_fr(gsim)
+par(mfrow = c(1,2))
+plot(gsim, main = "Default directed graph")
+plot(gsimFD, main = "FDG: vertex coordinates")
+text(gsimFD+0.1, labels = labels)
+
+test <- umap(el, n_neighbors = 2)
+plot(test, main = "umap")
+text(test+0.1, labels=labels)
+
+test <- prcomp(el, scale=TRUE, center=TRUE)
+test <- test$x
+plot(test, main = "pca")
+text(test+0.1, labels=labels)
+
+test <- Rtsne(el, perplexity=2)$Y
+plot(test, main = "tsne")
+text(test+0.1, labels=labels)
+
+nn = RANN::nn2(el, k = 2) ## KNN
+names(nn) <- c('idx', 'dists')
+weight <- 1/(1+ as.vector(nn$dists))
+nn.df = data.frame(from = rep(1:nrow(nn$idx), k),
+                   to = as.vector(nn$idx),
+                   weight = weight
+)
+g <- igraph::graph_from_data_frame(nn.df, directed = FALSE)
+g <- igraph::simplify(g)
+fdg = layout_with_fr(g,dim=2)
+colnames(fdg) = c("C1","C2")
+rownames(fdg) <- labels
+plot(fdg, main = "simple fdg")
+text(fdg+0.1, labels = labels)
+
+

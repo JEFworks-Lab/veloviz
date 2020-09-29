@@ -14,14 +14,14 @@ Simulate cells along cycle
 ```{r jeantest1}
 ## make circle like cell cycle
 par(mfrow=c(1,1))
-x <- matrix(rnorm(200),nc=2)
+x <- matrix(rnorm(1000),nc=2)
 y <- x/sqrt(rowSums(x^2))
 ## add some jitter
 obs <- t(y)
 obs <- jitter(obs, amount = 0.1)
 ## order points counterclockwise
 angle <- atan2(obs[2,], obs[1,])
-angle
+#angle
 
 ## double check quandrants
 angle[obs[2,]>0 & obs[1,]>0]
@@ -38,7 +38,7 @@ angle[obs[2,]<0 & obs[1,]>0]
 angle[obs[2,]<0 & obs[1,]<0]
 
 obs <- obs[, order(angle)]
-obs
+#obs
 ## rainbow
 col = colorRampPalette(c(rainbow(10)))(ncol(obs))
 labels <- paste0('cell', 1:ncol(obs))
@@ -53,13 +53,13 @@ colnames(obs) <- labels
 Remove some transient cells
 
 ```{r jeantestremove}
-cells.keep <- setdiff(labels, paste0('cell', 30:45))
+cells.keep <- setdiff(labels, paste0('cell', 200:300))
 cells.keep
 
 labels <- labels[cells.keep]
 obs <- obs[,cells.keep]
 plot(t(obs),col=col, pch=16)
-text(t(obs), labels)
+#text(t(obs), labels)
 ```
 
 Simulate lower dimensional representation of future transcriptional state
@@ -91,6 +91,15 @@ source('../graphViz/projectedNeighbors.R')
 gsim = graphViz(obs, exp, k, cell.colors=col, weighted=TRUE, plot = FALSE, return_graph = TRUE)
 plot(gsim$fdg_coords, main = "FDG: vertex coordinates", col=col, pch=16)
 #text(gsim$fdg_coords+0.1, labels = labels)
+```
+
+```{r jeantest_igraphplot, fig.width=8, fig.height=8}
+g <- gsim$graph
+V(g)$label = NA
+V(g)$size = 2
+E(g)$arrow.size = 0.5
+E(g)$color = rgb(0,0,0,0.1)
+plot(g)
 ```
 
 ```{r jeantest_pca}

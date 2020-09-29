@@ -1,0 +1,142 @@
+---
+title: "Cycle Simulation"
+author: "Jean Fan"
+date: "9/29/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Simulate cells along cycle
+
+```{r jeantest1}
+## make circle like cell cycle
+par(mfrow=c(1,1))
+x <- matrix(rnorm(200),nc=2)
+y <- x/sqrt(rowSums(x^2))
+## add some jitter
+obs <- t(y)
+obs <- jitter(obs, amount = 0.1)
+## order points counterclockwise
+angle <- atan2(obs[2,], obs[1,])
+angle
+
+## double check quandrants
+angle[obs[2,]>0 & obs[1,]>0]
+angle[obs[2,]>0 & obs[1,]<0]
+angle[obs[2,]<0 & obs[1,]>0]
+angle[obs[2,]<0 & obs[1,]<0]
+
+angle[obs[2,]<0 & obs[1,]>0] = angle[obs[2,]<0 & obs[1,]>0] + 2*pi
+angle[obs[2,]<0 & obs[1,]<0] = angle[obs[2,]<0 & obs[1,]<0] + 2*pi
+
+angle[obs[2,]>0 & obs[1,]>0]
+angle[obs[2,]>0 & obs[1,]<0]
+angle[obs[2,]<0 & obs[1,]>0]
+angle[obs[2,]<0 & obs[1,]<0]
+
+obs <- obs[, order(angle)]
+obs
+## rainbow
+col = colorRampPalette(c(rainbow(10)))(ncol(obs))
+labels <- paste0('cell', 1:ncol(obs))
+## plot
+plot(t(obs),col=col, pch=16)
+text(t(obs), labels)
+
+colnames(obs) <- labels
+```
+
+
+Remove some transient cells
+
+```{r jeantestremove}
+cells.keep <- setdiff(labels, paste0('cell', 30:45))
+cells.keep
+
+labels <- labels[cells.keep]
+obs <- obs[,cells.keep]
+plot(t(obs),col=col, pch=16)
+text(t(obs), labels)
+```
+
+Simulate lower dimensional representation of future transcriptional state
+
+```{r jeantest2}
+## rotate circle slightly
+f = pi*0.1 # adjust as needed
+exp = t(obs)
+exp[,1] = obs[1,]*cos(f) - obs[2,]*sin(f)
+exp[,2] = obs[2,]*cos(f) + obs[1,]*sin(f)
+exp = t(exp)
+
+plot(t(obs),col=col, pch=16)
+points(t(exp),col=col)
+
+colnames(exp) <- labels
+```
+
+Try different embeddings
+
+```{r jeantest_veloviz}
+k = 10
+
+## Lyla's FDG
+library(igraph)
+library(matie)
+library(RANN)
+source('../graphViz/projectedNeighbors.R')
+gsim = graphViz(obs, exp, k, cell.colors=col, weighted=TRUE, plot = FALSE, return_graph = TRUE)
+plot(gsim$fdg_coords, main = "FDG: vertex coordinates", col=col, pch=16)
+#text(gsim$fdg_coords+0.1, labels = labels)
+```
+
+```{r jeantest_pca}
+## PCA
+test <- prcomp(t(obs), scale=TRUE, center=TRUE)
+test <- test$x
+plot(test, main = "pca", col=col, pch=16)
+#text(test+0.1, labels=labels)
+```
+
+```{r jeantest_umap}
+## Umap
+test <- uwot::umap(t(obs), n_neighbors = k, min=0.1)
+plot(test, main = "umap", col=col, pch=16)
+#text(test+0.1, labels=labels)
+```
+
+```{r jeantest_tsne}
+## tSNE
+test <- Rtsne::Rtsne(t(obs), perplexity=k)$Y
+plot(test, main = "tsne", col=col, pch=16)
+#text(test+0.1, labels=labels)
+```
+
+```{r jeantest_dm}
+## diffusion map
+test <- destiny::DiffusionMap(t(obs))
+test <- test@eigenvectors[,1:2]
+plot(test, main = "Diffusion Map", col=col, pch=16)
+#text(test+0.1, labels=labels)
+```
+
+```{r jeantest_fdg}
+## Regular FDG on observed only
+nn = RANN::nn2(t(obs), k = k) ## KNN
+names(nn) <- c('idx', 'dists')
+weight <- 1/(1+ as.vector(nn$dists))
+nn.df = data.frame(from = rep(1:nrow(nn$idx), k),
+                   to = as.vector(nn$idx),
+                   weight = weight
+)
+g <- igraph::graph_from_data_frame(nn.df, directed = FALSE)
+g <- igraph::simplify(g)
+fdg = layout_with_fr(g,dim=2)
+colnames(fdg) = c("C1","C2")
+rownames(fdg) <- labels
+plot(fdg, main = "simple fdg", col=col, pch=16)
+#text(fdg+0.1, labels = labels)
+```

@@ -268,4 +268,60 @@ rownames(fdg) <- labels
 plot(fdg, main = "simple fdg")
 text(fdg+0.1, labels = labels)
 
+######### try to come up with a more challenging simulation
+## make circle like cell cycle
+par(mfrow=c(1,1))
+x <- matrix(rnorm(100),nc=2)
+y <- x/sqrt(rowSums(x^2))
+obs <- t(y[order(y[,1]),])
+obs <- jitter(obs, amount = 0.1)
+col = rainbow(nrow(y))
+plot(t(obs),col=col, pch=16)
 
+## rotate circle slightly
+f = pi*0.1 # adjust as needed
+exp = t(obs)
+exp
+exp[,1] = obs[1,]*cos(f) - obs[2,]*sin(f)
+exp[,2] = obs[2,]*cos(f) + obs[1,]*sin(f)
+exp = t(exp)
+points(t(exp),col=col)
+
+labels <- paste0('cell', 1:nrow(y))
+colnames(obs) <- colnames(exp) <- labels
+
+## run
+k = 5
+par(mfrow = c(1,1))
+
+gsim = graphViz(obs, exp, k, cell.colors=col, weighted=TRUE, plot = FALSE, return_graph = TRUE)
+plot(gsim$fdg_coords, main = "FDG: vertex coordinates", col=col, pch=16)
+text(gsim$fdg_coords+0.1, labels = labels)
+
+test <- umap(el, n_neighbors = k)
+plot(test, main = "umap", col=col, pch=16)
+text(test+0.1, labels=labels)
+
+test <- prcomp(el, scale=TRUE, center=TRUE)
+test <- test$x
+plot(test, main = "pca", col=col, pch=16)
+text(test+0.1, labels=labels)
+
+test <- Rtsne(el, perplexity=k)$Y
+plot(test, main = "tsne", col=col, pch=16)
+text(test+0.1, labels=labels)
+
+nn = RANN::nn2(el, k = k) ## KNN
+names(nn) <- c('idx', 'dists')
+weight <- 1/(1+ as.vector(nn$dists))
+nn.df = data.frame(from = rep(1:nrow(nn$idx), k),
+                   to = as.vector(nn$idx),
+                   weight = weight
+)
+g <- igraph::graph_from_data_frame(nn.df, directed = FALSE)
+g <- igraph::simplify(g)
+fdg = layout_with_fr(g,dim=2)
+colnames(fdg) = c("C1","C2")
+rownames(fdg) <- labels
+plot(fdg, main = "simple fdg", col=col, pch=16)
+text(fdg+0.1, labels = labels)

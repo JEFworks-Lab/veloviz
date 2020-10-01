@@ -185,7 +185,8 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
     #plot both graphs 
     #par(mfrow = c(1,2))
     #plot.igraph(g,layout = fdg) #####
-    plot(scale(fdg), col = cell.colors, pch = 16, main = paste("FDG cell coordinates: \n", title))
+    #plot(scale(fdg), col = cell.colors, pch = 16, main = paste("FDG cell coordinates: \n", title))
+    plot(scale(fdg), col = cell.colors, pch = 16, main = paste(title))
     
     #plot velocity on FDG embedding 
     #show.velocity.on.embedding.cor(scale(fdg), vel, n=100, scale='sqrt', cell.colors=cell.colors,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = paste("FDG embedding: ",title))
@@ -211,10 +212,8 @@ consistency = function(fdg.coords,delta.exp,nNeighbors,plot.hist = FALSE){
   ncells = nrow(fdg.coords)
   cell.names = row.names(fdg.coords)
   neighbors = nn2(fdg.coords,k=nNeighbors+1)$nn.idx[,2:(nNeighbors+1)] # nNeighbors nearest neighbors to each cell: nCells x nNeighbors 
-  print(dim(neighbors))
   #neighbor.cors = t(sapply(seq(1:ncells), function(i) sapply(seq(1:nNeighbors), function(n) cor(delta.exp[,i],delta.exp[,neighbors[i,n]]))))  #### convert to c++ 
   neighbor.cors = pwiseCors(as.matrix(delta.exp),neighbors,nNeighbors)
-  print(dim(neighbor.cors))
   rownames(neighbor.cors) = cell.names
   cell.consistency = rowMeans(neighbor.cors)
   

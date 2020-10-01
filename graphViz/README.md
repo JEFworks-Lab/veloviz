@@ -14,7 +14,11 @@ contains functions for creating and visualizing velocity based embedding  \
 \
 **graph_pancViz.Rmd**  \
 Visualization of graph based velocity embedding using pancreas data from scVelo. Looks at effects of changing parameters: k, simThresh, L1 vs L2 distance, cosine similarity vs correlation.\
-*Output in ./outputs/graph_pancViz.html*\
+*Outputs*  
+./outputs/graph_pancViz_subset_unweighted.html: original visualization on subset of cells using unweighted graph.  
+./outputs/graph_pancViz_allCells_unweighted.html: visualization on all cells using unweighted graph.  
+./outputs/graph_pancViz_subset_weighted.html: visualization on all cells using weighted graph.  
+
 \
 **graphall_u2osViz.Rmd**  \
 Visualization of graph based velocity embedding using U2OS data. Looks at effects of changing parameters: k, simThresh, L1 vs L2 distance, cosine similarity vs correlation.\
@@ -34,7 +38,9 @@ Adding edge weights to graph used to make force directed embedding and comparing
 
 **disconnectedTrajectories_panc.Rmd**  
 Looking at the effect on graph based visualization of removing intermediate cell types in the endocrine development trajectory.  
-*Output in ./outputs/disconnectedTrajectories.html*  
+*Outputs*
+./outputs/disconnectedTrajectories_panc_subset_weighted.html  
+./outputs/disconnectedTrajectories_panc_allCells_unweighted.html  
 
 **2020_09_RotationPresSims.Rmd**\
 Toy data simulations showing rationale behind composite distance.

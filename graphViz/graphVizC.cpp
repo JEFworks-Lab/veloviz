@@ -93,4 +93,47 @@ NumericMatrix pwiseDists(NumericVector cell_i, NumericVector proj_i, NumericMatr
 }
 
 
+// [[Rcpp::export]]
+NumericMatrix pwiseCors(NumericMatrix deltaExp, NumericMatrix neighborIdx, int nNeighbors){
+  // calculates correlation between velocity vectors (from deltaExp) of each cell and it nNeighbors nearest neighbors on the FDG graph whose indices are given in neighborIdx
+  // deltaExp: nGenes x nCells matrix of projected change in gene expression (from velocyto)
+  // neighborIdx: nCells x nNeighbors matrix of indices of each cell's nearest neighbors on the FDG embedding
+  // nNeighbors: number of nearest neighbors to calculate each cells correlation
+  
+  
+  int nCells = deltaExp.ncol();
+  int nGenes = deltaExp.nrow();
+  NumericMatrix neighborCors(nCells, nNeighbors);
+  
+  for(int i=0; i<nCells; ++i){
+    NumericVector velocity_i = deltaExp(_,i); //current cell's velocity vector
+    
+    for(int n=0; n<nNeighbors; ++n){
+      int currentNeighborIdx = neighborIdx(i,n) - 1;
+      NumericVector velocity_n = deltaExp(_,currentNeighborIdx); //current neighbor's velocity vector
+      
+      float sum_i = 0;
+      float sum_i_sqr = 0;
+      float sum_n = 0;
+      float sum_n_sqr = 0;
+      float sum_in = 0;
+      
+      for(int g = 0; g<nGenes; ++g){
+        sum_i = sum_i + velocity_i[g];
+        sum_n = sum_n + velocity_n[g];
+        
+        sum_i_sqr = sum_i_sqr + pow(velocity_i[g],2);
+        sum_n_sqr = sum_n_sqr + pow(velocity_n[g],2);
+        
+        sum_in = sum_in + (velocity_i[g]*velocity_n[g]);
+      }
+      float corr = (((nGenes*sum_in) - (sum_i*sum_n))/(sqrt((nGenes*sum_i_sqr)-pow(sum_i,2))*(sqrt((nGenes*sum_n_sqr)-pow(sum_n,2)))));
+      neighborCors(i,n) = corr;
+    }
+    
+  }
+  
+  return neighborCors;
+}
+
 

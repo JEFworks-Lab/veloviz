@@ -1,3 +1,5 @@
+sourceCpp("graphVizC.cpp")
+
 myDist = function(cell_i,proj_i,nn_i,distance_metric="L2",similarity_metric="cosine"){
   #cell_i: current cell
   #proj_i: projected state of cell i based on velocity
@@ -60,15 +62,28 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
     nn_invDist_i = matrix(NA, nrow=nrow(obs_exc_i), ncol = 1) #inverse distance component
     nn_negVectSim_i = matrix(NA, nrow=nrow(obs_exc_i), ncol = 1) #negative similarity component
     
-    #calculate distances between cell_i and all other cells j [USE SAPPLY HERE???]
-    for (j in seq(1,nrow(obs_exc_i))){
-      nn_j = obs_exc_i[j,] 
-      dist_j = myDist(cell_i,proj_i,nn_j,distance_metric,similarity_metric) #distance between cell_i and current cell_j
-      nn_dists_i[j] = dist_j$myDist
-      nn_invDist_i[j] = dist_j$invDist
-      nn_negVectSim_i[j] = dist_j$negVectSim
-    }
+    #calculate distances between cell_i and all other cells j 
+    cell_i_dists = pwiseDists(cell_i,proj_i,obs_exc_i,distance_metric,similarity_metric)
+    nn_dists_i = cell_i_dists[,"CompositeDistance"]
+    nn_invDist_i = cell_i_dists[,"InverseDistance"]
+    nn_negVectSim_i = cell_i_dists[,"NegativeSimilarity"]
     
+    
+    ####### 
+    #old iterations of pwiseDists
+    # cell_i_dists = sapply(seq(1,nrow(obs_exc_i)), function(x) myDist(cell_i = cell_i,proj_i = proj_i, nn_i = obs_exc_i[x,], distance_metric= distance_metric,similarity_metric= similarity_metric))
+    # nn_dists_i = unlist(cell_i_dists["myDist",])
+    # nn_invDist_i = unlist(cell_i_dists["invDist",])
+    # nn_negVectSim_i = unlist(cell_i_dists["negVectSim",])
+    
+    # for (j in seq(1,nrow(obs_exc_i))){
+    #   nn_j = obs_exc_i[j,] 
+    #   dist_j = myDist(cell_i,proj_i,nn_j,distance_metric,similarity_metric) #distance between cell_i and current cell_j
+    #   nn_dists_i[j] = dist_j$myDist
+    #   nn_invDist_i[j] = dist_j$invDist
+    #   nn_negVectSim_i[j] = dist_j$negVectSim
+    # }
+    #######
     
     #add cell_i's dists to all_dists 
     all_dists[i,-i] = nn_dists_i
@@ -168,12 +183,12 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
   
   if (plot){
     #plot both graphs 
-    par(mfrow = c(1,2))
-    plot.igraph(g,layout = fdg) #####
+    #par(mfrow = c(1,2))
+    #plot.igraph(g,layout = fdg) #####
     plot(scale(fdg), col = cell.colors, pch = 16, main = paste("FDG cell coordinates: \n", title))
     
     #plot velocity on FDG embedding 
-    show.velocity.on.embedding.cor(scale(fdg), vel, n=100, scale='sqrt', cell.colors=cell.colors,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = paste("FDG embedding: ",title))
+    #show.velocity.on.embedding.cor(scale(fdg), vel, n=100, scale='sqrt', cell.colors=cell.colors,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = paste("FDG embedding: ",title))
     #text(scale(fdg)+0.1,labels = seq(1,dim(fdg)[1]))
   }
   

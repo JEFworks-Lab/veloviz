@@ -12,6 +12,7 @@ Note: using weighted graphs vs unweighted graphs and more cells than in first `g
 ```{r setup, include=FALSE}
 #using velocyto2 evironment 
 knitr::opts_chunk$set(echo = FALSE)
+library(Rcpp)
 library(reticulate)
 library(igraph)
 library(matie)
@@ -81,7 +82,7 @@ Downsample cells to make things easier
 ```{r downsample, results='hide'}
 spliced.sub = spliced[,seq(1,ncol(spliced),by=1)]  ### CHANGE HERE TO CHANGE SUBSAMPLE SIZE
 cell.names.sub = colnames(spliced.sub)
-unspliced.sub = unspliced[,seq(1,ncol(unspliced),by=1)]
+unspliced.sub = unspliced[,seq(1,ncol(unspliced),by=1)] ### CHANGE HERE TO CHANGE SUBSAMPLE SIZE
 #cell.dist.sub = as.dist(1-cor(t(pcs[seq(1,ncol(unspliced),by=3),])))
 cell.cols.sub = cell.cols[colnames(spliced.sub)]
 ```
@@ -103,8 +104,8 @@ var = pca$d
 
 emb.pca = pca$u[,1:2]
 row.names(emb.pca) = row.names(all.logODS)
-plot(emb.pca, col = cell.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data", xlim = c(-0.04,0.07))
-legend(x=0.04, y=0, legend = levels(clusters), col = col, pch = 16)
+plot(emb.pca, col = cell.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on all data", xlim = c(-0.03,0.045))
+legend(x=0.025, y=0, legend = levels(clusters), col = col, pch = 16)
 
 #pairwise cell dists for velocity calculation 
 cell.dist = as.dist(1-cor(t(pca$u)))
@@ -116,7 +117,7 @@ pcsToKeep = pca$u[,1:20]
 set.seed(1)
 emb.umap = umap(pcsToKeep)$layout
 row.names(emb.umap) = row.names(all.logODS)
-plot(scale(emb.umap),col = cell.cols.sub, pch = 16, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP on subsampled data", xlim = c(-2,3))
+plot(scale(emb.umap),col = cell.cols.sub, pch = 16, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP on all data", xlim = c(-2,3))
 legend(x=1.75, y=0.75, legend = levels(clusters), col = col, pch = 16)
 ```
 
@@ -124,9 +125,10 @@ legend(x=1.75, y=0.75, legend = levels(clusters), col = col, pch = 16)
 
 Run velocyto on panc data  
 ```{r velocity, message = FALSE, results = 'hide'}
-vel = gene.relative.velocity.estimates(spliced.sub,unspliced.sub,deltaT=1,kCells=30,cell.dist=cell.dist,fit.quantile=0.1,mult=100)
+#vel = gene.relative.velocity.estimates(spliced.sub,unspliced.sub,deltaT=1,kCells=30,cell.dist=cell.dist,fit.quantile=0.1,mult=100)
 #saveRDS(vel,file = "panc_vel.rds")
-#vel = readRDS("./saved_objects/panc_vel.rds")
+vel = readRDS('./saved_objects/all_cells_models/panc_vel_k30.rds') #full velocity 
+#vel = readRDS('./saved_objects/panc_vel.rds') ### subsampled velocity
 curr = vel$current
 proj = vel$projected
 
@@ -157,11 +159,11 @@ v.sub = v[row.names(curr.pca),]
 par(mfrow = c(1,2))
 
 curr.scores = t(curr.pca) %*% v.sub
-plot(curr.scores[,1:2], col = cell.cols.sub, main = 'Observed',xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
+plot(curr.scores[,1:2], col = cell.cols.sub, main = 'Observed',xlim = c(-0.3,0.6),ylim = c(-0.4,0.4))
 
 proj.pca = proj[common.genes,]
 proj.scores = t(proj.pca) %*% v.sub
-plot(proj.scores[,1:2], col = cell.cols.sub, main = 'Projected',xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
+plot(proj.scores[,1:2], col = cell.cols.sub, main = 'Projected',xlim = c(-0.3,0.6),ylim = c(-0.4,0.4))
 
 ```
 
@@ -175,14 +177,42 @@ cell.cols.grph = cell.cols[cell.names.sub]
 curr.scores.cellsub = t(curr.scores[cell.names.sub,]) #### change here to change number of PCs included 
 proj.scores.cellsub = t(proj.scores[cell.names.sub,]) ####
 
+#remove that one cell 
+# cell.names.sub = cell.names.sub[which(cell.names.sub!="CGGACACAGAGAGCTC")]
+# cell.cols.grph = cell.cols[cell.names.sub]
+# curr.scores.cellsub = t(curr.scores[cell.names.sub,]) #### change here to change number of PCs included 
+# proj.scores.cellsub = t(proj.scores[cell.names.sub,]) ####
+
+
+
+t1 = Sys.time()
 set.seed(1)
 graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
-         k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = TRUE,
-         cell.colors = cell.cols.grph, title = "K = 10",
+         k = 100, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = TRUE,
+         cell.colors = cell.cols.grph, title = "K = 100",
          plot = TRUE, return_graph = FALSE)
-legend(x=-1.75, y=0, legend = levels(clusters), col = col, pch = 16)
+legend(x=4, y=2, legend = levels(clusters), col = col, pch = 16)
+t2 = Sys.time()
 
 ```
+
+```{r}
+source("projectedNeighbors.R")
+t3 = Sys.time()
+set.seed(1)
+g = graphViz(observed = curr.scores.cellsub, projected = proj.scores.cellsub,
+         k = 10, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = TRUE,
+         cell.colors = cell.cols.grph, title = "K = 10",
+         plot = TRUE, return_graph = TRUE)
+legend(x=4, y=2, legend = levels(clusters), col = col, pch = 16)
+t4 = Sys.time()
+
+
+coords = g$fdg_coords
+a = rownames(coords)[which(coords[,1]==max(coords[,1]))]
+
+```
+
 
 #### Removing intermediate cell types
 First, we'll see if removing Ngn3 low EP cell types affects the visualization. Given that there are only relatively few of these cells, I suspect that the effect won't be noticeable in the visualization.  

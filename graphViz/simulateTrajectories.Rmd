@@ -9,7 +9,7 @@ Here, I want to simulate scRNA-seq data from trajctories to benchmark performanc
 
 #### Setup and get data from scVelo
 ```{r setup, include=FALSE}
-#using velocyto2 evironment 
+#using velo_splatter evironment 
 knitr::opts_chunk$set(echo = FALSE)
 library(reticulate)
 library(igraph)

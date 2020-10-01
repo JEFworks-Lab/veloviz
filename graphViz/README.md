@@ -6,6 +6,7 @@ contains functions for creating and visualizing velocity based embedding  \
 `projectedNeighbors`: finds k nearest neighbors using `myDist` given observed and projected states, similarity threshold. Outputs array where columns are identified nearest neighbors for each cell (row).  \
 `graphViz`: creates graph based on projected neighbors identified by `projectedNeighbors` and finds fdg layout. Projects velocities onto fdg embedding.   \
 `consistency`: calculates cell consistency score given an embedding and velocity vectors.  \
+\
 **graphVizC.cpp**  
 `myDist`: c++ implementation of `myDist` in `projectedNeighbors.R` described above.  
 `pwiseDists`: calculates distance between a cell and a matrix of other cells using `myDist`. Used by `projectedNeighbors` above.  

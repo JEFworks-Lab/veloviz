@@ -180,7 +180,7 @@ for (k in ks){
   fdg = layout_with_fr(g,dim=2)
   colnames(fdg) = c("C1","C2")
   rownames(fdg) = row.names(all.logODS)
-  plotEmbedding(scale(fdg), groups=clusters, xlab = "fdg X", ylab = "fdg Y",main = paste("fdg k:",k), mark.clusters = TRUE)
+  plotEmbedding(scale(fdg), groups=clusters, xlab = "fdg X", ylab = "fdg Y",main = paste("fdg k:",k), alpha = 0.8, mark.clusters = TRUE, mark.cluster.cex = 1)
   
 }
 
@@ -234,9 +234,9 @@ for (k in ks){
                        weighted = TRUE,
                        cell.colors = cell.cols.grph,
                        title = paste("K =",k,"weighted, thresh =",t),
-                       plot=TRUE, return_graph=TRUE)
+                       plot=FALSE, return_graph=TRUE)
   
-  #plotEmbedding(velograph$fdg_coords, groups=clusters, xlab = "fdg X", ylab = "fdg Y",main = paste("fdg k:",k), alpha = 0.8, mark.clusters = TRUE, mark.cluster.cex = 1)
+  plotEmbedding(velograph$fdg_coords, groups=clusters, xlab = "fdg X", ylab = "fdg Y",main = paste("fdg k:",k), alpha = 0.8, mark.clusters = TRUE, mark.cluster.cex = 1)
 }
 
 

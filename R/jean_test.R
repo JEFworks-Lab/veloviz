@@ -34,6 +34,27 @@ genes = adata$var_names$values
 colnames(spliced) = colnames(unspliced) = cells
 rownames(spliced) = rownames(unspliced) = genes
 
+
+##### even out clusters 
+table(clusters)
+big.clusters = c("Astrocytes","Granule immature","Granule mature", "Neuroblast") #>100 cells 
+clusters.even = clusters[!(clusters %in% big.clusters)]
+for (b in big.clusters){
+  curr.big.cluster = clusters[clusters==b]
+  currN = length(curr.big.cluster)
+  sub  = curr.big.cluster[seq(1,currN,currN/50)]
+  clusters.even = c(clusters.even,sub)
+}
+
+spliced = spliced[,names(clusters.even)]
+unspliced = unspliced[,names(clusters.even)]
+cells = colnames(spliced)
+cell.cols = cell.cols[cells]
+
+#####
+
+
+
 ## filter
 gexpS = log10(rowSums(spliced)+1)
 gexpU = log10(rowSums(unspliced)+1)
@@ -73,26 +94,26 @@ cell.dist = as.dist(1-cor(t(pca$u))) #cell distance in PC space
 #pcsToKeep = pca$u[,1:15]
 pcsToKeep = pca$u[,1:30]
 set.seed(1)
-library(uwot)
-emb.umap = umap(pcsToKeep, min=0.5) ## try to make it look closer to example
+library(uwot)  
+emb.umap = umap(pcsToKeep, min=1) ## try to make it look closer to example
 row.names(emb.umap) = row.names(all.logODS)
 par(mfrow=c(1,1))
-plotEmbedding(scale(emb.umap), groups=clusters, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP on subsampled data", mark.clusters = TRUE)
-plotEmbedding(scale(emb_umap), groups=clusters, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP on subsampled data", mark.clusters = TRUE)
+plotEmbedding(scale(emb.umap), groups=clusters, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP", mark.clusters = TRUE)
+plotEmbedding(scale(emb_umap), groups=clusters, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP scvelo", mark.clusters = TRUE)
 
 ## tSNE
 set.seed(1)
 library(Rtsne)
 emb.tsne = Rtsne(pcsToKeep, k=10)$Y
 row.names(emb.tsne) = row.names(all.logODS)
-plotEmbedding(scale(emb.tsne), groups=clusters, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP on subsampled data", mark.clusters = TRUE)
+plotEmbedding(scale(emb.tsne), groups=clusters, xlab = "tSNE X", ylab = "tSNE Y",main = "tSNE", mark.clusters = TRUE)
 
 ## diffusion maps
 library(destiny)
 emb.dm <- DiffusionMap(pcsToKeep)
 emb.dm <- eigenvectors(emb.dm)[,1:2]
 row.names(emb.dm) = row.names(all.logODS)
-plotEmbedding(scale(emb.dm), groups=clusters, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP on subsampled data", mark.clusters = TRUE)
+plotEmbedding(scale(emb.dm), groups=clusters, xlab = "DC X", ylab = "DC Y",main = "Diffusion Map", mark.clusters = TRUE)
 
 
 
@@ -104,6 +125,17 @@ vel = readRDS("../graphViz/saved_objects/all_cells_models/neuro_vel_k30.rds")
 vel$kCells
 curr = vel$current
 proj = vel$projected
+
+##### even out clusters 
+
+curr = curr[,names(clusters.even)]
+proj = proj[,names(clusters.even)]
+
+
+
+##### 
+
+
 
 ## show velocity
 # show.velocity.on.embedding.cor(scale(emb.pca), vel, n=100,
@@ -132,27 +164,32 @@ proj = vel$projected
 
 
 ### try graph from just pcs?
-k = 50
+ks = c(5,10,20,50)
 pcs <- pcsToKeep
-nn = RANN::nn2(pcs, k = k) ## KNN
-names(nn) <- c('idx', 'dists')
-weight <- 1/(1+ as.vector(nn$dists))
-nn.df = data.frame(from = rep(1:nrow(nn$idx), k),
-                   to = as.vector(nn$idx),
-                   weight = weight
-)
-g <- igraph::graph_from_data_frame(nn.df, directed = FALSE)
-g <- igraph::simplify(g)
-fdg = layout_with_fr(g,dim=2)
-colnames(fdg) = c("C1","C2")
-rownames(fdg) = row.names(all.logODS)
-plotEmbedding(scale(fdg), groups=clusters, xlab = "fdg X", ylab = "fdg Y",main = "fdg", mark.clusters = TRUE)
+par(mfrow = c(2,2))
+for (k in ks){
+  nn = RANN::nn2(pcs, k = k) ## KNN
+  names(nn) <- c('idx', 'dists')
+  weight <- 1/(1+ as.vector(nn$dists))
+  nn.df = data.frame(from = rep(1:nrow(nn$idx), k),
+                     to = as.vector(nn$idx),
+                     weight = weight
+  )
+  g <- igraph::graph_from_data_frame(nn.df, directed = FALSE)
+  g <- igraph::simplify(g)
+  fdg = layout_with_fr(g,dim=2)
+  colnames(fdg) = c("C1","C2")
+  rownames(fdg) = row.names(all.logODS)
+  plotEmbedding(scale(fdg), groups=clusters, xlab = "fdg X", ylab = "fdg Y",main = paste("fdg k:",k), mark.clusters = TRUE)
+  
+}
 
-show.velocity.on.embedding.cor(scale(fdg), vel, n=100,
-                               scale='sqrt', cell.colors=cell.cols,
-                               cex=1, arrow.scale=2, show.grid.flow=TRUE,
-                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2,
-                               main = "Velocities on fdg embedding", n.cores=10)
+
+# show.velocity.on.embedding.cor(scale(fdg), vel, n=100,
+#                                scale='sqrt', cell.colors=cell.cols,
+#                                cex=1, arrow.scale=2, show.grid.flow=TRUE,
+#                                min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2,
+#                                main = "Velocities on fdg embedding", n.cores=10)
 
 ##### velocity-informed fdg
 u = pca$u #scores
@@ -184,21 +221,25 @@ cell.cols.grph = cell.cols[cell.names.sub]
 
 curr.scores.cellsub = t(curr.scores[cell.names.sub,]) #### change here to change number of PCs included
 proj.scores.cellsub = t(proj.scores[cell.names.sub,]) ####
-plot(t(curr.scores.cellsub[1:2,]), col = cell.cols.grph, pch = 16)
+#plot(t(curr.scores.cellsub[1:2,]), col = cell.cols.grph, pch = 16)
 
-k = 50 ## same without any thresholding for comparison purposes
-t = -1
-set.seed(1)
-velograph = graphViz(curr.scores.cellsub,
-         proj.scores.cellsub,
-         k,"L2","cosine",t,
-         weighted = TRUE,
-         cell.colors = cell.cols.grph,
-         title = paste("K =",k,"weighted, thresh =",t),
-         plot=FALSE, return_graph=TRUE)
+par(mfrow = c(2,2))
+ks = c(5,10,20,50)
+for (k in ks){
+  t = 0.4
+  set.seed(1)
+  velograph = graphViz(curr.scores.cellsub,
+                       proj.scores.cellsub,
+                       k,"L2","cosine",t,
+                       weighted = TRUE,
+                       cell.colors = cell.cols.grph,
+                       title = paste("K =",k,"weighted, thresh =",t),
+                       plot=TRUE, return_graph=TRUE)
+  
+  #plotEmbedding(velograph$fdg_coords, groups=clusters, xlab = "fdg X", ylab = "fdg Y",main = paste("fdg k:",k), alpha = 0.8, mark.clusters = TRUE, mark.cluster.cex = 1)
+}
 
-par(mfrow=c(1,1))
-plotEmbedding(velograph$fdg_coords, groups=clusters, xlab = "fdg X", ylab = "fdg Y", mark.clusters=TRUE)
+
 
 #compare pca graph to velocity graph
 par(mfrow = c(1,2))
@@ -210,6 +251,17 @@ plotEmbedding(velograph$fdg_coords, groups=clusters, xlab = "fdg X", ylab = "fdg
 par(mfrow = c(1,1))
 plot(weight, E(velograph$graph)$weight, pch = 4, xlab = "simple weights", ylab = "velocity weights")
 
+## even out clusters 
+
+
+
+
+
+
+
+
+
+##### Scratch
 par(mfrow = c(2,1))
 hist(velograph$projected_neighbors$edge_weights, breaks = 500)
 hist(E(velograph$graph)$weight, breaks = 500)

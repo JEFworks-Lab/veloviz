@@ -36,20 +36,20 @@ rownames(spliced) = rownames(unspliced) = genes
 
 
 ##### even out clusters 
-table(clusters)
-big.clusters = c("Astrocytes","Granule immature","Granule mature", "Neuroblast") #>100 cells 
-clusters.even = clusters[!(clusters %in% big.clusters)]
-for (b in big.clusters){
-  curr.big.cluster = clusters[clusters==b]
-  currN = length(curr.big.cluster)
-  sub  = curr.big.cluster[seq(1,currN,currN/50)]
-  clusters.even = c(clusters.even,sub)
-}
-
-spliced = spliced[,names(clusters.even)]
-unspliced = unspliced[,names(clusters.even)]
-cells = colnames(spliced)
-cell.cols = cell.cols[cells]
+# table(clusters)
+# big.clusters = c("Astrocytes","Granule immature","Granule mature", "Neuroblast") #>100 cells 
+# clusters.even = clusters[!(clusters %in% big.clusters)]
+# for (b in big.clusters){
+#   curr.big.cluster = clusters[clusters==b]
+#   currN = length(curr.big.cluster)
+#   sub  = curr.big.cluster[seq(1,currN,currN/50)]
+#   clusters.even = c(clusters.even,sub)
+# }
+# 
+# spliced = spliced[,names(clusters.even)]
+# unspliced = unspliced[,names(clusters.even)]
+# cells = colnames(spliced)
+# cell.cols = cell.cols[cells]
 
 #####
 
@@ -95,7 +95,7 @@ cell.dist = as.dist(1-cor(t(pca$u))) #cell distance in PC space
 pcsToKeep = pca$u[,1:30]
 set.seed(1)
 library(uwot)  
-emb.umap = umap(pcsToKeep, min=1) ## try to make it look closer to example
+emb.umap = umap(pcsToKeep, min=0.5) ## try to make it look closer to example
 row.names(emb.umap) = row.names(all.logODS)
 par(mfrow=c(1,1))
 plotEmbedding(scale(emb.umap), groups=clusters, xlab = "UMAP X", ylab = "UMAP Y",main = "UMAP", mark.clusters = TRUE)
@@ -127,9 +127,9 @@ curr = vel$current
 proj = vel$projected
 
 ##### even out clusters 
-
-curr = curr[,names(clusters.even)]
-proj = proj[,names(clusters.even)]
+# 
+# curr = curr[,names(clusters.even)]
+# proj = proj[,names(clusters.even)]
 
 
 
@@ -226,7 +226,7 @@ proj.scores.cellsub = t(proj.scores[cell.names.sub,]) ####
 par(mfrow = c(2,2))
 ks = c(5,10,20,50)
 for (k in ks){
-  t = 0.4
+  t = 0.25
   set.seed(1)
   velograph = graphViz(curr.scores.cellsub,
                        proj.scores.cellsub,

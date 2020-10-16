@@ -1,4 +1,4 @@
-#sourceCpp("graphVizC.cpp")
+sourceCpp("graphVizC.cpp")
 # 
 # myDist = function(cell_i,proj_i,nn_i,distance_metric="L2",similarity_metric="cosine"){
 #   #cell_i: current cell

@@ -57,15 +57,50 @@ u = matrix(0,nCells) + (t>0.2 & t<0.4)*sapply(c(1:nCells),function(x) cbind(u1,u
 par(mfrow = c(1,2))
 plot(t,u)
 plot(t,v)
+
+
+### doesn't work, need to define branches
+to = t[order(t)]
+uo = u[order(t)]
+tc = to[0:650]
+uc = uo[0:650]
+tp = to[50:700]
+up = uo[50:700]
+plot(tc,uc, pch = 1)
+points(tp,up, pch = 4, col = "red")
+points(tc[c(400,100,30,55,60,350,700)],uc[c(400,100,30,55,60,350,700)], pch = 16, col = "blue")
+points(tp[c(400,100,30,55,60,350,700)],up[c(400,100,30,55,60,350,700)], pch = 16, col = "green")
+text(tc[c(400,100,30,55,60,350,700)],uc[c(400,100,30,55,60,350,700)]+0.1, label = c(400,100,30,55,60,350,700), pch = 16, col = "blue")
+text(tp[c(400,100,30,55,60,350,700)],up[c(400,100,30,55,60,350,700)]+0.1, label = c(400,100,30,55,60,350,700), pch = 16, col = "green")
 ```
 
 ```{r}
-trajA = (u==0)
-trajB = (u==(t-0.2))
-trajC = (u==(0.2-t))
+cn = paste0("C",c(1:700))
+trajA = (uo==0)
+trajB = (uo==(t-0.2))
+trajC = (uo==(0.2-t))
 #trajD = (u==(0.6-t))
-trajD = (u==0.2)
-trajE = (u==-0.2)
+trajD = (uo==0.2)
+trajE = (uo==-0.2)
+
+#defining projected for each branch
+allbranches = cbind(trajA,trajB,trajC,trajD,trajE)
+rownames(allbranches) = cn
+
+n = length(cn)
+ptGap = 10
+co = cn[1:650] #observed cells
+cp = unlist(sapply(c(1:(n-25)), function(x) {ifelse(is.na(which(allbranches[(x+ptGap):n,which(allbranches[co[x],])])[1]),co[x+1],
+                                                    names(which(allbranches[(x+ptGap):n,which(allbranches[co[x],])])[1]))}))
+
+
+projected.cells = unlist(sapply(c(1:(length(t.ord)-25)),
+                                function(x) {ifelse(is.na(which(branch[(x+ptGap):length(t.ord),which(branch[observed.cells[x],])])[1]),observed.cells[x+1],
+                                                    names(which(branch[(x+ptGap):length(t.ord),which(branch[observed.cells[x],])])[1]))}))
+
+
+
+
 
 #remove intermediate
 notIntCells = which(!((t<0.4)&(trajB)))
@@ -122,7 +157,8 @@ heatmap(allExp,Rowv = NA)
 
 ```{r pca, fig.width=12, fig.height=3.5}
 expDropoutNoInt = expDropout[notIntCells,] #remove intermediate cells
-#expDropout = expDropoutNoInt
+expDropout0 = expDropout
+expDropout = expDropoutNoInt
 pca = svds(A = expDropout, k=50, opts = list(center = TRUE, scale = TRUE, maxitr = 2000, tol = 1e-10))
 var = pca$d
 #plot(var) # ~3 components 
@@ -159,13 +195,11 @@ plot(diffmap,pch=4,col=cell.cols,main="Diffusion map:\nsimulated trajectories")
 t.ord = t[order(t)]
 t.ord = t[order(t[notIntCells])] #removing intermediats
 
-
-
-names(trajA) = rownames(expDropout)
-names(trajB) = rownames(expDropout)
-names(trajC) = rownames(expDropout)
-names(trajD) = rownames(expDropout)
-names(trajE) = rownames(expDropout)
+names(trajA) = rownames(expDropout0)
+names(trajB) = rownames(expDropout0)
+names(trajC) = rownames(expDropout0)
+names(trajD) = rownames(expDropout0)
+names(trajE) = rownames(expDropout0)
 
 trajA = trajA[names(t.ord)]
 trajB = trajB[names(t.ord)]
@@ -175,15 +209,19 @@ trajE = trajE[names(t.ord)]
 branch = cbind(trajA,trajB,trajC,trajD,trajE)
 
 observed.cells = names(t.ord)[1:(length(t.ord)-25)]
+#for projected cells: for each cell
+#find next cell in branch after pseudotime gap
+#if no cells remain in branch: 
+ptGap = 10
 projected.cells = unlist(sapply(c(1:(length(t.ord)-25)),
-                                function(x) {ifelse(is.na(which(branch[(x+1):length(t.ord),which(branch[observed.cells[x],])])[1]),observed.cells[x+1],
-                                                    names(which(branch[(x+1):length(t.ord),which(branch[observed.cells[x],])])[1]))}))
+                                function(x) {ifelse(is.na(which(branch[(x+ptGap):length(t.ord),which(branch[observed.cells[x],])])[1]),observed.cells[x+1],
+                                                    names(which(branch[(x+ptGap):length(t.ord),which(branch[observed.cells[x],])])[1]))}))
 
 
 
 
-observed = expDropout[observed.cells,]
-projected0 = expDropout[projected.cells,] 
+observed = expDropout0[observed.cells,]
+projected0 = expDropout0[projected.cells,] 
 noise = 1
 projected = projected0 + (projected0>0)*matrix(rnorm(nrow(projected0)*ncol(projected0),0,noise), nrow = nrow(projected0), ncol = ncol(projected0))
 rownames(projected) = rownames(observed)
@@ -198,14 +236,6 @@ emb.pca = pcs.obs[,1:2]
 plot(scale(emb.pca), pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols.obs, main="PCA: simulated trajectories")
 
 ```
-
-```{r}
-hist(rnorm(100,0,5),breaks = 50)
-par(mfrow = c(1,2))
-hist(projected0,breaks = 200,col = "black",ylim = c(0,10000))
-hist(projected,breaks = 200,col = "red",ylim = c(0,10000))
-```
-
 
 
 ```{r}
@@ -227,8 +257,8 @@ text(proj.scores.scale[c(4,10,30,55,60,350,570),1],proj.scores.scale[c(4,10,30,5
 source('projectedNeighbors.R')
 #par(mfrow = c(1,2))
 set.seed(1)
-g = graphViz(observed = t(curr.scores[,c(1:2)]), projected = t(proj.scores[,c(1:2)]),
-         k = 5, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = FALSE, 
+g = graphViz(observed = t(curr.scores), projected = t(proj.scores),
+         k = 20, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = -1, weighted = TRUE, 
          cell.colors = cell.cols.obs, title = "veloviz embedding", 
          plot = TRUE, return_graph = TRUE)
 ```

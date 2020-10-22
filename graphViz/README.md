@@ -42,5 +42,21 @@ Looking at the effect on graph based visualization of removing intermediate cell
 ./outputs/disconnectedTrajectories_panc_subset_weighted.html  
 ./outputs/disconnectedTrajectories_panc_allCells_unweighted.html  
 
+**simTraj.Rmd**  
+Simulating branching trajectories and comparing velocity based embedding to other embeddings when plotting all cells and when removing intermediates.  
+*Outputs*  
+./outputs/simTraj.html  
+*Figures*  
+Two branch points:  
+./figures/two_branch_all.svg  
+Two branch points, missing intermediates (two different layouts):  
+./figures/two_branch_noInt.svg  
+./figures/two_branch_noInt2.svg  
+Three branch points:  
+./figures/three_branch_all.svg  
+Three branch points, missing intermediates (two different layouts):  
+./figures/three_branch_noInt.svg  
+./figures/three_branch_noInt2.svg
+
 **2020_09_RotationPresSims.Rmd**\
 Toy data simulations showing rationale behind composite distance.

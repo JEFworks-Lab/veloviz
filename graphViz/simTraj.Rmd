@@ -5,6 +5,10 @@ date: "10/22/2020"
 output: html_document
 ---
 
+### Trajectory simulation 
+Here, we are simulating branching trajectories and comparing velocity based embedding to other embeddings with all cells and with missing intermediates. 
+
+
 ```{r setup, include=FALSE}
 #using velo_splatter evironment 
 knitr::opts_chunk$set(echo = FALSE)
@@ -82,14 +86,14 @@ text(tp[seq(1,700,75)],up[seq(1,700,75)]+0.1, label = seq(1,700,75), pch = 16, c
 # #projected
 # u4p = -0.2
 # v4p = tp-0.4
-# up = matrix(0,nCells) + (tp>(0.2) & tp<(0.4+tgap))*sapply(c(1:nCells),function(x) cbind(u1p,u2p)[x,b1traj[x]]) + (tp(>0.4))*sapply(c(1:nCells), function(x) cbind(u1p,u2p,u3p,u4p)[x,b3traj.u[x]])
+# up = matrix(0,nCells) + (tp>(0.2) & tp<(0.4))*sapply(c(1:nCells),function(x) cbind(u1p,u2p)[x,b1traj[x]]) + (tp>(0.4))*sapply(c(1:nCells), function(x) cbind(u1p,u2p,u3p,u4p)[x,b3traj.u[x]])
 # vp = matrix(0,nCells) + (tp>(0.4))*sapply(c(1:nCells), function(x) cbind(vp,v4p)[x,b3traj.v[x]])
 # 
 # 
-# plot(tc,uc,col = "black")
+# plot(tc,uc,col = "black",xlim = c(-0.05, 1.15), ylim = c(-1,1))
 # points(tp,up, col = "red", pch = 4)
-# text(tc[c(400,100,30,55,60,350,700)],uc[c(400,100,30,55,60,350,700)]+0.1, label = c(400,100,30,55,60,350,700), pch = 16, col = "blue")
-# text(tp[c(400,100,30,55,60,350,700)],up[c(400,100,30,55,60,350,700)]+0.1, label = c(400,100,30,55,60,350,700), pch = 16, col = "green")
+# text(tc[seq(1,700,50)],uc[seq(1,700,50)]+0.1, label = seq(1,700,50), pch = 16, col = "blue")
+# text(tp[seq(1,700,50)],up[seq(1,700,50)]+0.1, label = seq(1,700,50), pch = 16, col = "green")
 
 ```
 
@@ -217,7 +221,7 @@ g = graphViz(observed = t(curr.scores[,c(1:4)]), projected = t(proj.scores[,c(1:
 
 #### PLOTTING ####
 ```{r all cells,fig.width=16, fig.height=3.5 }
-svg("two_branch_all.svg", width = 16, height = 3.5)
+#svg("three_branch_all.svg", width = 16, height = 3.5)
 par(mfrow = c(1,6))
 plot(tc,uc,pch = 20, col = cell.cols, xlim = c(-0.1, 1.2), ylim = c(-1,1), xlab = "", ylab = "",xaxt='n',yaxt='n', frame.plot = FALSE)
 plot(g$fdg_coords,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
@@ -230,7 +234,7 @@ plot(tsne,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
 title(xlab = "tSNE X", ylab = "tSNE Y", line = 1,cex.lab = 2)
 plot(diffmap,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
 title(xlab = "DC 1", ylab = "DC 2", line = 1,cex.lab = 2)
-dev.off()
+#dev.off()
 
 ```
 
@@ -366,9 +370,10 @@ g = graphViz(observed = t(curr.scores[,c(1:4)]), projected = t(proj.scores[,c(1:
 ```
 
 #### PLOTTING ####
-```{r plot no int cells ,fig.width=16, fig.height=3.5 }
-svg("two_branch_noInt.svg", width = 16, height = 3.5)
-par(mfrow = c(1,6))
+```{r plot no int cells ,fig.width=8, fig.height=8 }
+#svg("two_branch_noInt_2.svg", width = 8, height = 8)
+layout(matrix(c(1,2,2,1,2,2,3,4,5), nrow = 3, ncol = 3, byrow = TRUE))
+#par(mfrow = c(1,6))
 plot(tc,uc,pch = 20, col = cell.cols, xlim = c(-0.1, 1.2), ylim = c(-1,1), xlab = "", ylab = "",xaxt='n',yaxt='n', frame.plot = FALSE)
 plot(g$fdg_coords,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
 title(xlab = "Velo 1", ylab = "Velo 2", line = 1,cex.lab = 2)
@@ -376,11 +381,11 @@ plot(scale(emb.pca),pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt
 title(xlab = "PC 1", ylab = "PC 2", line = 1,cex.lab = 2)
 plot(umap,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
 title(xlab = "UMAP X", ylab = "UMAP Y", line = 1,cex.lab = 2)
-plot(tsne,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
-title(xlab = "tSNE X", ylab = "tSNE Y", line = 1,cex.lab = 2)
+# plot(tsne,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
+# title(xlab = "tSNE X", ylab = "tSNE Y", line = 1,cex.lab = 2)
 plot(diffmap,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
 title(xlab = "DC 1", ylab = "DC 2", line = 1,cex.lab = 2)
-dev.off()
+#dev.off()
 
 ```
 

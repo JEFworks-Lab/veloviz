@@ -1,0 +1,392 @@
+---
+title: "simTraj"
+author: "LylaAtta"
+date: "10/22/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#using velo_splatter evironment 
+knitr::opts_chunk$set(echo = FALSE)
+library(Rcpp)
+#library(reticulate)
+library(igraph)
+library(matie)
+library(RANN)
+library(velocyto.R)
+library(MUDAN)
+library(RSpectra)
+library(umap)
+library(Rtsne)
+library(destiny)
+library(splatter)
+library(scater)
+#library(dyngen)
+#library(dyntoy)
+source("projectedNeighbors.R")
+```
+
+#### ALL CELLS ####
+
+```{r current and projected trajectories}
+nCells = 700
+tgap = 0.05
+tc = runif(nCells,0,1)
+tp = tc + tgap
+par(mfrow = c(2,2))
+plot(tc,tp)
+
+#one branch 
+#current
+u1c = 0.2-tc
+u2c = tc-0.2
+b1traj = sample(c(1,2),nCells, replace = TRUE)
+uc = matrix(0,nCells) + (tc>0.2)*sapply(c(1:nCells),function(x) cbind(u1c,u2c)[x,b1traj[x]])
+vc = matrix(0,nrow = nCells)
+#projected
+u1p = 0.2-tp
+u2p = tp-0.2
+up = matrix(0,nCells) + (tp>(0.2))*sapply(c(1:nCells),function(x) cbind(u1p,u2p)[x,b1traj[x]])
+vp = matrix(0,nrow = nCells)
+
+plot(tc,uc,col = "black")
+points(tp,up, col = "red", pch = 4)
+text(tc[c(4,100,30,55,60,350,700)],uc[c(4,100,30,55,60,350,700)]+0.1, label = c(4,100,30,55,60,350,700), pch = 16, col = "blue")
+text(tp[c(4,100,30,55,60,350,700)],up[c(4,100,30,55,60,350,700)]+0.1, label = c(4,100,30,55,60,350,700), pch = 16, col = "green")
+
+#two branches 
+#u3 = 0.6-t
+#current 
+u3c = 0.2
+b2traj = sample(c(1,2,3),nCells,replace = TRUE)
+#b2traj = sapply(c(1:nCells), function(x) sample(c(b1traj[x],3,1)))
+uc = matrix(0,nCells) + (tc>0.2 & tc<0.4)*sapply(c(1:nCells),function(x) cbind(u1c,u2c)[x,b1traj[x]]) + (tc>0.4)*sapply(c(1:nCells), function(x) cbind(u1c,u2c,u3c)[x,b2traj[x]])
+#projected 
+u3p = 0.2
+up = matrix(0,nCells) + (tp>(0.2) & tp<(0.4))*sapply(c(1:nCells),function(x) cbind(u1p,u2p)[x,b1traj[x]]) + (tp>(0.4))*sapply(c(1:nCells), function(x) cbind(u1p,u2p,u3p)[x,b2traj[x]])
+
+plot(tc,uc,col = "black", xlim = c(-0.1, 1.2), ylim = c(-1,1))
+points(tp,up, col = "red", pch = 4)
+text(tc[seq(1,700,75)],uc[seq(1,700,75)]+0.1, label = seq(1,700,75), pch = 16, col = "blue")
+text(tp[seq(1,700,75)],up[seq(1,700,75)]+0.1, label = seq(1,700,75), pch = 16, col = "green")
+
+
+# #three branches
+# #current
+# u4c = -0.2
+# v4c = tc-0.4
+# b3traj.u = sample(c(1,2,3,4),nCells,replace = TRUE)
+# b3traj.v = sample(c(1,2),nCells,replace = TRUE)
+# uc = matrix(0,nCells) + (tc>0.2 & tc<0.4)*sapply(c(1:nCells),function(x) cbind(u1c,u2c)[x,b1traj[x]]) + (tc>0.4)*sapply(c(1:nCells), function(x) cbind(u1c,u2c,u3c,u4c)[x,b3traj.u[x]])
+# vc = matrix(0,nCells) + (tc>0.4)*sapply(c(1:nCells), function(x) cbind(vc,v4c)[x,b3traj.v[x]])
+# #projected
+# u4p = -0.2
+# v4p = tp-0.4
+# up = matrix(0,nCells) + (tp>(0.2) & tp<(0.4+tgap))*sapply(c(1:nCells),function(x) cbind(u1p,u2p)[x,b1traj[x]]) + (tp(>0.4))*sapply(c(1:nCells), function(x) cbind(u1p,u2p,u3p,u4p)[x,b3traj.u[x]])
+# vp = matrix(0,nCells) + (tp>(0.4))*sapply(c(1:nCells), function(x) cbind(vp,v4p)[x,b3traj.v[x]])
+# 
+# 
+# plot(tc,uc,col = "black")
+# points(tp,up, col = "red", pch = 4)
+# text(tc[c(400,100,30,55,60,350,700)],uc[c(400,100,30,55,60,350,700)]+0.1, label = c(400,100,30,55,60,350,700), pch = 16, col = "blue")
+# text(tp[c(400,100,30,55,60,350,700)],up[c(400,100,30,55,60,350,700)]+0.1, label = c(400,100,30,55,60,350,700), pch = 16, col = "green")
+
+```
+
+
+```{r assigning colors}
+trajA = (uc==0)
+trajB = (uc==(tc-0.2))
+trajC = (uc==(0.2-tc))
+#trajD = (uc==(0.6-tc))
+trajD = (uc==0.2)
+trajE = (uc==-0.2)
+#traj = cbind(trajA,trajB,trajC,trajD,trajE)
+
+cell.cols = matrix(NA,nCells)
+cell.cols[trajA] = "black"
+cell.cols[trajB] = "blue"
+cell.cols[trajC] = "green"
+cell.cols[trajD] = "cyan"
+cell.cols[trajE] = "red"
+
+```
+
+
+```{r gene expression current and projected}
+nCorGenes = 75
+nRandGenes = 200
+noise = 0.01
+g1noise = matrix(rnorm(nCells*nCorGenes,150,4),nrow = nCells, ncol = nCorGenes)
+g2noise = matrix(rnorm(nCells*nCorGenes,150,4),nrow = nCells, ncol = nCorGenes)
+g3noise = matrix(rnorm(nCells*nCorGenes,150,4),nrow = nCells, ncol = nCorGenes)
+g4noise = matrix(rnorm(nCells*nCorGenes,150,4),nrow = nCells, ncol = nCorGenes)
+#CURRENT 
+set.seed(1)
+#4 sets of 75 correlated genes 
+g1c = sapply(c(1:nCorGenes), function(x) (((200*uc)/(uc^2 + tc^2 + 0.2)) + g1noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+g2c = sapply(c(1:nCorGenes), function(x) (((200*tc)/(uc^2 + tc^2 + 0.6)) + g2noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+g3c = sapply(c(1:nCorGenes), function(x) (((100*(uc^2 + tc^2) - 20)/(uc^2 + tc^2 + 0.2)) + g3noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+g4c = sapply(c(1:nCorGenes), function(x) (((100*sqrt(vc)) + g4noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise)))
+
+#200 uncorrelated genes
+gRandc = sapply(c(1:nRandGenes), function(x) rnorm(nCells,200,50)*rnorm(nCells,1,noise))
+allExpC = cbind(g1c,g2c,g3c,g4c,gRandc)
+
+#PROJECTED
+set.seed(1)
+#4 sets of 75 correlated genes 
+g1p = sapply(c(1:nCorGenes), function(x) (((200*up)/(up^2 + tp^2 + 0.2)) + g1noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+g2p = sapply(c(1:nCorGenes), function(x) (((200*tp)/(up^2 + tp^2 + 0.6)) + g2noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+g3p = sapply(c(1:nCorGenes), function(x) (((100*(up^2 + tp^2) - 20)/(up^2 + tp^2 + 0.2)) + g3noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+g4p = sapply(c(1:nCorGenes), function(x) (((100*sqrt(vp)) + g4noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise)))
+
+#200 uncorrelated genes
+gRandp = sapply(c(1:nRandGenes), function(x) rnorm(nCells,200,50)*rnorm(nCells,1,noise))
+allExpP = cbind(g1p,g2p,g3p,g4p,gRandp)
+
+
+nGenes = ncol(allExpC)
+
+#drop out 
+pDropout = 1/(1+exp((allExpC/100)-1)) #probability of dropout as a function of expression
+keep = matrix(runif(nCells*nGenes),nrow = nCells, ncol = nGenes)>pDropout
+expDropoutC = keep*allExpC
+expDropoutP = keep*allExpP
+rownames(expDropoutC) = rownames(expDropoutP) = paste0("C",c(1:nCells))
+colnames(expDropoutC) = colnames(expDropoutP) = paste0("G",c(1:nGenes))
+names(tc) = names(tp) = rownames(expDropoutC)
+```
+
+
+
+
+```{r non velocity embeddings, fig.width=12, fig.height=3.5}
+expDropout = expDropoutC
+pca = svds(A = expDropout, k=50, opts = list(center = TRUE, scale = TRUE, maxitr = 2000, tol = 1e-10))
+var = pca$d
+#plot(var) # ~3 components 
+pcs = pca$u
+rownames(pcs) = rownames(expDropout)
+emb.pca = pcs[,1:2]
+#plot(emb.pca,pch=4)
+
+par(mfrow = c(1,4))
+plot(scale(emb.pca), pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols, main="PCA:\nsimulated trajectories")
+
+set.seed(1)
+umap = umap(pca$u[,1:5])$layout
+plot(umap,pch=4,col = cell.cols,main="UMAP:\nsimulated trajectories")
+
+set.seed(1)
+tsne = Rtsne(pcs[,1:5], is_distance = FALSE, perplexity = 10, num_threads =1, verbose = FALSE)$Y
+plot(tsne,pch=4,col=cell.cols,main="tSNE:\nsimulated trajectories")
+
+set.seed(1)
+diffmap = DiffusionMap(pcs[,1:5])
+diffmap = eigenvectors(diffmap)[,1:2]
+plot(diffmap,pch=4,col=cell.cols,main="Diffusion map:\nsimulated trajectories")
+
+```
+
+```{r scores for veloviz}
+v.curr = pca$v 
+
+curr.scores = expDropoutC %*% v.curr
+proj.scores = expDropoutP %*% v.curr
+
+par(mfrow = c(1,2))
+curr.scores.scale = scale(curr.scores[,1:2])
+proj.scores.scale = scale(proj.scores[,1:2])
+plot(curr.scores.scale,pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols, main="PCA: simulated observed cells", xlim = c(-2,3),ylim = c(-2.5,2))
+text(curr.scores.scale[c(4,10,30,55,60,350,570),1],curr.scores.scale[c(4,10,30,55,60,350,570),2],label = c(4,10,30,55,60,350,570), pch = 4)
+plot(proj.scores.scale,pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols, main="PCA: simulated projected cells", xlim = c(-2,3),ylim = c(-2.5,2))
+text(proj.scores.scale[c(4,10,30,55,60,350,570),1],proj.scores.scale[c(4,10,30,55,60,350,570),2],label = c(4,10,30,55,60,350,570),pch = 4)
+```
+
+
+```{r veloviz, fig.width=6, fig.height=7}
+source('projectedNeighbors.R')
+#par(mfrow = c(1,2))
+set.seed(1)
+g = graphViz(observed = t(curr.scores[,c(1:4)]), projected = t(proj.scores[,c(1:4)]),
+         k = 100, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = TRUE, 
+         cell.colors = cell.cols, title = "veloviz embedding", 
+         plot = TRUE, return_graph = TRUE)
+```
+
+#### PLOTTING ####
+```{r all cells,fig.width=16, fig.height=3.5 }
+svg("two_branch_all.svg", width = 16, height = 3.5)
+par(mfrow = c(1,6))
+plot(tc,uc,pch = 20, col = cell.cols, xlim = c(-0.1, 1.2), ylim = c(-1,1), xlab = "", ylab = "",xaxt='n',yaxt='n', frame.plot = FALSE)
+plot(g$fdg_coords,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
+title(xlab = "Velo 1", ylab = "Velo 2", line = 1,cex.lab = 2)
+plot(scale(emb.pca),pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
+title(xlab = "PC 1", ylab = "PC 2", line = 1,cex.lab = 2)
+plot(umap,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
+title(xlab = "UMAP X", ylab = "UMAP Y", line = 1,cex.lab = 2)
+plot(tsne,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
+title(xlab = "tSNE X", ylab = "tSNE Y", line = 1,cex.lab = 2)
+plot(diffmap,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
+title(xlab = "DC 1", ylab = "DC 2", line = 1,cex.lab = 2)
+dev.off()
+
+```
+
+
+
+#### REMOVING INTERMEDIATES ####
+
+
+```{r removing intermediates}
+notIntCells = which(!((tc>0.25)&(tc<0.35)&(trajB)))
+
+par(mfrow = c(1,2))
+plot(tc[notIntCells],uc[notIntCells], pch = 4)
+#points(tp[notIntCells],up[notIntCells], col = "red")
+plot(tc[notIntCells],vc[notIntCells])
+points(tp[notIntCells],vp[notIntCells], col = "red")
+
+#remove intermediates 
+tc = tc[notIntCells]
+tp = tp[notIntCells]
+uc = uc[notIntCells]
+up = up[notIntCells]
+vc = vc[notIntCells]
+vp = vp[notIntCells]
+nCells = length(tc)
+cell.cols = cell.cols[notIntCells]
+
+```
+
+
+
+
+```{r gene expression current and projected no int}
+nCorGenes = 75
+nRandGenes = 200
+noise = 0.01
+g1noise = matrix(rnorm(nCells*nCorGenes,150,4),nrow = nCells, ncol = nCorGenes)
+g2noise = matrix(rnorm(nCells*nCorGenes,150,4),nrow = nCells, ncol = nCorGenes)
+g3noise = matrix(rnorm(nCells*nCorGenes,150,4),nrow = nCells, ncol = nCorGenes)
+g4noise = matrix(rnorm(nCells*nCorGenes,150,4),nrow = nCells, ncol = nCorGenes)
+#CURRENT 
+set.seed(1)
+#4 sets of 75 correlated genes 
+g1c = sapply(c(1:nCorGenes), function(x) (((200*uc)/(uc^2 + tc^2 + 0.2)) + g1noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+g2c = sapply(c(1:nCorGenes), function(x) (((200*tc)/(uc^2 + tc^2 + 0.6)) + g2noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+g3c = sapply(c(1:nCorGenes), function(x) (((100*(uc^2 + tc^2) - 20)/(uc^2 + tc^2 + 0.2)) + g3noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+g4c = sapply(c(1:nCorGenes), function(x) (((100*sqrt(vc)) + g4noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise)))
+
+#200 uncorrelated genes
+gRandc = sapply(c(1:nRandGenes), function(x) rnorm(nCells,200,50)*rnorm(nCells,1,noise))
+allExpC = cbind(g1c,g2c,g3c,g4c,gRandc)
+
+#PROJECTED
+set.seed(1)
+#4 sets of 75 correlated genes 
+g1p = sapply(c(1:nCorGenes), function(x) (((200*up)/(up^2 + tp^2 + 0.2)) + g1noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+g2p = sapply(c(1:nCorGenes), function(x) (((200*tp)/(up^2 + tp^2 + 0.6)) + g2noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+g3p = sapply(c(1:nCorGenes), function(x) (((100*(up^2 + tp^2) - 20)/(up^2 + tp^2 + 0.2)) + g3noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+g4p = sapply(c(1:nCorGenes), function(x) (((100*sqrt(vp)) + g4noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise)))
+
+#200 uncorrelated genes
+gRandp = sapply(c(1:nRandGenes), function(x) rnorm(nCells,200,50)*rnorm(nCells,1,noise))
+allExpP = cbind(g1p,g2p,g3p,g4p,gRandp)
+
+
+nGenes = ncol(allExpC)
+
+#drop out 
+pDropout = 1/(1+exp((allExpC/100)-1)) #probability of dropout as a function of expression
+keep = matrix(runif(nCells*nGenes),nrow = nCells, ncol = nGenes)>pDropout
+expDropoutC = keep*allExpC
+expDropoutP = keep*allExpP
+rownames(expDropoutC) = rownames(expDropoutP) = paste0("C",c(1:nCells))
+colnames(expDropoutC) = colnames(expDropoutP) = paste0("G",c(1:nGenes))
+names(tc) = names(tp) = rownames(expDropoutC)
+```
+
+
+
+
+```{r non velocity embeddings no int, fig.width=12, fig.height=3.5}
+expDropout = expDropoutC
+pca = svds(A = expDropout, k=50, opts = list(center = TRUE, scale = TRUE, maxitr = 2000, tol = 1e-10))
+var = pca$d
+#plot(var) # ~3 components 
+pcs = pca$u
+rownames(pcs) = rownames(expDropout)
+emb.pca = pcs[,1:2]
+#plot(emb.pca,pch=4)
+
+par(mfrow = c(1,4))
+plot(scale(emb.pca), pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols, main="PCA:\nsimulated trajectories")
+
+set.seed(1)
+umap = umap(pca$u[,1:5])$layout
+plot(umap,pch=4,col = cell.cols,main="UMAP:\nsimulated trajectories")
+
+set.seed(1)
+tsne = Rtsne(pcs[,1:5], is_distance = FALSE, perplexity = 10, num_threads =1, verbose = FALSE)$Y
+plot(tsne,pch=4,col=cell.cols,main="tSNE:\nsimulated trajectories")
+
+set.seed(1)
+diffmap = DiffusionMap(pcs[,1:5])
+diffmap = eigenvectors(diffmap)[,1:2]
+plot(diffmap,pch=4,col=cell.cols,main="Diffusion map:\nsimulated trajectories")
+
+```
+
+```{r scores for veloviz not int}
+v.curr = pca$v 
+
+curr.scores = expDropoutC %*% v.curr
+proj.scores = expDropoutP %*% v.curr
+
+par(mfrow = c(1,2))
+curr.scores.scale = scale(curr.scores[,1:2])
+proj.scores.scale = scale(proj.scores[,1:2])
+plot(curr.scores.scale,pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols, main="PCA: simulated observed cells", xlim = c(-2,3),ylim = c(-2,3))
+text(curr.scores.scale[c(4,10,30,55,60,350,570),1],curr.scores.scale[c(4,10,30,55,60,350,570),2],label = c(4,10,30,55,60,350,570), pch = 4)
+plot(proj.scores.scale,pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols, main="PCA: simulated projected cells", xlim = c(-2,3),ylim = c(-2,3))
+text(proj.scores.scale[c(4,10,30,55,60,350,570),1],proj.scores.scale[c(4,10,30,55,60,350,570),2],label = c(4,10,30,55,60,350,570),pch = 4)
+```
+
+
+```{r veloviz no int, fig.width=6, fig.height=7}
+source('projectedNeighbors.R')
+#par(mfrow = c(1,2))
+set.seed(1)
+g = graphViz(observed = t(curr.scores[,c(1:4)]), projected = t(proj.scores[,c(1:4)]),
+         k = 100, distance_metric = "L2", similarity_metric = "cosine", similarity_threshold = 0.25, weighted = TRUE, 
+         cell.colors = cell.cols, title = "veloviz embedding", 
+         plot = TRUE, return_graph = TRUE)
+```
+
+#### PLOTTING ####
+```{r plot no int cells ,fig.width=16, fig.height=3.5 }
+svg("two_branch_noInt.svg", width = 16, height = 3.5)
+par(mfrow = c(1,6))
+plot(tc,uc,pch = 20, col = cell.cols, xlim = c(-0.1, 1.2), ylim = c(-1,1), xlab = "", ylab = "",xaxt='n',yaxt='n', frame.plot = FALSE)
+plot(g$fdg_coords,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
+title(xlab = "Velo 1", ylab = "Velo 2", line = 1,cex.lab = 2)
+plot(scale(emb.pca),pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
+title(xlab = "PC 1", ylab = "PC 2", line = 1,cex.lab = 2)
+plot(umap,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
+title(xlab = "UMAP X", ylab = "UMAP Y", line = 1,cex.lab = 2)
+plot(tsne,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
+title(xlab = "tSNE X", ylab = "tSNE Y", line = 1,cex.lab = 2)
+plot(diffmap,pch=16, xlab = '', ylab = '', col = cell.cols, xaxt='n',yaxt='n')
+title(xlab = "DC 1", ylab = "DC 2", line = 1,cex.lab = 2)
+dev.off()
+
+```
+
+
+
+
+
+
+

@@ -1,37 +1,39 @@
-myDist = function(cell_i,proj_i,nn_i,distance_metric="L2",similarity_metric="cosine"){
-  #cell_i: current cell
-  #proj_i: projected state of cell i based on velocity
-  #nn_i: putative nearest neighbor to cell_i 
-  #distance_metric: "L1" or "L2" 
-  #similarity_metric" "cosine" or "pearson" 
-  
-  #distance to minimize is between proj_i and nn_i: d = nn_i - proj_i 
-  #angle to minimize is between velocity (v = proj_i - cell_i) and cell_i --> nn_i (n = nn_i - cell_i)
-  
-  d = nn_i - proj_i
-  v = proj_i - cell_i 
-  n = nn_i - cell_i 
-  
-  #distance  
-  if (distance_metric=="L2"){
-    invDist = 1/stats::dist(rbind(nn_i,proj_i),method = "euclidean")
-  } else if (distance_metric=="L1"){
-    invDist = 1/stats::dist(rbind(nn_i,proj_i),method = "manhattan")
-  }
-  
-  #vector similarity 
-  if (similarity_metric=="cosine"){
-    negVectSim = -1*(v %*% n)/(sqrt(sum(v^2))*sqrt(sum(n^2))) 
-  } else if (similarity_metric=="pearson"){
-    negVectSim = 1 - cor(v,n, method = "pearson")
-  }
-  
-  dists = list()
-  dists[["invDist"]] = invDist
-  dists[["negVectSim"]] = negVectSim
-  dists[["myDist"]] = invDist*negVectSim
-  return(dists)
-}
+sourceCpp("graphVizC.cpp")
+# 
+# myDist = function(cell_i,proj_i,nn_i,distance_metric="L2",similarity_metric="cosine"){
+#   #cell_i: current cell
+#   #proj_i: projected state of cell i based on velocity
+#   #nn_i: putative nearest neighbor to cell_i 
+#   #distance_metric: "L1" or "L2" 
+#   #similarity_metric" "cosine" or "pearson" 
+#   
+#   #distance to minimize is between proj_i and nn_i: d = nn_i - proj_i 
+#   #angle to minimize is between velocity (v = proj_i - cell_i) and cell_i --> nn_i (n = nn_i - cell_i)
+#   
+#   d = nn_i - proj_i
+#   v = proj_i - cell_i 
+#   n = nn_i - cell_i 
+#   
+#   #distance  
+#   if (distance_metric=="L2"){
+#     invDist = 1/stats::dist(rbind(nn_i,proj_i),method = "euclidean")
+#   } else if (distance_metric=="L1"){
+#     invDist = 1/stats::dist(rbind(nn_i,proj_i),method = "manhattan")
+#   }
+#   
+#   #vector similarity 
+#   if (similarity_metric=="cosine"){
+#     negVectSim = -1*(v %*% n)/(sqrt(sum(v^2))*sqrt(sum(n^2))) 
+#   } else if (similarity_metric=="pearson"){
+#     negVectSim = 1 - cor(v,n, method = "pearson")
+#   }
+#   
+#   dists = list()
+#   dists[["invDist"]] = invDist
+#   dists[["negVectSim"]] = negVectSim
+#   dists[["myDist"]] = invDist*negVectSim
+#   return(dists)
+# }
 
 projectedNeighbors = function(observed,projected,k,distance_metric="L2",similarity_metric="cosine",similarity_threshold = -1){
   #observed: genes (rows) x cells (columns) matrix of observed cells 
@@ -60,15 +62,28 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
     nn_invDist_i = matrix(NA, nrow=nrow(obs_exc_i), ncol = 1) #inverse distance component
     nn_negVectSim_i = matrix(NA, nrow=nrow(obs_exc_i), ncol = 1) #negative similarity component
     
-    #calculate distances between cell_i and all other cells j [USE SAPPLY HERE???]
-    for (j in seq(1,nrow(obs_exc_i))){
-      nn_j = obs_exc_i[j,] 
-      dist_j = myDist(cell_i,proj_i,nn_j,distance_metric,similarity_metric) #distance between cell_i and current cell_j
-      nn_dists_i[j] = dist_j$myDist
-      nn_invDist_i[j] = dist_j$invDist
-      nn_negVectSim_i[j] = dist_j$negVectSim
-    }
+    #calculate distances between cell_i and all other cells j 
+    cell_i_dists = pwiseDists(cell_i,proj_i,as.matrix(obs_exc_i),distance_metric,similarity_metric)
+    nn_dists_i = cell_i_dists[,"CompositeDistance"]
+    nn_invDist_i = cell_i_dists[,"InverseDistance"]
+    nn_negVectSim_i = cell_i_dists[,"NegativeSimilarity"]
     
+    
+    ####### 
+    #old iterations of pwiseDists
+    # cell_i_dists = sapply(seq(1,nrow(obs_exc_i)), function(x) myDist(cell_i = cell_i,proj_i = proj_i, nn_i = obs_exc_i[x,], distance_metric= distance_metric,similarity_metric= similarity_metric))
+    # nn_dists_i = unlist(cell_i_dists["myDist",])
+    # nn_invDist_i = unlist(cell_i_dists["invDist",])
+    # nn_negVectSim_i = unlist(cell_i_dists["negVectSim",])
+    
+    # for (j in seq(1,nrow(obs_exc_i))){
+    #   nn_j = obs_exc_i[j,] 
+    #   dist_j = myDist(cell_i,proj_i,nn_j,distance_metric,similarity_metric) #distance between cell_i and current cell_j
+    #   nn_dists_i[j] = dist_j$myDist
+    #   nn_invDist_i[j] = dist_j$invDist
+    #   nn_negVectSim_i[j] = dist_j$negVectSim
+    # }
+    #######
     
     #add cell_i's dists to all_dists 
     all_dists[i,-i] = nn_dists_i
@@ -98,13 +113,20 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
     if (length(new_k_idx)>0){
       knn_idx[i,c(1:length(new_k_idx))] = new_k_idx
     }
-    
   }
+  # print(all_dists[1:30,1:15])
+  # print(sum(is.na(all_dists)))
+  # print(dim(knn_idx))
+  # print(knn_idx[1:10,])
+  # x=3
+  # print(all_dists[x,knn_idx[x,]])
+  
   dist_comp = list()
   dist_comp[["invDist"]] = all_invDist
   dist_comp[["negVectSim"]] = all_negVectSim
   ## adding edge weights 
   edge_weights = t(sapply(c(1:n), function(x) all_dists[x,knn_idx[x,]]))
+  #print(edge_weights[1:10,])
   #print(dim(edge_weights))
   #print(edge_weights[1:4,])
   
@@ -151,10 +173,15 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
   #g = graph_from_edgelist(edgeList,directed = TRUE)    #old edgeList format
   #add edge weights if specified 
   if (weighted){
-    E(g)$weight = abs(edgeWeights)
+    print("calculating weights")
+    E(g)$weight = max(edgeWeights) - edgeWeights
+    #E(g)$weight = abs(edgeWeights)
+    #print(abs(edgeWeights)[1:10])
   }
   #add vertex colors corresponding to cluster
   V(g)$color = cell.colors
+  V(g)$size = 2
+  E(g)$arrow.size = 0.5
   
   if (gsize(g)==0){
     print("WARNING: graph has no edges. Try lowering the similarity threshold.")
@@ -168,12 +195,15 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
   
   if (plot){
     #plot both graphs 
-    par(mfrow = c(1,2))
-    plot.igraph(g,layout = fdg) #####
-    plot(scale(fdg), col = cell.colors, pch = 16, main = paste("FDG cell coordinates: \n", title))
+    #par(mfrow = c(1,2))
+    #plot(g)
+    plot.igraph(g,layout = fdg,vertex.label = NA, vertex.size = 5, vertex.color = adjustcolor(col = cell.colors, alpha.f = 0.1), edge.color = "black") #####
+    #plot(scale(fdg), col = cell.colors, pch = 16, main = paste("FDG cell coordinates: \n", title))
+    plot(scale(fdg), col = cell.colors, pch = 16, main = paste(title))
     
     #plot velocity on FDG embedding 
-    show.velocity.on.embedding.cor(scale(fdg), vel, n=100, scale='sqrt', cell.colors=cell.colors,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = paste("FDG embedding: ",title))
+    # show.velocity.on.embedding.cor(scale(fdg),vel, n=100, scale='sqrt', cell.colors=cell.colors,cex=1, arrow.scale=1,
+    #                                show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = paste("FDG embedding: ",title))
     #text(scale(fdg)+0.1,labels = seq(1,dim(fdg)[1]))
   }
   
@@ -195,8 +225,9 @@ consistency = function(fdg.coords,delta.exp,nNeighbors,plot.hist = FALSE){
   
   ncells = nrow(fdg.coords)
   cell.names = row.names(fdg.coords)
-  neighbors = nn2(fdg.coords,k=nNeighbors+1)$nn.idx[,2:(nNeighbors+1)]
-  neighbor.cors = t(sapply(seq(1:ncells), function(i) sapply(seq(1:nNeighbors), function(n) cor(delta.exp[,i],delta.exp[,neighbors[i,n]]))))
+  neighbors = nn2(fdg.coords,k=nNeighbors+1)$nn.idx[,2:(nNeighbors+1)] # nNeighbors nearest neighbors to each cell: nCells x nNeighbors 
+  #neighbor.cors = t(sapply(seq(1:ncells), function(i) sapply(seq(1:nNeighbors), function(n) cor(delta.exp[,i],delta.exp[,neighbors[i,n]]))))  #### convert to c++ 
+  neighbor.cors = pwiseCors(as.matrix(delta.exp),neighbors,nNeighbors)
   rownames(neighbor.cors) = cell.names
   cell.consistency = rowMeans(neighbor.cors)
   

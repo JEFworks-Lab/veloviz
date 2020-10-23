@@ -5,12 +5,19 @@ contains functions for creating and visualizing velocity based embedding  \
 `myDist`: composite distance function based on Euclidean distance and cosine similarity. Can also compute using L1 distance and pearson correlation.  \
 `projectedNeighbors`: finds k nearest neighbors using `myDist` given observed and projected states, similarity threshold. Outputs array where columns are identified nearest neighbors for each cell (row).  \
 `graphViz`: creates graph based on projected neighbors identified by `projectedNeighbors` and finds fdg layout. Projects velocities onto fdg embedding.   \
-`consistency`: calculates cell consistency score given an embedding and velocity vectors.  \
+`consistency`: calculates cell consistency score given an embedding and velocity vectors.  
+**projectedNeighbors_weightedCD.R**  
+Same as above but with weighted distance added.  
+**projectedNeighborsR.R**  
+Same as above but no C++ implementation.  
+
 \
 **graphVizC.cpp**  
 `myDist`: c++ implementation of `myDist` in `projectedNeighbors.R` described above.  
 `pwiseDists`: calculates distance between a cell and a matrix of other cells using `myDist`. Used by `projectedNeighbors` above.  
 `pwiseCor`: calculates correlation between velocity vectors of cell and its nearest neighbors in the FDG embedding. Used by `consistency` above.  
+**graphVizCD_weighted**  
+same as above but with weighted distance added.  
 \
 **graph_pancViz.Rmd**  \
 Visualization of graph based velocity embedding using pancreas data from scVelo. Looks at effects of changing parameters: k, simThresh, L1 vs L2 distance, cosine similarity vs correlation.\
@@ -43,7 +50,7 @@ Looking at the effect on graph based visualization of removing intermediate cell
 ./outputs/disconnectedTrajectories_panc_allCells_unweighted.html  
 
 **simCycle**  
-Lookinh at unwrapping effect of cycle simulation.  
+Looking at unwrapping effect of cycle simulation.  
 *Outputs*  
 ./outputs/simCycle.html  
 
@@ -61,7 +68,12 @@ Three branch points:
 ./figures/three_branch_all.svg  
 Three branch points, missing intermediates (two different layouts):  
 ./figures/three_branch_noInt.svg  
-./figures/three_branch_noInt2.svg
+./figures/three_branch_noInt2.svg  
+
+**testingWeightedCD.Rmd**  
+Trying different distance weights on cycle simulation.  
+*Outputs*  
+./outputs/testingWeightedCD.html  
 
 **2020_09_RotationPresSims.Rmd**\
 Toy data simulations showing rationale behind composite distance.

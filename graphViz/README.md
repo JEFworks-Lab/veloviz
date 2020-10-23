@@ -42,6 +42,11 @@ Looking at the effect on graph based visualization of removing intermediate cell
 ./outputs/disconnectedTrajectories_panc_subset_weighted.html  
 ./outputs/disconnectedTrajectories_panc_allCells_unweighted.html  
 
+**simCycle**  
+Lookinh at unwrapping effect of cycle simulation.  
+*Outputs*  
+./outputs/simCycle.html  
+
 **simTraj.Rmd**  
 Simulating branching trajectories and comparing velocity based embedding to other embeddings when plotting all cells and when removing intermediates.  
 *Outputs*  

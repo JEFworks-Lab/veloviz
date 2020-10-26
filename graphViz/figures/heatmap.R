@@ -16,8 +16,7 @@ library(svglite)
 logd = seq(-3,1,0.01)
 d = 10^logd #euclidean distance bw neighbor and projected state
 a = as.numeric(formatC(seq(0,2*pi,((2*pi)/500)),digits = 3)) #angle bw velocity vector and 
-negsim = -1*cos(a)
-
+negsim = 1 - cos(a)
 inveuc = 1/(1+(d))
 pwiseCDs = sapply(inveuc,function(x) x*negsim) #composite distance col=dist, row=angle 
 #### Make heatmap of composite dist 
@@ -31,12 +30,12 @@ cdLong$Distance = as.character(cdLong$Distance)
 #plot heatmap
 h <- ggplot(cdLong, aes(x=Angle, y=Distance, fill=CD)) + geom_tile() + 
                         labs(x="Angle",y="Euclidean Distance",fill = "Composite\nDistance") + 
-                        scale_fill_viridis(limits = c(-1,1), breaks = c(-1,0,1)) +
+                        scale_fill_viridis(limits = c(0,2), breaks = c(0,1,2)) +
                         scale_y_discrete(breaks = c(0.001,0.01,0.1,1,10)) + 
                         scale_x_discrete(breaks = c(0,3.14,6.28), labels = c("0","180","360")) +
                         theme(text = element_text(size = 18))
 h
-ggsave(file = "heatmap_cd.png", plot = h, width = 8, height = 6)
+ggsave(file = "heatmap_cd2.png", plot = h, width = 8, height = 6)
 
 #corresponding edge weights 
 #### Make heatmap of edge weights 

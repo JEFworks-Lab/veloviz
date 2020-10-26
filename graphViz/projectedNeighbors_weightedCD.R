@@ -104,7 +104,7 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
   return(out)
 }
 
-graphViz = function(observed, projected, k, distance_metric = "L2", similarity_metric = "cosine", distance_weight = 1, similarity_threshold = -1, weighted = FALSE, cell.colors, title = NA, plot = TRUE, return_graph = FALSE){
+graphViz = function(observed, projected, k, distance_metric = "L2", similarity_metric = "cosine", distance_weight = 1, similarity_threshold = -1, weighted = FALSE, remove_unconnected = TRUE, cell.colors, title = NA, plot = TRUE, return_graph = FALSE){
   #observed, projected, k, distance_metric, similarity_metric, similarity_threshold: same arguments needed for projected neighbors
   #cell.colors: list of length nCells with colors corresponding to cluster IDs
   #return_graph: logical indicating whether to return graph object g and fdg coordinates fdg
@@ -147,24 +147,34 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
   V(g)$color = cell.colors
   V(g)$size = 2
   E(g)$arrow.size = 0.5
+  vertex.names = colnames(observed)
   
   if (gsize(g)==0){
     print("WARNING: graph has no edges. Try lowering the similarity threshold.")
   }
   
+  if (remove_unconnected){
+    unconnected.vertices = which(degree(g)==0)
+    g = delete.vertices(g,unconnected.vertices)
+    if (length(unconnected.vertices)>0){
+      vertex.names = vertex.names[-unconnected.vertices]
+    }
+    
+  }
+  
   #make force directed graph 
   fdg = layout_with_fr(g,dim=2)
   colnames(fdg) = c("C1","C2")
-  rownames(fdg) = colnames(observed)
+  rownames(fdg) = vertex.names
   print("Done making graph")
   
   if (plot){
     #plot both graphs 
     #par(mfrow = c(1,2))
     #plot(g)
-    plot.igraph(g,layout = fdg,vertex.label = NA, vertex.size = 5, vertex.color = adjustcolor(col = cell.colors, alpha.f = 0.1), edge.color = "black") #####
+    #plot.igraph(g,layout = fdg,vertex.label = NA, vertex.size = 5, vertex.color = adjustcolor(col = V(g)$color, alpha.f = 0.1), edge.color = "black") #####
     #plot(scale(fdg), col = cell.colors, pch = 16, main = paste("FDG cell coordinates: \n", title))
-    plot(scale(fdg), col = cell.colors, pch = 16, main = paste(title))
+    plot(scale(fdg), col = V(g)$color, pch = 16, main = paste(title))
     
     #plot velocity on FDG embedding 
     # show.velocity.on.embedding.cor(scale(fdg),vel, n=100, scale='sqrt', cell.colors=cell.colors,cex=1, arrow.scale=1,

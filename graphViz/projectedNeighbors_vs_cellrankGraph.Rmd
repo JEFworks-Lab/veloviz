@@ -23,7 +23,7 @@ library(Rcpp)
 source("projectedNeighbors_weightedCD.R")
 ```
 
-Use the reticulate package to use scVelo from within R:   
+Use the reticulate package to use scVelo/cellrank from within R:   
 ```{r importing scvelo}
 use_condaenv("cellrank",required = TRUE)
 scv = import("scvelo")
@@ -33,6 +33,8 @@ np = import("numpy")
 #scv$logging$print_version()
 ```
 
+
+load pancreas data  
 ```{r loading panc data, message=FALSE}
 adata = cr$datasets$pancreas()
 #scv$pl$scatter(adata,legend_loc = "lower left", size = 60)
@@ -67,18 +69,20 @@ adata
 ```
 
 ```{r}
-emb_pca = adata$obsm['X_pca'] #extract umap embedding 
+emb_pca = adata$obsm['X_pca'] #extract pca embedding 
 plot(emb_pca, col = cell.cols, pch=16, xlab = "UMAP X", ylab = "UMAP Y", xlim = c(-15,20))
 legend(x=10, y=6, legend = levels(clusters), col = col, pch = 16)
 
 ```
+
+Run velocity  
 ```{r}
 scv$tl$velocity(adata, mode = "dynamical")
 scv$tl$velocity_graph(adata)
 scv$pl$velocity_embedding_stream(adata, basis = "umap", legend_fontsize = 12, title = '', smooth = 0.8, min_mass=4)
 ```
 
-
+Run cellrank  
 ```{r}
 cr$tl$terminal_states(adata,cluster_key = 'clusters', weight_connectivities = 0.2)
 cr$pl$terminal_states(adata)
@@ -86,7 +90,7 @@ cr$tl$initial_states(adata, cluster_key = 'clusters')
 cr$pl$initial_states(adata, discrete = TRUE)
 ```
 
-
+Extract transition matrices  
 ```{r}
 ck = cr$tl$kernels$ConnectivityKernel(adata) #connectivity kernel
 vk = cr$tl$kernels$VelocityKernel(adata) #velocity kernel
@@ -102,13 +106,10 @@ tm_combined = (0.8*vtm) + (0.2*ctm) #weighted average of velocity and connectivi
 sum(ctm>0)
 sum(vtm>0)
 sum(tm_combined>0)
-par(mfrow = c(1,2))
+par(mfrow = c(1,3))
 hist(as.numeric(ctm[which(ctm>0)]), breaks = 500, main = "Connectivities Transition Probabilities")
 hist(as.numeric(vtm[which(vtm>0)]), breaks = 500, main = "Velocities Transition Probabilities")
 hist(as.numeric(tm_combined[which(tm_combined>0)]), breaks = 500, main = "Averaged Transition Probabilities")
-
-
-
 
 ```
 
@@ -297,7 +298,6 @@ projmeans = log10(rowMeans(proj)+1)
 projsds = log10(sapply(c(1:nrow(proj)), function(x) sd(proj[x,]))+1)
 hist(projmeans,breaks = 500, main = "proj: log mean gene exp")
 plot(projmeans,projsds, main = "proj: log means vs log sds")
-
 
 curr.norm = MUDAN::normalizeVariance(curr,details = FALSE, plot = FALSE) #variance stabilize 
 proj.norm = MUDAN::normalizeVariance(proj,details = FALSE, plot = FALSE) #variance stabilize 

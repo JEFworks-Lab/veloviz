@@ -200,14 +200,19 @@ consistency = function(fdg.coords,delta.exp,nNeighbors,plot.hist = FALSE){
   
   ncells = nrow(fdg.coords)
   cell.names = row.names(fdg.coords)
-  neighbors = nn2(fdg.coords,k=nNeighbors+1)$nn.idx[,2:(nNeighbors+1)] # nNeighbors nearest neighbors to each cell: nCells x nNeighbors 
-  #neighbor.cors = t(sapply(seq(1:ncells), function(i) sapply(seq(1:nNeighbors), function(n) cor(delta.exp[,i],delta.exp[,neighbors[i,n]]))))  #### convert to c++ 
-  neighbor.cors = pwiseCors(as.matrix(delta.exp),neighbors,nNeighbors)
+  neighbors.idx = nn2(fdg.coords,k=nNeighbors+1)$nn.idx[,2:(nNeighbors+1)] # nNeighbors nearest neighbors to each cell: nCells x nNeighbors 
+  #print(neighbors.idx[1:10,])
+  #neighbor.cors = t(sapply(seq(1:ncells), function(i) sapply(seq(1:nNeighbors), function(n) cor(delta.exp[,i],delta.exp[,neighbors.idx[i,n]]))))  #### convert to c++ 
+  neighbor.cors = pwiseCors(as.matrix(delta.exp), as.matrix(neighbors.idx), as.integer(nNeighbors))
   rownames(neighbor.cors) = cell.names
   cell.consistency = rowMeans(neighbor.cors)
-  
+
   if (plot.hist){
     hist(cell.consistency,breaks = 100)
   }
   return(cell.consistency)
+  # return(neighbors.idx)
 }
+
+
+

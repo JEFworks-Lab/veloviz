@@ -2,7 +2,9 @@
 title: "Comparing projectedNeighbors to graph from cell rank"
 author: "LylaAtta"
 date: "10/26/2020"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 cellRank builds a graph based on a transition matrix. The transition matrix contains the probabilities of cell-->cell transitions, which are calculated as a weighted average between (similarity of velocity vector and cell difference vector) and (euclidean similarity in PCA space). Here, we want to compare this graph to the graph that we build using projectedNeighbors. 
@@ -30,12 +32,24 @@ scv = import("scvelo")
 sc = import("scanpy")
 cr = import("cellrank")
 np = import("numpy")
+pk = import("pickle")
 #scv$logging$print_version()
 ```
 
+load complete adata from previous run  
+```{r}
+adata = py_load_object("./saved_objects/cellrank_panc_adata.rds")
+
+clusters = adata$obs$clusters #extract clusters 
+col = rainbow(length(levels(clusters)),s = 0.8, v = 0.8) 
+cell.cols = col[clusters] #color according to cluster
+names(cell.cols) = names(clusters)
+```
+
+
 
 load pancreas data  
-```{r loading panc data, message=FALSE}
+```{r loading panc data, message=FALSE, eval = FALSE}
 adata = cr$datasets$pancreas()
 #scv$pl$scatter(adata,legend_loc = "lower left", size = 60)
 scv$utils$show_proportions(adata)
@@ -50,7 +64,7 @@ cell.cols = col[clusters] #color according to cluster
 names(cell.cols) = names(clusters)
 ```
 
-```{r plot panc data on umap, included = FALSE}
+```{r plot panc data on umap, included = FALSE, eval = FALSE}
 plot(emb_pca, col = cell.cols, pch=16, xlab = "PC1", ylab = "PC2")
 plot(emb_umap, col = cell.cols, pch=16, xlab = "UMAP X", ylab = "UMAP Y", xlim = c(-15,20))
 legend(x=10, y=6, legend = levels(clusters), col = col, pch = 16)
@@ -59,7 +73,7 @@ legend(x=10, y=6, legend = levels(clusters), col = col, pch = 16)
 
 
 #### Run scVelo 
-```{r filter normalize log transform}
+```{r filter normalize log transform, eval = FALSE}
 scv$pp$filter_and_normalize(adata, min_shared_counts = as.integer(20), n_top_genes = as.integer(2000))
 sc$tl$pca(adata)
 sc$pp$neighbors(adata, n_pcs = as.integer(30), n_neighbors = as.integer(30))
@@ -70,28 +84,41 @@ adata
 
 ```{r}
 emb_pca = adata$obsm['X_pca'] #extract pca embedding 
-plot(emb_pca, col = cell.cols, pch=16, xlab = "UMAP X", ylab = "UMAP Y", xlim = c(-15,20))
+plot(emb_pca, col = cell.cols, pch=16, xlab = "PC1", ylab = "PC2", xlim = c(-15,20))
+legend(x=10, y=6, legend = levels(clusters), col = col, pch = 16)
+
+emb_umap = adata$obsm['X_umap'] #extract umap embedding 
+plot(emb_umap, col = cell.cols, pch=16, xlab = "UMAP X", ylab = "UMAP Y")
 legend(x=10, y=6, legend = levels(clusters), col = col, pch = 16)
 
 ```
 
 Run velocity  
-```{r}
+```{r, eval = FALSE}
+scv$tl$recover_dynamics(adata)
 scv$tl$velocity(adata, mode = "dynamical")
 scv$tl$velocity_graph(adata)
-scv$pl$velocity_embedding_stream(adata, basis = "umap", legend_fontsize = 12, title = '', smooth = 0.8, min_mass=4)
+#scv$pl$velocity_embedding_stream(adata, basis = "umap", legend_fontsize = 12, title = '', smooth = 0.8, min_mass=4)
 ```
 
 Run cellrank  
-```{r}
+```{r, eval = FALSE}
 cr$tl$terminal_states(adata,cluster_key = 'clusters', weight_connectivities = 0.2)
-cr$pl$terminal_states(adata)
+#cr$pl$terminal_states(adata)
 cr$tl$initial_states(adata, cluster_key = 'clusters')
-cr$pl$initial_states(adata, discrete = TRUE)
+#cr$pl$initial_states(adata, discrete = TRUE)
 ```
 
-Extract transition matrices  
+Save adata to speed up later  
 ```{r}
+#py_save_object(adata, filename = "./saved_objects/cellrank_panc_adata.rds")
+#adata = py_load_object("./saved_objects/cellrank_panc_adata.rds")
+
+```
+
+
+Extract transition matrices  
+```{r, fig.width=7, fig.height=6, fig.width = 4}
 ck = cr$tl$kernels$ConnectivityKernel(adata) #connectivity kernel
 vk = cr$tl$kernels$VelocityKernel(adata) #velocity kernel
 
@@ -103,17 +130,24 @@ vtm = vk$transition_matrix #transition matrix - velocities
 
 tm_combined = (0.8*vtm) + (0.2*ctm) #weighted average of velocity and connectivity transition matrices
 
-sum(ctm>0)
-sum(vtm>0)
-sum(tm_combined>0)
-par(mfrow = c(1,3))
-hist(as.numeric(ctm[which(ctm>0)]), breaks = 500, main = "Connectivities Transition Probabilities")
-hist(as.numeric(vtm[which(vtm>0)]), breaks = 500, main = "Velocities Transition Probabilities")
-hist(as.numeric(tm_combined[which(tm_combined>0)]), breaks = 500, main = "Averaged Transition Probabilities")
+# sum(ctm>0)
+# sum(vtm>0)
+# sum(tm_combined>0)
+par(mfrow = c(3,1))
+hist(as.numeric(ctm[which(ctm>0)]), breaks = 500, main = "Connectivities \nTransition Probabilities")
+hist(as.numeric(vtm[which(vtm>0)]), breaks = 500, main = "Velocities \nTransition Probabilities")
+hist(as.numeric(tm_combined[which(tm_combined>0)]), breaks = 500, main = "Averaged \nTransition Probabilities")
 
 ```
 
-```{r, fig.width=10, fig.height=5}
+
+Weighted graphs from transition matrices  
+adjacency = transition matrix --> fdg  
+Distances: transition matrix using just euclidean similarity  
+Velocities: transition matrix using just velocity correlation  
+Combined: transition matrix = weighted average of distance and velocity  
+(using default weight 0.8velocity + 0.2distance)
+```{r, fig.width=7, fig.height=3}
 par(mfrow = c(1,3))
 cg = graph_from_adjacency_matrix(ctm, mode = "directed", weighted = TRUE)
 set.seed(1)
@@ -149,8 +183,8 @@ plot(fdg, pch = 16, col = cell.cols, main = "combined, seed = 100")
 
 ```
 
-
-```{r different weights, fig.height=10, fig.width = 8}
+Varying weight in weighted average   
+```{r different weights, fig.width=7, fig.height=9}
 ws = c(0,0.25,0.5,0.75,0.8,1)
 
 par(mfrow = c(3,2))
@@ -181,7 +215,7 @@ colnames(spliced) = colnames(unspliced) = cells
 rownames(spliced) = rownames(unspliced) = genes
 ```
 
-```{r}
+```{r, fig.show = 'hide'}
 mns = rowMeans(spliced)
 sds = sapply(c(1:nrow(spliced)), function(x) sd(spliced[x,]))
 mnu = rowMeans(unspliced)
@@ -199,7 +233,7 @@ plot(log10(mnu+1),log10(sds+1), main = "log10(Std Dev) vs \nlog10(mean gene expr
 
 
 Filter genes  
-```{r filter genes, message = FALSE , included = FALSE}
+```{r filter genes, message = FALSE , included = FALSE, fig.show = 'hide'}
 gexpS = log10(rowSums(spliced)+1)
 gexpU = log10(rowSums(unspliced)+1)
 plot(gexpS,gexpU)
@@ -209,7 +243,7 @@ plot(gexpS,gexpU)
 # unspliced = unspliced[goodGenes,]
 ```
 
-Downsample cells to make things easier  
+(Downsample cells to make things easier)  
 ```{r downsample, results='hide', included = FALSE}
 spliced.sub = spliced[,seq(1,ncol(spliced),by=1)]
 cell.names.pca = colnames(spliced.sub)
@@ -223,10 +257,10 @@ Normalize for dimensional reduction
 allExp = spliced.sub + unspliced.sub #use combined spliced and unspliced counts 
 #all.cpm = MUDAN::normalizeCounts(allExp) #cpm normalize
 all.norm = MUDAN::normalizeVariance(allExp,details = TRUE, plot = FALSE) #variance stabilize 
-odsGenes = goodGenes[all.norm$ods] #overdispersed genes
+odsGenes = rownames(allExp)[all.norm$ods] #overdispersed genes
 all.logODS = as.matrix(t(all.norm$mat[all.norm$ods,])) #keep overdispersed genes 
 ```
-```{r fig.width=10}
+```{r fig.width=5, fig.show = 'hide'}
 #look at distribution of gene expression
 mna = rowMeans(allExp)
 sda = sapply(c(1:nrow(allExp)), function(x) sd(allExp[x,]))
@@ -253,14 +287,14 @@ plot(mno,sdo, main = "Std Dev vs mean \ngene exp overdispersed")
 
 
 Dimensional reduction  
-```{r dimensional reduction, included = FALSE}
+```{r dimensional reduction, included = FALSE, fig.show = 'hide'}
 pca = svds(A = all.logODS, k=50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
 var = pca$d
 plot(var) # ~10 components 
 
 emb.pca = pca$u[,1:2]
 row.names(emb.pca) = row.names(all.logODS)
-plot(emb.pca, col = cell.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data")
+plot(emb.pca, col = cell.cols, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA")
 
 
 #pairwise cell dists for velocity calculation 
@@ -271,8 +305,8 @@ cell.dist = as.dist(1-cor(t(pca$u)))
 Run velocyto on panc data  
 ```{r velocity, message = FALSE, results = 'hide', included = FALSE}
 #vel = gene.relative.velocity.estimates(spliced.sub,unspliced.sub,deltaT=1,kCells=30,cell.dist=cell.dist,fit.quantile=0.1,mult=100)
-saveRDS(vel,file = "panc_vel_cellrank.rds")
-vel = readRDS("./saved_objects/panc_vel_cellrank.rds")
+#saveRDS(vel,file = "panc_vel_cellrank.rds")
+vel = readRDS("/Users/lylaatta/OneDrive - Johns Hopkins/Johns Hopkins/ComputerTransfer/veloviz_largefiles/saved_objects/panc_vel_cellrank.rds")
 curr = vel$current
 proj = vel$projected
 
@@ -285,7 +319,7 @@ proj = vel$projected
 
 ```  
 
-```{r}
+```{r, fig.show = 'hide'}
 #look at gene exp distribution in curr and proj
 
 par(mfrow = c(2,2))
@@ -320,18 +354,18 @@ plot(proj.norm.means, proj.norm.sds)
 ```{r}
 pca.velo = svds(A = t(curr.norm), k=50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
 var = pca.velo$d
-plot(var) # ~10 components 
+#plot(var) # ~10 components 
 
 emb.pca.velo = pca.velo$u[,1:2]
 row.names(emb.pca.velo) = colnames(curr.norm)
-plot(emb.pca.velo, col = cell.cols.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA on subsampled data")
+plot(emb.pca.velo, col = cell.cols, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA")
 
 
 ```
 
 
 Scores of observed and projected states in PC space  
-```{r pc scores, included = FALSE}
+```{r pc scores, included = FALSE,  fig.width = 7}
 u = pca.velo$u #scores
 v = pca.velo$v #loads
 row.names(v) = rownames(curr.norm)
@@ -343,22 +377,22 @@ v.sub = v[row.names(curr.pca),]
 
 par(mfrow = c(1,2))
 curr.scores = scale(t(curr.pca)) %*% v.sub
-plot(curr.scores[,1:2], col = cell.cols.sub, main = 'Observed')#,xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
+plot(curr.scores[,1:2], col = cell.cols, main = 'Observed')#,xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
 
 proj.pca = proj.norm[common.genes,]
 proj.scores = scale(t(proj.pca)) %*% v.sub
-plot(proj.scores[,1:2], col = cell.cols.sub, main = 'Projected')#,xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
+plot(proj.scores[,1:2], col = cell.cols, main = 'Projected')#,xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
 
 ```
 
 Graph visualization on subset of cells from PC coordinates  
-```{r graph viz from PCs, results = "hide", fig.height=10, fig.width = 8}
+```{r graph viz from PCs, results = "hide", fig.height=8, fig.width = 8}
 source("projectedNeighbors_weightedCD.R")
 ws = c(0.1,1,10,25,50,100)
 par(mfrow = c(3,2))
 for (w in ws){
   set.seed(1)
-  vizg = graphViz(t(curr.scores), t(proj.scores), k=30, distance_metric = "L2", similarity_metric = "cosine", distance_weight = w, similarity_threshold = 0, weighted = TRUE, cell.colors = cell.cols.sub,plot = TRUE, return_graph = TRUE,title = paste("Weight = ", w))
+  vizg = graphViz(t(curr.scores), t(proj.scores), k=30, distance_metric = "L2", similarity_metric = "cosine", distance_weight = w, similarity_threshold = 0, weighted = TRUE, cell.colors = cell.cols,plot = TRUE, return_graph = TRUE,title = paste("Weight = ", w))
 }
 
 
@@ -368,229 +402,69 @@ for (w in ws){
 
 ```
 
-#### Calculate velocity on subsampled data 
-1232 cells  
-
-```{r, include = FALSE, eval = FALSE}
-#create anndata object with subsampled data
-# gene.names.sub = rownames(spliced.sub)
-# clusters.pca = clusters[cell.names.pca]
-# dfobs = data.frame(as.character(clusters.sub),row.names = as.character(cell.names.pca))
-# colnames(dfobs) = "clusters"
-# dfvar = data.frame(as.character(gene.names.sub),row.names = as.character(gene.names.sub))
-# colnames(dfvar) = "Genes"
-# ad = import("anndata",convert = FALSE)
-# 
-# adata.sub = ad$AnnData(
-#   X = t(allExp),
-#   obs = dfobs,
-#   layers = list('spliced' = t(spliced.sub),'unspliced' = t(unspliced.sub))
-# )
-
-# scv$pp$filter_genes(adata.sub)
-# scv$pp$moments(adata.sub)
-# scv$tl$recover_dynamics(adata.sub)
-
-# adata.sub$write('./data/pancreas_sub.h5ad')
-adata.sub = scv$read('./data/pancreas_sub.h5ad')
-
-scv$tl$velocity(adata.sub, mode = 'dynamical')
-scv$tl$velocity_graph(adata.sub)
-
-vGraph.sub = py_to_r(adata.sub$uns['velocity_graph'])
-colnames(vGraph.sub) = cell.names.pca
-rownames(vGraph.sub) = cell.names.pca
-
-```
-
-```{r, include = FALSE, eval = FALSE}
-# scv$tl$umap(adata.sub)
-# scv$pl$velocity_embedding_stream(adata.sub,basis ='umap')
-
-```
-
-Run scvelo velocity on same subset used to make fdg graph  
 ```{r}
-#create anndata object with subsampled data
-# ad = import("anndata",convert = FALSE)
-# 
-# allExp.sub = allExp[,cell.names.sub]
-# spliced.sub.sub = spliced[,cell.names.sub]
-# unspliced.sub.sub = unspliced[,cell.names.sub]
-# 
-# gene.names.sub = rownames(spliced.sub)
-# clusters.sub = clusters[cell.names.sub]
-# dfobs = data.frame(as.character(clusters.sub),row.names = as.character(cell.names.sub))
-# colnames(dfobs) = "clusters"
-# dfvar = data.frame(as.character(gene.names.sub),row.names = as.character(gene.names.sub))
-# colnames(dfvar) = "Genes"
-# 
-# adata.sub.sub = ad$AnnData(
-#   X = t(allExp.sub),
-#   obs = dfobs,
-#   layers = list('spliced' = t(spliced.sub.sub),'unspliced' = t(unspliced.sub.sub))
-# )
-# 
-# scv$pp$filter_genes(adata.sub.sub)
-# scv$pp$moments(adata.sub.sub)
-# scv$tl$recover_dynamics(adata.sub.sub)
-# 
-# adata.sub.sub$write('./data/pancreas_sub_sub.h5ad')
-adata.sub.sub = scv$read('./data/pancreas_sub_sub.h5ad')
-
-scv$tl$velocity(adata.sub.sub, mode = 'dynamical')
-scv$tl$velocity_graph(adata.sub.sub)
-
-vGraph.sub.sub = as.matrix(adata.sub.sub$uns['velocity_graph'])
-colnames(vGraph.sub.sub) = cell.names.sub
-rownames(vGraph.sub.sub) = cell.names.sub
-
-```
-
-```{r, include = FALSE, eval = FALSE}
-# scv$tl$umap(adata.sub.sub)
-# scv$pl$velocity_embedding_stream(adata.sub.sub,basis ='umap')
-```
-
-Make graph  
-```{r, fig.width=8, fig.height=8}
-vGraphUnweighted = vGraph.sub.sub>0
-vGraphUnweighted = vGraphUnweighted*1
-
-g = graph_from_adjacency_matrix(vGraphUnweighted,mode = "directed")
-#plot(g)
-par(mfrow = c(2,2))
-set.seed(5)
-fdg1 = layout_with_fr(g, dim = 2)
-colnames(fdg1) = c("C1","C2")
-rownames(fdg1) = cell.names.sub
-plot(scale(fdg1), col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - unweighted", xlab = "", ylab = "")
-set.seed(30)
-fdg = layout_with_fr(g, dim = 2)
-colnames(fdg) = c("C1","C2")
-rownames(fdg) = cell.names.sub
-plot(scale(fdg), col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - unweighted", xlab = "", ylab = "")
-
-g_wts = graph_from_adjacency_matrix(vGraph.sub.sub,mode = "directed",weighted = TRUE)
-#plot(g_wts)
+w = 1
 set.seed(1)
-fdg_wts1 = layout_with_fr(g_wts, dim = 2)
-colnames(fdg_wts1) = c("C1","C2")
-rownames(fdg_wts1) = cell.names.sub
-plot(scale(fdg_wts1), col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - weighted", xlab = "", ylab = "")
-set.seed(5)
-fdg_wts = layout_with_fr(g_wts, dim = 2)
-colnames(fdg_wts) = c("C1","C2")
-rownames(fdg_wts) = cell.names.sub
-plot(scale(fdg_wts), col = cell.cols.grph, pch = 16, main = "scvelo velocity graph - weighted", xlab = "", ylab = "")
-```
+vizg = graphViz(t(curr.scores), t(proj.scores), k=30, distance_metric = "L2", similarity_metric = "cosine", distance_weight = w, similarity_threshold = 0, weighted = TRUE, cell.colors = cell.cols,plot = TRUE, return_graph = TRUE,title = paste("Weight = ", w))
 
-```{r velocity projections, results = "hide"}
-show.velocity.on.embedding.cor(scale(fdg1), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = "scvelo graph unweighted")
-show.velocity.on.embedding.cor(scale(fdg_wts1), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, main = "scvelo graph weighted")
+
 ```
 
 
-#### Compare consistency scores
-```{r consistency scores, results = "hide", fig.width = 8, fig.height=8}
-deltaExp = vel$deltaE[,cell.names.sub]
+#### Comparing graphs from each method 
+```{r compare consistiency scores, eval = FALSE}
+#picking default weight for cellrank graph w = 0.8 
+#picking default settings for composite distance, w=1, thresh=0
+#k = 30 for both
 
-#our graph 1
+tm_combined = (0.8*vtm) + ((1-0.8)*ctm) #weighted average of velocity and connectivity transition matrices
+cr_graph = graph_from_adjacency_matrix(tm_combined, mode = "directed", weighted = TRUE)
 set.seed(1)
-g0 = graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,title = "K = 10", plot = FALSE, return_graph = TRUE)
-g0_coords = g0$fdg_coords
-g0_scores = consistency(g0_coords,deltaExp,20,FALSE)
+cr_fdg = layout_with_fr(cr_graph, dim = 2)
+plot(cr_fdg, pch = 16, col = cell.cols, main = paste(paste("k = 30, weight = 0.8")))
 
-#our graph 2
-set.seed(20)
-g1 = graphViz(curr.scores.cellsub,proj.scores.cellsub,10,"L2","cosine",0.25,cell.cols.grph,title = "K = 10", plot = FALSE, return_graph = TRUE)
-g1_coords = g0$fdg_coords
-g1_scores = consistency(g0_coords,deltaExp,20,FALSE)
-
-#scvelo graph unweighted 1
-set.seed(5)
-g2_coords = layout_with_fr(g, dim = 2)
-g2_scores = consistency(g2_coords,deltaExp,20,FALSE)
-
-#scvelo graph unweighted 2
-set.seed(30)
-g3_coords = layout_with_fr(g, dim = 2)
-g3_scores = consistency(g3_coords,deltaExp,20,FALSE)
-
-#scvelo graph weighted 1
 set.seed(1)
-g4_coords = layout_with_fr(g_wts, dim = 2)
-g4_scores = consistency(g4_coords,deltaExp,20,FALSE)
+viz_graph = graphViz(t(curr.scores), t(proj.scores), k=30, distance_metric = "L2", similarity_metric = "cosine", distance_weight = 1, similarity_threshold = 0, weighted = TRUE, cell.colors = cell.cols,plot = FALSE, return_graph = TRUE,title = paste("k = 30, weight = 1, t=0"))
+viz_fdg = viz_graph$fdg_coords
+plot(viz_fdg, pch = 16, col = cell.cols, main = paste(paste("k = 30, weight = 1, t=0")))
 
-#scvelo graph weighted 2
-set.seed(5)
-g5_coords = layout_with_fr(g_wts, dim = 2)
-g5_scores = consistency(g5_coords,deltaExp,20,FALSE)
+#extract velocities from each model 
+cr_vel = as.matrix(adata$layers['velocity'])
+rownames(cr_vel) = as.character(adata$obs_names$values)
+colnames(cr_vel) = as.character(adata$var_names$values)
+cr_vel = t(cr_vel)
+cr_vel[is.nan(cr_vel)] = 0
+viz_vel = vel$deltaE
+
+#calculate consistency scores for each model 
+cr_consistency = consistency(cr_fdg, cr_vel, 30, TRUE)
+viz_consistency = consistency(viz_fdg, viz_vel, 30, TRUE)
 
 
 
-par(mfrow = c(3,2))
-x = c(-0.2,1)
-y = c(0,12)
-xt = "Cell Consistency Score"
-hist(g0_scores,col="red",breaks = 100,xlab = xt, xlim = x, ylim = y, main="Our embedding 1")
-text(x = c(0.05,0.05),y = c(11,10),labels = c(paste("Mean:",mean(g0_scores)),paste("Median:",median(g0_scores))))
-hist(g1_scores,col="red",breaks = 100,xlab = xt, xlim = x, ylim = y,main="Our embedding 2")
-text(x = c(0.05,0.05),y = c(11,10),labels = c(paste("Mean:",mean(g1_scores)),paste("Median:",median(g1_scores))))
 
-hist(g2_scores,col="red",breaks = 100,xlab = xt, xlim = x, ylim = y, main="scVelo graph - unweighted 1")
-text(x = c(0.05,0.05),y = c(11,10),labels = c(paste("Mean:",mean(g2_scores)),paste("Median:",median(g2_scores))))
-hist(g3_scores,col="red",breaks = 100,xlab = xt, xlim = x, ylim = y, main="scVelo graph - unweighted 2")
-text(x = c(0.05,0.05),y = c(11,10),labels = c(paste("Mean:",mean(g3_scores)),paste("Median:",median(g3_scores))))
 
-hist(g4_scores,col="red",breaks = 100,xlab = xt, xlim = x, ylim = y, main="scVelo graph - weighted 1")
-text(x = c(0.05,0.05),y = c(11,10),labels = c(paste("Mean:",mean(g4_scores)),paste("Median:",median(g4_scores))))
-hist(g5_scores,col="red",breaks = 100,xlab = xt, xlim = x, ylim = y,main= "scVelo graph - weighted 2")
-text(x = c(0.05,0.05),y = c(11,10),labels = c(paste("Mean:",mean(g5_scores)),paste("Median:",median(g5_scores))))
+
+neighbor.cors = pwiseCors(as.matrix(viz_vel),viz_consistency,30)
+
+
+source("projectedNeighbors_weightedCD.R")
+
 
 ```
 
-#### Threshold similarities 
-first, look at distribution of all similarities to help pick threshold..  
-```{r similarity distributions, fig.width = 6, fig.height=3}
-#look at distribution of similarities 
-all.sims = vGraph.sub.sub[which(vGraph.sub.sub>0)]
-hist(all.sims, breaks = 300,xlab = 'Similarities from scvelo velocity graph') #looks like there's a natural cutoff at 0.3
+```{r compare clustering coefficient, eval = FALSE}
 
-```  
+```
 
-..looks like there are at least a couple of "populations" here..  
 
-Let's try a few thresholds up to 0.3..  
-```{r try multiple thresholds, fig.width=6, fig.height=8}
-#make graphs with different thresholds 
-ts = c(0,0.1,0.2,0.3)
-par(mfrow = c(4,2))
-for (t in ts){
-  vGraph.thresh = (vGraph.sub.sub>t)*vGraph.sub.sub
-  vGraph.thresh.unwt = (vGraph.sub.sub>t)*1
-  
-  #unweighted 
-  g_thresh = graph_from_adjacency_matrix(vGraph.thresh.unwt,mode = "directed")
-  #plot(g_thresh)
-  set.seed(5)
-  fdg_thresh = layout_with_fr(g_thresh, dim = 2)
-  colnames(fdg_thresh) = c("C1","C2")
-  rownames(fdg_thresh) = cell.names.sub
-  plot(scale(fdg_thresh), col = cell.cols.grph, pch = 16, main = paste("scvelo velocity graph: unweighted,\n similarity threshold =",as.character(t)), xlab = "", ylab = "")
-  
-  #weighted 
-  g_thresh_wt = graph_from_adjacency_matrix(vGraph.thresh,mode = "directed",weighted =  TRUE)
-  #plot(g_thresh_wt)
-  set.seed(5)
-  fdg_thresh_wt = layout_with_fr(g_thresh_wt, dim = 2)
-  colnames(fdg_thresh_wt) = c("C1","C2")
-  rownames(fdg_thresh_wt) = cell.names.sub
-  plot(scale(fdg_thresh_wt), col = cell.cols.grph, pch = 16, main = paste("scvelo velocity graph: weighted,\n similarity threshold =",as.character(t)), xlab = "", ylab = "")
-}
 
-```  
 
-As we increase the threshold, the number of unconnected cells increases as expected. But this seems to be primarily affecting ductal cells (red/orange cluster).  
-..looks like similarities between ductal cells are generally lower than in other cell types -- are they cycling? We might not have enough cells to capture cycling behavior..  
-In weighted graph, ductal cells appear more spread out than other cell types. This makes sense given their lower similarities.  
+
+
+
+
+
+
+
+

@@ -1,10 +1,3 @@
-setwd('graphViz')
-library(igraph)
-library(matie)
-library(RANN)
-library(Rcpp)
-source("projectedNeighbors_weightedCD.R")
-
 veloviz <- function(mat, curr, proj,
                     cell.cols = NA,
                     center = TRUE,
@@ -169,67 +162,3 @@ veloviz <- function(mat, curr, proj,
 
   return(gsim.gg)
 }
-
-############ Pancreas example
-## try on example
-library(reticulate)
-library(Matrix)
-conda_list()
-use_condaenv("r-velocity", required = TRUE)
-scv = import("scvelo")
-
-adata = scv$datasets$pancreas()
-spliced = as.matrix(t(adata$layers['spliced']))
-unspliced = as.matrix(t(adata$layers['unspliced']))
-cells = adata$obs_names$values
-genes = adata$var_names$values
-colnames(spliced) = colnames(unspliced) = cells
-rownames(spliced) = rownames(unspliced) = genes
-mat <- spliced+unspliced
-vi <- rowSums(mat) > 100
-table(vi)
-mat <- mat[vi,]
-
-clusters = adata$obs$clusters #extract clusters
-names(clusters) = adata$obs_names$values
-col = rainbow(length(levels(clusters)),s = 0.8, v = 0.8)
-cell.cols = col[clusters] #color according to cluster
-names(cell.cols) = names(clusters)
-
-library(MUDAN) ## just port over functions later
-vel = readRDS('../panc_vel_k30.rds')
-#panc_k30 <- veloviz(mat, vel$current, vel$projected, cell.cols)
-## use convolved matrix because
-## it looks like the current and projected expressions are already convolved
-## so the variance scaling doesn't make sense if we build it on a main matrix
-## that doesn't match the curr and proj
-panc_k30 <- veloviz(vel$conv.emat.norm + vel$conv.nmat.norm,
-                    vel$current, vel$projected, cell.cols)
-## or should we just use the current matrix?
-## do we expect the mean variance dependency made on all genes to be so different?
-panc_k30 <- veloviz(vel$current,
-                    vel$current, vel$projected, cell.cols)
-#vel = readRDS('../panc_vel_k1.rds')
-#panc_k1 <- veloviz(vel$conv.emat.norm + vel$conv.nmat.norm, vel$current, vel$projected, cell.cols)
-#vel = readRDS('../panc_vel_k100.rds')
-#panc_k100 <- veloviz(vel$conv.emat.norm + vel$conv.nmat.norm, vel$current, vel$projected, cell.cols)
-
-######### merfish example
-load(file="../merfish_vel_k30.RData")
-vel = rvel.cd
-## variance looks a bit weird
-merfish_k30 <- veloviz(mat = vel$conv.emat.norm + vel$conv.nmat.norm,
-                       curr = vel$current, proj = vel$projected, cell.cols=cell.colors, nPCs = 10, k = 50)
-## gene scaling factors look more reasonable
-merfish_k30 <- veloviz(mat = vel$current,
-                    curr = vel$current, proj = vel$projected, cell.cols=cell.colors, nPCs = 10, k = 50)
-## is transivity helpful?
-merfish_k30 <- veloviz(mat = vel$current,
-                       curr = vel$current, proj = vel$projected, cell.cols=cell.colors, nPCs = 3, k = 10)
-
-########## Neuro example
-vel = readRDS(file="../neuro_vel_k30.rds")
-neuro_k30 <- veloviz(vel$conv.emat.norm + vel$conv.nmat.norm,
-                    vel$current, vel$projected)
-neuro_k30 <- veloviz(vel$current,
-                    vel$current, vel$projected)

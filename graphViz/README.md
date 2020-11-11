@@ -70,6 +70,11 @@ Three branch points, missing intermediates (two different layouts):
 ./figures/three_branch_noInt.svg  
 ./figures/three_branch_noInt2.svg  
 
+**projectedNeighbors_vs_cellrankGraph.Rmd**  
+Comparing to graph made from CellRank for all data vs data with missing intermediates.  
+*Outputs*
+./outputs/projectedNeighbors_vs_cellrankGraph.html  
+
 **testingWeightedCD.Rmd**  
 Trying different distance weights on cycle simulation.  
 *Outputs*  

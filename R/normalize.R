@@ -56,7 +56,6 @@ normalizeCounts <- function(
 #' dimensions as the input and (2) a dataframe with the summary statistics for
 #' each gene.
 #'
-#' @importFrom mgcv s
 #' @export
 getOverdispersedGenes <- function(
   cpm,

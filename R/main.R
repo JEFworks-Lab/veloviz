@@ -1,3 +1,7 @@
+#' Main function
+#'
+#' @export
+#'
 veloviz <- function(mat, curr, proj,
                     cell.cols = NA,
                     center = TRUE,

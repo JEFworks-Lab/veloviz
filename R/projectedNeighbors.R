@@ -1,3 +1,7 @@
+#' Get projected neighbors
+#'
+#' @export
+#'
 projectedNeighbors = function(observed,projected,k,distance_metric="L2",similarity_metric="cosine",distance_weight = 1, similarity_threshold = -1){
   #observed: genes (rows) x cells (columns) matrix of observed cells
   #projected: genes (rows) x cells (columns) matrix of projected states of cells in observed (same order)
@@ -102,6 +106,10 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
   return(out)
 }
 
+#' Visualize as velocity informed force directed graph
+#'
+#' @export
+#'
 graphViz = function(observed, projected, k, distance_metric = "L2", similarity_metric = "cosine", distance_weight = 1, similarity_threshold = -1, weighted = FALSE, remove_unconnected = TRUE, cell.colors, title = NA, plot = TRUE, return_graph = FALSE){
   #observed, projected, k, distance_metric, similarity_metric, similarity_threshold: same arguments needed for projected neighbors
   #cell.colors: list of length nCells with colors corresponding to cluster IDs
@@ -190,6 +198,10 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
 
 }
 
+#' Consistency score calculation
+#'
+#' @export
+#'
 consistency = function(fdg.coords,delta.exp,nNeighbors,plot.hist = FALSE){
   #fdg.coords: coordinates of FDG in which consistency score is to be evaluated
   #delta.exp: change in gene expression based on velocity (part of velocyto output)

@@ -137,10 +137,10 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
 
   #make graph
   #initialize empty graph with all cells
-  g = make_empty_graph(n=ncells,directed = TRUE)
+  g = igraph::make_empty_graph(n=ncells,directed = TRUE)
   #add edges defined in edgeList
   edgeList = as.vector(t(edgeList)) #changing to required format for add_edges
-  g = add_edges(g,edges = edgeList)
+  g = igraph::add_edges(g,edges = edgeList)
   #g = graph_from_edgelist(edgeList,directed = TRUE)    #old edgeList format
   #add edge weights if specified
   if (weighted){

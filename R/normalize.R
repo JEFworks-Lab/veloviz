@@ -10,8 +10,7 @@
 #' @return a normalized matrix
 #'
 #' @export
-#' @importFrom Matrix Matrix colSums t
-normalizeCounts <- function(
+normalizeDepth <- function(
   counts                ,
   depthScale     = 1e+06,
   verbose        = TRUE
@@ -57,7 +56,7 @@ normalizeCounts <- function(
 #' each gene.
 #'
 #' @export
-getOverdispersedGenes <- function(
+normalizeVariance <- function(
   cpm,
   gam.k                 = 5,
   alpha                 = 0.05,
@@ -104,7 +103,7 @@ getOverdispersedGenes <- function(
     m <- lm(log_variance ~ log_mean, data = df[vi,])
   } else {
     if(verbose) {
-      message(paste0("Using general additive modeling with k = ", k, "..."))
+      message(paste0("Using general additive modeling with k = ", gam.k, "..."))
     }
     s <- mgcv::s
     fm <- as.formula(sprintf("log_variance ~ s(log_mean, k = %s)", gam.k))

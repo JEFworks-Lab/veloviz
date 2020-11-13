@@ -73,12 +73,19 @@ Three branch points, missing intermediates (two different layouts):
 **projectedNeighbors_vs_cellrankGraph.Rmd**  
 Comparing to graph made from CellRank for all data vs data with missing intermediates.  
 *Outputs*
-./outputs/projectedNeighbors_vs_cellrankGraph.html  
+./outputs/projectedNeighbors_vs_cellrankGraph_missing_fev.html  
+./outputs/projectedNeighbors_vs_cellrankGraph_missing_ngnhigh.html  
+./outputs/projectedNeighbors_vs_cellrankGraph_missing_somebeta.html
 
 **testingWeightedCD.Rmd**  
 Trying different distance weights on cycle simulation.  
 *Outputs*  
 ./outputs/testingWeightedCD.html  
+
+**testingThresholdDist.Rmd**  
+Adding percentile distance threshold to projectedNeighbors and testing on cycle simulation  
+*Outputs*  
+./outputs/testingThresholdDist_cyclesim.html  
 
 **2020_09_RotationPresSims.Rmd**\
 Toy data simulations showing rationale behind composite distance.

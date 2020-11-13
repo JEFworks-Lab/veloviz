@@ -204,13 +204,14 @@ Build graph with data where part of the trajectory is missing.
 
 load missing intermediate adata from previous run  
 ```{r load previous missing}
-adata.missing = py_load_object("./saved_objects/cellrank_panc_adata_missing_fev.rds")
+#adata.missing = py_load_object("./saved_objects/cellrank_panc_adata_missing_fev.rds") # missing Fev+
+adata.missing = py_load_object("./saved_objects/cellrank_panc_adata_missing_ngnhigh.rds") # missing some beta
 clusters.missing = adata.missing$obs$clusters #extract clusters 
 cell.names.missing = as.vector(adata.missing$obs_names$values)
 # col.missing = rainbow(length(levels(clusters.missing)),s = 0.8, v = 0.8) 
 # cell.cols.missing = col[clusters.missing] #color according to cluster
 # names(cell.cols.missing) = names(clusters.missing) = cell.names.missing
-cell.cols.missing  = cell.cols[names(clusters.missing)]
+cell.cols.missing  = cell.cols[cell.names.missing]
 ```
 
 load pancreas data  
@@ -224,9 +225,11 @@ emb_umap = adata.missing$obsm['X_umap'] #extract umap embedding
 clusters = adata.missing$obs$clusters #extract clusters
 rownames(emb_umap) = names(clusters) = adata.missing$obs_names$values
 
-col = rainbow(length(levels(clusters)),s = 0.8, v = 0.8)
-cell.cols = col[clusters] #color according to cluster
-names(cell.cols) = names(clusters)
+# col = rainbow(length(levels(clusters)),s = 0.8, v = 0.8)
+# cell.cols = col[clusters] #color according to cluster
+# names(cell.cols) = names(clusters)
+
+#cell.cols.missing  = cell.cols[cell.names.missing]
 ```
 
 ```{r plot panc data on umap missing, included = FALSE, eval = FALSE}
@@ -236,22 +239,72 @@ legend(x=13, y=0, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
 ```
 
 ```{r remove intermediates, included = FALSE, eval = FALSE}
-int.to.remove = "Fev+"
+int.to.remove = "Ngn3 high EP"
 adata.missing = adata.missing[adata.missing$obs$clusters!=int.to.remove]
+
+#removing some of beta
+# cells.to.remove = adata.missing$obs_names$values[(adata.missing$obs$clusters=="Beta") & (emb_umap[,1]>(-8))]
+# adata.missing = adata.missing[!(adata$obs_names$values %in% cells.to.remove)]
+
 emb_pca = adata.missing$obsm['X_pca'] #extract pca embedding
 emb_umap = adata.missing$obsm['X_umap'] #extract umap embedding
 clusters.missing = adata.missing$obs$clusters #extract clusters
-rownames(emb_umap) = names(clusters.missing) = adata.missing$obs_names$values
+cell.names.missing = adata.missing$obs_names$values
+rownames(emb_umap) = names(clusters.missing) = cell.names.missing
 
-col.missing = rainbow(length(levels(clusters.missing)),s = 0.8, v = 0.8)
-cell.cols.missing = col[clusters.missing] #color according to cluster
-names(cell.cols.missing) = names(clusters.missing)
+# col.missing = rainbow(length(levels(clusters.missing)),s = 0.8, v = 0.8)
+# cell.cols.missing = col[clusters.missing] #color according to cluster
+# names(cell.cols.missing) = names(clusters.missing)
+cell.cols.missing  = cell.cols[cell.names.missing]
 
 plot(emb_pca, col = cell.cols.missing, pch=16, xlab = "PC1", ylab = "PC2")
 plot(emb_umap, col = cell.cols.missing, pch=16, xlab = "UMAP X", ylab = "UMAP Y", xlim = c(-15,20))
-legend(x=13, y=0, legend = levels(clusters.missing), col = col, pch = 16, cex = 0.7)
+legend(x=13, y=0, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
 
 ```
+
+```{r}
+emb_umap = adata.missing$obsm['X_umap'] #extract umap embedding
+rownames(emb_umap) = cell.names.missing
+
+plot(emb_umap, col = cell.cols.missing, pch=16, xlab = "UMAP X", ylab = "UMAP Y", xlim = c(-15,20))
+legend(x=13, y=0, legend = levels(clusters.missing), col = col, pch = 16, cex = 0.7)
+
+#### Fev+ missing 
+## cells before gap 
+# x = emb_umap[,1]
+# y = emb_umap[,2]
+# cells.before.gap <- rownames(emb_umap)[x < 7 & x > 3.5]
+# points(emb_umap[cells.before.gap,], col='black', pch = 15)
+# ## cells after gap
+# cells.after.gap <- rownames(emb_umap)[(x > (-5) & x < 3.5) & (y > -1)]
+# points(emb_umap[cells.after.gap,], col='blue', pch = 15)
+# legend(x=0, y=5, legend = c("before", "after"), col = c("black","blue"), pch = 15, cex = 0.7)
+
+
+#### Ngn high missing
+x = emb_umap[,1]
+y = emb_umap[,2]
+cells.before.gap <- rownames(emb_umap)[y > 6.1]
+points(emb_umap[cells.before.gap,], col='black', pch = 15)
+## cells after gap
+cells.after.gap <- rownames(emb_umap)[x > 2 & y < 6 & y > (-1)]
+points(emb_umap[cells.after.gap,], col='blue', pch = 15)
+legend(x=7, y=5, legend = c("before", "after"), col = c("black","blue"), pch = 15, cex = 0.7)
+
+
+#### Some beta missing
+## cells before gap 
+# x = emb_umap[,1]
+# y = emb_umap[,2]
+# cells.before.gap <- rownames(emb_umap)[x < (-2) & x > (-5) & y > 0]
+# points(emb_umap[cells.before.gap,], col='black', pch = 15)
+# ## cells after gap
+# cells.after.gap <- rownames(emb_umap)[(x > (-10) & x < -7) & (y > -2)]
+# points(emb_umap[cells.after.gap,], col='blue', pch = 15)
+# legend(x=-8, y=7, legend = c("before", "after"), col = c("black","blue"), pch = 15, cex = 0.7)
+```
+
 
 Run scVelo 
 ```{r filter normalize log transform missing, eval = FALSE}
@@ -262,14 +315,15 @@ scv$pp$moments(adata.missing, n_pcs = 30, n_neighbors = 30)
 
 adata.missing
 ```
-```{r plot missing}
+
+```{r plot missing, eval = FALSE}
 emb_pca = adata.missing$obsm['X_pca'] #extract pca embedding 
 plot(emb_pca, col = cell.cols.missing, pch=16, xlab = "PC1", ylab = "PC2", xlim = c(-15,20))
-legend(x=10, y=6, legend = levels(clusters.missing), col = col, pch = 16)
+legend(x=10, y=6, legend = levels(clusters), col = col, pch = 16)
 
 emb_umap = adata.missing$obsm['X_umap'] #extract umap embedding 
 plot(emb_umap, col = cell.cols.missing, pch=16, xlab = "UMAP X", ylab = "UMAP Y")
-legend(x=10, y=0, legend = levels(clusters.missing), col = col, pch = 16, cex = 0.7)
+legend(x=7, y=0, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
 
 ```
 
@@ -286,17 +340,20 @@ cr$tl$terminal_states(adata.missing,cluster_key = 'clusters', weight_connectivit
 cr$pl$terminal_states(adata.missing)
 cr$tl$initial_states(adata.missing, cluster_key = 'clusters')
 cr$pl$initial_states(adata.missing, discrete = TRUE)
+
+#not sure why this doesn't seem to work when missing ngn high 
 ```
 
 Save adata to speed up later  
 ```{r save missing, eval=FALSE}
-# py_save_object(adata.missing, filename = "./saved_objects/cellrank_panc_adata_missing_fev.rds")
-# adata.missing2 = py_load_object("./saved_objects/cellrank_panc_adata_missing_fev.rds")
+# py_save_object(adata.missing, filename = "./saved_objects/cellrank_panc_adata_missing_ngnhigh.rds")
+# adata.missing2 = py_load_object("./saved_objects/cellrank_panc_adata_missing_ngnhigh.rds")
 
 ```
 
 Extract transition matrices  
-```{r transition matrices missing, fig.width=7, fig.height=6, fig.width = 4}
+(cell rank doesn't work for missing Ngn High)  
+```{r transition matrices missing, fig.width=7, fig.height=6, fig.width = 4, eval=FALSE}
 ck.missing = cr$tl$kernels$ConnectivityKernel(adata.missing) #connectivity kernel
 vk.missing = cr$tl$kernels$VelocityKernel(adata.missing) #velocity kernel
 
@@ -308,13 +365,13 @@ vtm.missing = vk.missing$transition_matrix #transition matrix - velocities
 
 tm_combined.missing = (0.8*vtm.missing) + (0.2*ctm.missing) #weighted average of velocity and connectivity transition matrices
 
-sum(ctm.missing>0)
-sum(vtm.missing>0)
-sum(tm_combined.missing>0)
-par(mfrow = c(3,1))
-hist(as.numeric(ctm.missing[which(ctm.missing>0)]), breaks = 500, main = "Connectivities Transition \nProbabilities: Missing Fev+")
-hist(as.numeric(vtm.missing[which(vtm.missing>0)]), breaks = 500, main = "Velocities Transition \nProbabilities: Missing Fev+ ")
-hist(as.numeric(tm_combined.missing[which(tm_combined.missing>0)]), breaks = 500, main = "Averaged Transition \nProbabilities: Missing Fev+")
+# sum(ctm.missing>0)
+# sum(vtm.missing>0)
+# sum(tm_combined.missing>0)
+# par(mfrow = c(3,1))
+# hist(as.numeric(ctm.missing[which(ctm.missing>0)]), breaks = 500, main = "Connectivities Transition \nProbabilities: Missing Fev+")
+# hist(as.numeric(vtm.missing[which(vtm.missing>0)]), breaks = 500, main = "Velocities Transition \nProbabilities: Missing Fev+ ")
+# hist(as.numeric(tm_combined.missing[which(tm_combined.missing>0)]), breaks = 500, main = "Averaged Transition \nProbabilities: Missing Fev+")
 
 ```
 
@@ -324,7 +381,7 @@ Distances: transition matrix using just euclidean similarity
 Velocities: transition matrix using just velocity correlation  
 Combined: transition matrix = weighted average of distance and velocity  
 (using default weight 0.8velocity + 0.2distance)
-```{r comapring graph types missing, fig.width=7, fig.height=3}
+```{r comapring graph types missing, fig.width=7, fig.height=3, eval = FALSE}
 par(mfrow = c(1,3))
 cg.missing = graph_from_adjacency_matrix(ctm.missing, mode = "directed", weighted = TRUE)
 set.seed(1)
@@ -361,7 +418,7 @@ plot(fdg.missing, pch = 16, col = cell.cols.missing, main = "combined, seed = 10
 ```
 
 Varying weight in weighted average   
-```{r different weights missing, fig.width=7, fig.height=9}
+```{r different weights missing, fig.width=7, fig.height=9, eval = FALSE}
 ws = c(0,0.25,0.5,0.75,0.8,1)
 
 par(mfrow = c(3,2))
@@ -392,7 +449,7 @@ colnames(spliced) = colnames(unspliced) = cells
 rownames(spliced) = rownames(unspliced) = genes
 ```
 
-```{r, fig.show = 'hide'}
+```{r, fig.show = 'hide', eval = FALSE}
 mns = rowMeans(spliced)
 sds = sapply(c(1:nrow(spliced)), function(x) sd(spliced[x,]))
 mnu = rowMeans(unspliced)
@@ -436,7 +493,7 @@ odsGenes = rownames(allExp)[all.norm$ods] #overdispersed genes
 all.logODS = as.matrix(t(all.norm$mat[all.norm$ods,])) #keep overdispersed genes 
 ```
 
-```{r fig.width=5, fig.show = 'hide'}
+```{r fig.width=5, fig.show = 'hide', eval = FALSE}
 #look at distribution of gene expression
 mna = rowMeans(allExp)
 sda = sapply(c(1:nrow(allExp)), function(x) sd(allExp[x,]))
@@ -532,7 +589,7 @@ plot(proj.norm.means, proj.norm.sds)
 
 ```
 
-```{r}
+```{r, results = 'hide'}
 curr.norm.df = MUDAN::normalizeVariance(curr,details = TRUE, plot = FALSE) #variance stabilize 
 curr.norm = curr.norm.df$mat
 proj.norm = proj*curr.norm.df$df$gsf
@@ -572,7 +629,6 @@ plot(proj.scores[,1:2], col = cell.cols, main = 'Projected')#,xlim = c(-0.55,0.2
 
 Graph visualization on subset of cells from PC coordinates  
 ```{r graph viz from PCs, results = "hide", fig.height=8, fig.width = 8}
-source("projectedNeighbors_weightedCD.R")
 ws = c(0.1,1,10,25,50,100)
 par(mfrow = c(3,2))
 for (w in ws){
@@ -595,7 +651,7 @@ rownames(spliced.missing) = rownames(unspliced.missing) = genes.missing
 ```
 
 Filter genes  
-```{r filter genes missing, message = FALSE , included = FALSE, fig.show = 'hide'}
+```{r filter genes missing, message = FALSE , included = FALSE, fig.show = 'hide', eval = FALSE}
 gexpS.missing = log10(rowSums(spliced.missing)+1)
 gexpU.missing = log10(rowSums(unspliced.missing)+1)
 plot(gexpS.missing,gexpU.missing)
@@ -631,7 +687,7 @@ plot(var.missing) # ~10 components
 
 emb.pca.missing = pca.missing$u[,1:2]
 row.names(emb.pca.missing) = row.names(all.logODS.missing)
-plot(emb.pca.missing, col = cell.cols.missing.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA")
+plot(emb.pca.missing, col = cell.cols.missing, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA")
 legend(x=-0.02, y=-0.03, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
 
 
@@ -644,8 +700,11 @@ Run velocyto on panc data
 ```{r velocity missing, message = FALSE, results = 'hide', included = FALSE}
 # vel.missing = gene.relative.velocity.estimates(spliced.missing.sub,unspliced.missing.sub,deltaT=1,kCells=30,
 #                                                cell.dist=cell.dist.missing,fit.quantile=0.1,mult=100)
-# saveRDS(vel.missing,file = "./saved_objects/panc_vel_cellrank_missing_fev.rds")
-vel.missing = readRDS("./saved_objects/panc_vel_cellrank_missing_fev.rds")
+# saveRDS(vel.missing,file = "./saved_objects/panc_vel_cellrank_missing_ngnhigh.rds")
+
+#vel.missing = readRDS("./saved_objects/panc_vel_cellrank_missing_fev.rds")
+#vel.missing = readRDS("./saved_objects/panc_vel_cellrank_missing_somebeta.rds")
+vel.missing = readRDS("./saved_objects/panc_vel_cellrank_missing_ngnhigh.rds")
 curr.missing = vel.missing$current
 proj.missing = vel.missing$projected
 
@@ -658,7 +717,7 @@ proj.missing = vel.missing$projected
 
 ```  
 
-```{r}
+```{r, results = 'hide'}
 curr.missing.norm.df = MUDAN::normalizeVariance(curr.missing,details = TRUE, plot = FALSE) #variance stabilize 
 curr.norm.missing = curr.missing.norm.df$mat
 proj.norm.missing = proj.missing*curr.missing.norm.df$df$gsf
@@ -669,7 +728,7 @@ var.velo.missing = pca.velo.missing$d
 
 emb.pca.velo.missing = pca.velo.missing$u[,1:2]
 row.names(emb.pca.velo.missing) = colnames(curr.norm.missing)
-plot(emb.pca.velo.missing, col = cell.cols.missing.sub, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA")
+plot(emb.pca.velo.missing, col = cell.cols.missing, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA")
 legend(x=-0.02, y=0.08, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
 
 
@@ -688,24 +747,23 @@ v.sub.missing = v.missing[row.names(curr.pca.missing),]
 
 par(mfrow = c(1,2))
 curr.scores.missing = scale(t(curr.pca.missing), scale = FALSE) %*% v.sub.missing
-plot(curr.scores.missing[,1:2], pch = 16, col = cell.cols.missing.sub, main = 'Observed')#,xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
+plot(curr.scores.missing[,1:2], pch = 16, col = cell.cols.missing, main = 'Observed')#,xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
 legend(x=-5, y=20, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
 
 proj.pca.missing = proj.norm.missing[common.genes.missing,]
 proj.scores.missing = scale(t(proj.pca.missing), scale = FALSE) %*% v.sub.missing
-plot(proj.scores.missing[,1:2], pch = 16, col = cell.cols.missing.sub, main = 'Projected')#,xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
+plot(proj.scores.missing[,1:2], pch = 16, col = cell.cols.missing, main = 'Projected')#,xlim = c(-0.55,0.25),ylim = c(-0.35,0.45))
 legend(x=-5, y=20, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
 
 ```
 
-Graph visualization on subset of cells from PC coordinates  
+Graph visualization from PC coordinates  
 ```{r graph viz from PCs missing, results = "hide", fig.height=8, fig.width = 8}
-source("projectedNeighbors_weightedCD.R")
 ws = c(0.1,1,5,10,15,17,20,25)
 par(mfrow = c(4,2))
 for (w in ws){
   set.seed(1)
-  vizg = graphViz(t(curr.scores.missing), t(proj.scores.missing), k=30, distance_metric = "L2", similarity_metric = "cosine", distance_weight = w, similarity_threshold = 0, weighted = TRUE, cell.colors = cell.cols.missing.sub,plot = TRUE, return_graph = TRUE,title = paste("Weight = ", w))
+  vizg = graphViz(t(curr.scores.missing), t(proj.scores.missing), k=30, distance_metric = "L2", similarity_metric = "cosine", distance_weight = w, similarity_threshold = 0, weighted = TRUE, cell.colors = cell.cols.missing,plot = TRUE, return_graph = TRUE,title = paste("Weight = ", w))
 }
 
 
@@ -715,58 +773,184 @@ for (w in ws){
 ## Changing veloviz parameters  
 Above, I used k=30 for direct comparison to cellRank graph which computes distances to K=30 nearest neighbors uses. However, this might not be where veloviz performs best.  
 ```{r, results = "hide", fig.height=8, fig.width = 8}
-ks = c(5,10,15,30,50,100)
+ks = c(5,10,20,30,50,100)
 par(mfrow = c(3,2))
 for (k in ks){
   set.seed(1)
   vizg = graphViz(t(curr.scores.missing), t(proj.scores.missing), k=k, 
                   distance_metric = "L2", similarity_metric = "cosine", distance_weight = 1, similarity_threshold = 0, weighted = TRUE, 
-                  cell.colors = cell.cols.missing.sub, plot = TRUE, return_graph = TRUE,title = paste("K = ", k))
+                  cell.colors = cell.cols.missing, plot = TRUE, return_graph = TRUE,title = paste("K = ", k))
 }
 ```
 
 
 ## Comparing graphs  
-```{r, fig.height=6, fig.width = 6}
-par(mfrow = c(2,2))
+```{r, results = 'hide', fig.height=6, fig.width = 6}
+par(mfrow = c(1,2))
 
-w = 0.8
-tm_combined = (w*vtm.missing) + ((1-w)*ctm.missing) #weighted average of velocity and connectivity transition matrices
-rankg = graph_from_adjacency_matrix(tm_combined, mode = "directed", weighted = TRUE)
-set.seed(1)
-rank.fdg = layout_with_fr(rankg, dim = 2)
-plot(rank.fdg, pch = 16, col = cell.cols.missing, main = paste("cellRank: weight = ",w,"\ndefault params"), cex = 0.5)
+# w = 0.8
+# tm_combined = (w*vtm.missing) + ((1-w)*ctm.missing) #weighted average of velocity and connectivity transition matrices
+# rankg = graph_from_adjacency_matrix(tm_combined, mode = "directed", weighted = TRUE)
+# set.seed(1)
+# rank.fdg = layout_with_fr(rankg, dim = 2)
+# rownames(rank.fdg) = cell.names.missing
+# plot(rank.fdg, pch = 16, col = cell.cols.missing, main = paste("cellRank: weight = ",w,"\ndefault params"), cex = 0.5)
 
 set.seed(1)
 k = 30
 vizg = graphViz(t(curr.scores.missing), t(proj.scores.missing), k=k,
                 distance_metric = "L2", similarity_metric = "cosine", distance_weight = 1, similarity_threshold = 0, weighted = TRUE, 
-                cell.colors = cell.cols.missing.sub, plot = FALSE, return_graph = TRUE,title = paste("veloViz: K = ", k))
+                cell.colors = cell.cols.missing, plot = FALSE, return_graph = TRUE,title = paste("veloViz: K = ", k))
 viz.fdg = vizg$fdg_coords
-plot(viz.fdg, pch = 16, col = cell.cols.missing.sub, main = paste("veloViz: K = ", k,"\ndirect comparison"), cex = 0.5)
+rownames(viz.fdg) = cell.names.missing
+plot(viz.fdg, pch = 16, col = cell.cols.missing, main = paste("veloViz: K = ", k,"\ndirect comparison"), cex = 0.5)
+# 
+# w = 0.5
+# tm_combined = (w*vtm.missing) + ((1-w)*ctm.missing) #weighted average of velocity and connectivity transition matrices
+# rankg = graph_from_adjacency_matrix(tm_combined, mode = "directed", weighted = TRUE)
+# set.seed(1)
+# rank.fdg = layout_with_fr(rankg, dim = 2)
+# rownames(rank.fdg) = cell.names.missing
+# plot(rank.fdg, pch = 16, col = cell.cols.missing, main = paste("cellRank: weight = ",w), cex = 0.5)
 
-w = 1
-tm_combined = (w*vtm.missing) + ((1-w)*ctm.missing) #weighted average of velocity and connectivity transition matrices
-rankg = graph_from_adjacency_matrix(tm_combined, mode = "directed", weighted = TRUE)
 set.seed(1)
-rank.fdg = layout_with_fr(rankg, dim = 2)
-plot(rank.fdg, pch = 16, col = cell.cols.missing, main = paste("cellRank: weight = ",w), cex = 0.5)
-
-set.seed(1)
-k = 10
+k = 20
 vizg = graphViz(t(curr.scores.missing), t(proj.scores.missing), k=k,
                 distance_metric = "L2", similarity_metric = "cosine", distance_weight = 1, similarity_threshold = 0, weighted = TRUE, 
-                cell.colors = cell.cols.missing.sub, plot = FALSE, return_graph = TRUE,title = paste("veloViz: K = ", k))
+                cell.colors = cell.cols.missing, plot = FALSE, return_graph = TRUE,title = paste("veloViz: K = ", k))
 viz.fdg = vizg$fdg_coords
-plot(viz.fdg, pch = 16, col = cell.cols.missing.sub, main = paste("veloViz: K = ", k), cex = 0.5)
+rownames(viz.fdg) = cell.names.missing
+plot(viz.fdg, pch = 16, col = cell.cols.missing, main = paste("veloViz: K = ", k), cex = 0.5)
 
 
 
 ```
 
 
+Compare mean distance between cells before and after the gap normalized by max distance between any two cells for each graph.  
+Comparing default cellRank graph to veloViz graph  
+```{r, results = 'hide'}
+# #"default" parameters and direct comparison
+# par(mfrow = c(1,2))
+# w = 0.8
+# tm_combined = (w*vtm.missing) + ((1-w)*ctm.missing) #weighted average of velocity and connectivity transition matrices
+# rankg = graph_from_adjacency_matrix(tm_combined, mode = "directed", weighted = TRUE)
+# set.seed(1)
+# rank.fdg = layout_with_fr(rankg, dim = 2)
+# rownames(rank.fdg) = cell.names.missing
+# plot(rank.fdg, pch = 16, col = cell.cols.missing, main = paste("cellRank: weight = ",w,"\ndefault params"), cex = 0.5)
+# points(rank.fdg[cells.before.gap,], pch = 4, col = "black",cex = 0.5)
+# points(rank.fdg[cells.after.gap,], pch = 4, col = "blue",cex = 0.5)
+# 
+# #mean before location
+# rank.before.x = mean(rank.fdg[cells.before.gap,1])
+# rank.before.y = mean(rank.fdg[cells.before.gap,2])
+# points(rank.before.x,rank.before.y, pch = 15, col = "red", cex = 1.5)
+# #mean after location
+# rank.after.x = mean(rank.fdg[cells.after.gap,1])
+# rank.after.y = mean(rank.fdg[cells.after.gap,2])
+# points(rank.after.x,rank.after.y, pch = 15, col = "red", cex = 1.5)
+# 
+# #distance between before and after
+# rank.points = matrix(c(rank.before.x,rank.after.x,rank.before.y,rank.after.y),ncol = 2)
+# rank.dist = dist(rank.points) #idk if it makes sense to compare these two distances - they're on different scales? 
+# #normalize by max distance between two cells? 
+# rank.max.dist = max(dist(rank.fdg))
+# rank.norm.dist = rank.dist/rank.max.dist
+# text(mean(c(rank.before.x,rank.after.x)),mean(c(rank.before.y,rank.after.y)),labels = formatC(rank.norm.dist,digits = 3), col = 'red')
 
 
+set.seed(1)
+k = 30
+vizg = graphViz(t(curr.scores.missing), t(proj.scores.missing), k=k,
+                distance_metric = "L2", similarity_metric = "cosine", distance_weight = 1, similarity_threshold = 0, weighted = TRUE, 
+                cell.colors = cell.cols.missing, plot = FALSE, return_graph = TRUE,title = paste("veloViz: K = ", k))
+viz.fdg = vizg$fdg_coords
+rownames(viz.fdg) = cell.names.missing
+plot(viz.fdg, pch = 16, col = cell.cols.missing, main = paste("veloViz: K = ", k,"\ndirect comparison"), cex = 0.5)
+points(viz.fdg[cells.before.gap,], pch = 4, col = "black",cex = 0.5)
+points(viz.fdg[cells.after.gap,], pch = 4, col = "blue",cex = 0.5)
+
+#mean before location
+viz.before.x = mean(viz.fdg[cells.before.gap,1])
+viz.before.y = mean(viz.fdg[cells.before.gap,2])
+points(viz.before.x,viz.before.y, pch = 15, col = "red", cex = 1.5)
+#mean after location
+viz.after.x = mean(viz.fdg[cells.after.gap,1])
+viz.after.y = mean(viz.fdg[cells.after.gap,2])
+points(viz.after.x,viz.after.y, pch = 15, col = "red", cex = 1.5)
+
+#distance between before and after
+viz.points = matrix(c(viz.before.x,viz.after.x,viz.before.y,viz.after.y),nrow = 2)
+viz.dist = dist(viz.points)
+#normalize 
+viz.max.dist = max(dist(viz.fdg))
+viz.norm.dist = viz.dist/viz.max.dist
+text(mean(c(viz.before.x,viz.after.x)),mean(c(viz.before.y,viz.after.y)),labels = formatC(viz.norm.dist,digits = 3), col = 'red')
+
+```
+
+
+Comparing 'best' cellRank graph (only velocity based) to 'best' veloViz graph (k = 10)  
+```{r, results = 'hide'}
+# par(mfrow = c(1,2))
+# w = 0.5
+# tm_combined = (w*vtm.missing) + ((1-w)*ctm.missing) #weighted average of velocity and connectivity transition matrices
+# rankg = graph_from_adjacency_matrix(tm_combined, mode = "directed", weighted = TRUE)
+# set.seed(1)
+# rank.fdg = layout_with_fr(rankg, dim = 2)
+# rownames(rank.fdg) = cell.names.missing
+# plot(rank.fdg, pch = 16, col = cell.cols.missing, main = paste("cellRank: weight = ",w), cex = 0.5)
+# points(rank.fdg[cells.before.gap,], pch = 4, col = "black",cex = 0.5)
+# points(rank.fdg[cells.after.gap,], pch = 4, col = "blue",cex = 0.5)
+# 
+# #mean before location
+# rank.before.x = mean(rank.fdg[cells.before.gap,1])
+# rank.before.y = mean(rank.fdg[cells.before.gap,2])
+# points(rank.before.x,rank.before.y, pch = 15, col = "red", cex = 1.5)
+# #mean after location
+# rank.after.x = mean(rank.fdg[cells.after.gap,1])
+# rank.after.y = mean(rank.fdg[cells.after.gap,2])
+# points(rank.after.x,rank.after.y, pch = 15, col = "red", cex = 1.5)
+# 
+# #distance between before and after
+# rank.points = matrix(c(rank.before.x,rank.after.x,rank.before.y,rank.after.y),ncol = 2)
+# rank.dist = dist(rank.points) #idk if it makes sense to compare these two distances - they're on different scales? 
+# #normalize by max distance between two cells? 
+# rank.max.dist = max(dist(rank.fdg))
+# rank.norm.dist = rank.dist/rank.max.dist
+# text(mean(c(rank.before.x,rank.after.x)),mean(c(rank.before.y,rank.after.y)),labels = formatC(rank.norm.dist,digits = 3), col = 'red')
+
+
+set.seed(1)
+k = 20
+vizg = graphViz(t(curr.scores.missing), t(proj.scores.missing), k=k,
+                distance_metric = "L2", similarity_metric = "cosine", distance_weight = 1, similarity_threshold = 0, weighted = TRUE, 
+                cell.colors = cell.cols.missing, plot = FALSE, return_graph = TRUE,title = paste("veloViz: K = ", k))
+viz.fdg = vizg$fdg_coords
+rownames(viz.fdg) = cell.names.missing
+plot(viz.fdg, pch = 16, col = cell.cols.missing, main = paste("veloViz: K = ", k), cex = 0.5)
+points(viz.fdg[cells.before.gap,], pch = 4, col = "black",cex = 0.5)
+points(viz.fdg[cells.after.gap,], pch = 4, col = "blue",cex = 0.5)
+
+#mean before location
+viz.before.x = mean(viz.fdg[cells.before.gap,1])
+viz.before.y = mean(viz.fdg[cells.before.gap,2])
+points(viz.before.x,viz.before.y, pch = 15, col = "red", cex = 1.5)
+#mean after location
+viz.after.x = mean(viz.fdg[cells.after.gap,1])
+viz.after.y = mean(viz.fdg[cells.after.gap,2])
+points(viz.after.x,viz.after.y, pch = 15, col = "red", cex = 1.5)
+
+#distance between before and after
+viz.points = matrix(c(viz.before.x,viz.after.x,viz.before.y,viz.after.y),nrow = 2)
+viz.dist = dist(viz.points)
+#normalize 
+viz.max.dist = max(dist(viz.fdg))
+viz.norm.dist = viz.dist/viz.max.dist
+text(mean(c(viz.before.x,viz.after.x)),mean(c(viz.before.y,viz.after.y)),labels = formatC(viz.norm.dist,digits = 3), col = 'red')
+
+```
 
 
 
@@ -811,12 +995,6 @@ source("projectedNeighbors_weightedCD.R")
 
 
 ```
-
-```{r compare clustering coefficient, eval = FALSE}
-
-```
-
-
 
 
 

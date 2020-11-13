@@ -20,6 +20,19 @@ buildVeloviz <- function(curr, proj,
                          seed = 0
 ) {
 
+  if (!class(curr) %in% c("dgCMatrix", "dgTMatrix")) {
+    if (verbose) {
+      message("Converting to sparse matrix ...")
+    }
+    curr <- Matrix::Matrix(curr, sparse = TRUE)
+  }
+  if (!class(proj) %in% c("dgCMatrix", "dgTMatrix")) {
+    if (verbose) {
+      message("Converting to sparse matrix ...")
+    }
+    proj <- Matrix::Matrix(proj, sparse = TRUE)
+  }
+
   if(normalize.depth) {
     if(verbose) {
       print('Normalizing depth...')
@@ -106,6 +119,11 @@ buildVeloviz <- function(curr, proj,
   if(verbose) {
     message('Generating velocity informed embedding...')
   }
+
+  ## dense matrix by now
+  pca.curr <- as.matrix(pca.curr)
+  pca.proj <- as.matrix(pca.proj)
+
   set.seed(seed)
   ## velocity informed graph
   vig <- graphViz(t(pca.curr), t(pca.proj), k,
@@ -118,9 +136,9 @@ buildVeloviz <- function(curr, proj,
 
   if(details) {
     return(list(
-      pca.curr,
-      pca.proj,
-      vig
+      pca.curr = pca.curr,
+      pca.proj = pca.proj,
+      vig = vig
     ))
   } else {
     return(vig)

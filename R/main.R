@@ -77,7 +77,7 @@ buildVeloviz <- function(curr, proj,
       ## scale to residual variance
       m_scale <- rsd/scale.factor
     }
-    pca <- RSpectra::svds(A = t(m),
+    pca <- RSpectra::svds(A = Matrix::t(m),
                           k=min(50, nPCs+10),
                           opts = list(
                             center = m_center,
@@ -93,7 +93,7 @@ buildVeloviz <- function(curr, proj,
     if(scale) {
       m <- m / rsd
     }
-    pca.curr <- t(m) %*% pca$v[,1:nPCs]
+    pca.curr <- Matrix::t(m) %*% pca$v[,1:nPCs]
 
     ## project future onto PCs
     m <- proj
@@ -108,7 +108,7 @@ buildVeloviz <- function(curr, proj,
     if(scale) {
       m <- m / rsd
     }
-    pca.proj <- t(m) %*% pca$v[,1:nPCs]
+    pca.proj <- Matrix::t(m) %*% pca$v[,1:nPCs]
 
     colnames(pca.curr) <- colnames(pca.proj) <- paste0('PC', 1:ncol(pca.curr))
   } else {

@@ -154,16 +154,21 @@ plotVeloviz <- function(
   layout.method = igraph::layout_with_fr,
   clusters = NA,
   cluster.method = igraph::cluster_louvain,
+  col = NA,
   alpha = 0.05,
   verbose = TRUE,
   seed = 0
 ) {
 
-  com <- as.factor(clusters)
-  col = rainbow(length(levels(com)), s = 0.8, v = 0.8)
-  cell.cols <- col[clusters]
-
-  if(is.na(clusters)){
+  if(!is.na(clusters) & is.na(col)) {
+    com <- as.factor(clusters)
+    col = rainbow(length(levels(com)), s = 0.8, v = 0.8)
+    cell.cols <- col[clusters]
+  }
+  if(is.na(clusters) & !is.na(col)) {
+    cell.cols <- col
+  }
+  if(is.na(clusters & is.na(col))){
     if(verbose) {
       message('Identifying clusters...')
     }

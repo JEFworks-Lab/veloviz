@@ -9,6 +9,7 @@ plotVeloviz(
   layout.method = igraph::layout_with_fr,
   clusters = NA,
   cluster.method = igraph::cluster_louvain,
+  col = NA,
   alpha = 0.05,
   verbose = TRUE,
   seed = 0

@@ -60,9 +60,10 @@ normalizeVariance <- function(
   cpm,
   gam.k                 = 5,
   alpha                 = 0.05,
-  max.adjusted.variance = 1e3,
-  min.adjusted.variance = 1e-3,
+  max.adjusted.variance = 5,
+  min.adjusted.variance = 1,
   verbose               = TRUE,
+  plot                  = FALSE,
   details               = FALSE
 ) {
 
@@ -139,11 +140,24 @@ normalizeVariance <- function(
 
   clamp <- function(x, min, max) pmax(min, pmin(max, x))
 
-  df$scale_factor <- sqrt(
-    clamp(df$qv, min.adjusted.variance, max.adjusted.variance) /
-      exp(df$log_variance)
-  )
+  #df$scale_factor <- sqrt(
+  #  clamp(df$qv, min.adjusted.variance, max.adjusted.variance) /
+  #    exp(df$log_variance)
+  #)
+  #df$scale_factor <- clamp(df$res, min.adjusted.variance, max.adjusted.variance)
+  df$scale_factor <- clamp(df$qv, min.adjusted.variance, max.adjusted.variance)
   df$scale_factor[!is.finite(df$scale_factor)] <- 0
+
+  if(plot) {
+    par(mfrow=c(1,2))
+    plot(df$log_mean, df$log_var,
+         col = ifelse(df$over_disp, "red", "black"), pch=".")
+    plot(df$log_mean, df$res,
+         col = ifelse(df$over_disp, "red", "black"), pch=".")
+    par(mfrow=c(1,1))
+    plot(df$res, df$scale_factor,
+         col = ifelse(df$over_disp, "red", "black"), pch=".")
+  }
 
   if(details) {
     return(df)
@@ -165,5 +179,82 @@ bh.adjust <- function(x, log = FALSE) {
   a <- rev(cummin(rev(q)))[order(id)]
   ox[nai] <- a
   ox
+}
+
+## PCA
+reduceDimensions <- function(cpm,
+                             center=TRUE,
+                             scale=FALSE,
+                             use.ods.genes=TRUE,
+                             max.ods.genes=1000,
+                             alpha=0.05,
+                             nPCs=50,
+                             verbose=TRUE,
+                             plot=FALSE,
+                             details=FALSE)
+{
+  ods.genes = normalizeVariance(cpm, alpha=alpha, verbose=verbose, plot=plot, details = TRUE)
+  scale.factor = exp(ods.genes$scale_factor) ## use residual variance q-value as scale factor
+  names(scale.factor) <- rownames(cpm)
+
+  if(use.ods.genes) {
+    if(verbose) {
+      print('Normalizing variance...')
+    }
+    if(sum(ods.genes$over_disp) > max.ods.genes) {
+      if(verbose) {
+        print(paste0('Limiting to top ', max.ods.genes, ' overdispersed genes...'))
+      }
+      best.genes <- names(sort(scale.factor, decreasing=TRUE)[1:max.ods.genes])
+      cpm = cpm[best.genes,]
+      scale.factor = scale.factor[best.genes]
+    } else {
+      cpm = cpm[ods.genes$over_disp,]
+      scale.factor = scale.factor[ods.genes$over_disp]
+    }
+  }
+
+  ## establish PCs from overdispersed genes
+  m <- cpm
+  ## mean
+  rmean <- Matrix::rowMeans(m)
+  sumx     <- Matrix::rowSums(m)
+  sumxx    <- Matrix::rowSums(m^2)
+  ## sd
+  rsd <- sqrt(sumxx - 2 * sumx * rmean + ncol(m) * rmean ^ 2)
+  if(center) {
+    m_center <- rmean
+  } else {
+    m_center <- FALSE
+  }
+  if(scale) {
+    ## regular scale to var = 1
+    m_scale <- rsd
+  } else {
+    ## scale to residual variance
+    m_scale <- rsd/scale.factor
+  }
+  pca <- RSpectra::svds(A = Matrix::t(m),
+                        k=min(50, nPCs+10),
+                        opts = list(
+                          center = m_center,
+                          scale = m_scale,
+                          maxitr = 2000,
+                          tol = 1e-10))
+
+  if(plot) {
+    plot(pca$d, type="l")
+    abline(v=nPCs, col='red')
+  }
+
+  pcs <- pca$u[,1:nPCs]
+  rownames(pcs) <- colnames(cpm)
+  colnames(pcs) <- paste0('PC', 1:nPCs)
+
+  if(details) {
+    return(pca)
+  } else {
+    return(as.matrix(pcs))
+  }
 }
 

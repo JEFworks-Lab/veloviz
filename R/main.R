@@ -6,6 +6,7 @@ buildVeloviz <- function(curr, proj,
                          normalize.depth = TRUE,
                          depth = 1e6,
                          use.ods.genes = TRUE,
+                         max.ods.genes = 1000,
                          alpha = 0.05,
                          pca = TRUE,
                          center = TRUE,
@@ -44,13 +45,24 @@ buildVeloviz <- function(curr, proj,
   ods.genes = normalizeVariance(curr, alpha=alpha, verbose=verbose, details = TRUE)
   scale.factor = exp(ods.genes$scale_factor) ## use residual variance q-value as scale factor
   names(scale.factor) <- rownames(curr)
+
   if(use.ods.genes) {
     if(verbose) {
       print('Normalizing variance...')
     }
-    curr = curr[ods.genes$over_disp,]
-    proj = proj[ods.genes$over_disp,]
-    scale.factor = scale.factor[ods.genes$over_disp]
+    if(sum(ods.genes$over_disp) > max.ods.genes) {
+      if(verbose) {
+        print(paste0('Limiting to top ', max.ods.genes, ' overdispersed genes...'))
+      }
+      best.genes <- names(sort(scale.factor, decreasing=TRUE)[1:max.ods.genes])
+      curr = curr[best.genes,]
+      proj = proj[best.genes,]
+      scale.factor = scale.factor[best.genes]
+    } else {
+      curr = curr[ods.genes$over_disp,]
+      proj = proj[ods.genes$over_disp,]
+      scale.factor = scale.factor[ods.genes$over_disp]
+    }
   }
 
   if(pca) {
@@ -161,14 +173,18 @@ plotVeloviz <- function(
 ) {
 
   if(!is.na(clusters) & is.na(col)) {
+    if(verbose) {
+      message('Using provided clusters...')
+    }
     com <- as.factor(clusters)
     col = rainbow(length(levels(com)), s = 0.8, v = 0.8)
     cell.cols <- col[clusters]
-  }
-  if(is.na(clusters) & !is.na(col)) {
+  } else if(is.na(clusters) & !is.na(col)) {
+    if(verbose) {
+      message('Using provided colors...')
+    }
     cell.cols <- col
-  }
-  if(is.na(clusters & is.na(col))){
+  } else if(is.na(clusters & is.na(col))){
     if(verbose) {
       message('Identifying clusters...')
     }

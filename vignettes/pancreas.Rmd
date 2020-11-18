@@ -14,70 +14,69 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Vignette Template
 
 ```{r getdata, eval=FALSE}
+library(veloviz)
+
 library(reticulate)
 use_condaenv("r-velocity", required = TRUE)
-scv = import("scvelo")
-adata = scv$datasets$pancreas()
+scv <- import("scvelo")
+adata <- scv$datasets$pancreas()
 
 ## spliced and unspliced expression matrices
-spliced = as.matrix(t(adata$layers['spliced']))
-unspliced = as.matrix(t(adata$layers['unspliced']))
-cells = adata$obs_names$values
-genes = adata$var_names$values
-colnames(spliced) = colnames(unspliced) = cells
-rownames(spliced) = rownames(unspliced) = genes
+spliced <- as.matrix(t(adata$layers['spliced']))
+unspliced <- as.matrix(t(adata$layers['unspliced']))
+cells <- adata$obs_names$values
+genes <- adata$var_names$values
+colnames(spliced) <- colnames(unspliced) <- cells
+rownames(spliced) <- rownames(unspliced) <- genes
 ## extract clusters
-clusters = adata$obs$clusters 
-names(clusters) = adata$obs_names$values
+clusters <- adata$obs$clusters 
+names(clusters) <- adata$obs_names$values
 ## old embedding
-emb.original = adata$obsm['X_umap'] #extract umap embedding
+emb.original <- adata$obsm['X_umap'] #extract umap embedding
 rownames(emb.original) <- names(clusters)
 ## plot
-par(mfrow = c(1,1))
-plotEmbedding(emb.original, groups=clusters, 
+par(mfrow <- c(1,1))
+plotEmbedding(emb.original, groups = clusters, 
               xlab = "UMAP X", ylab = "UMAP Y", 
-              mark.clusters=TRUE)
+              mark.clusters = TRUE)
 
 ## subsample to create smaller dataset
 ## that can be included with package
 set.seed(0)
-good.cells = sample(rownames(emb.original), nrow(emb.original)/5)
-spliced = spliced[,good.cells]
-unspliced = unspliced[,good.cells]
-clusters = clusters[good.cells]
-emb.original = emb.original[good.cells,]
+good.cells <- sample(rownames(emb.original), nrow(emb.original)/5)
+spliced <- spliced[,good.cells]
+unspliced <- unspliced[,good.cells]
+clusters <- clusters[good.cells]
+emb.original <- emb.original[good.cells,]
 ## plot
 par(mfrow = c(1,1))
-plotEmbedding(emb.original, groups=clusters, 
+plotEmbedding(emb.original, groups = clusters, 
               xlab = "UMAP X", ylab = "UMAP Y", 
               mark.clusters=TRUE)
 
 ## filter to well detected genes
-vi = rowSums(spliced) > 10 & rowSums(unspliced) > 10
-spliced = spliced[vi,]
-unspliced = unspliced[vi,]
+vi <- rowSums(spliced) > 10 & rowSums(unspliced) > 10
+spliced <- spliced[vi,]
+unspliced <- unspliced[vi,]
 
 ## analyze
-all.counts = spliced + unspliced # use combined spliced and unspliced counts
-all.cpm = normalizeCounts(all.counts) # cpm normalize
-ods.genes = normalizeVariance(all.cpm) # identify overdispersed genes
-all.logODS = log10(all.cpm[ods.genes,]+1) # log transform
-pca = RSpectra::svds(A = t(all.logODS), 
-                     k=50, # 50 PCs
-                     opts = list(center = TRUE, scale = TRUE))
-pcs = pca$u
-rownames(pcs) <- colnames(all.counts)
-colnames(pcs) <- paste0('PC', 1:ncol(pcs))
-cell.dist = as.dist(1-cor(t(pcs))) # cell distance in PC space
+all.counts <- spliced + unspliced # use combined spliced and unspliced counts
+all.cpm <- normalizeDepth(all.counts) # cpm normalize
+pcs <- reduceDimensions(all.cpm, 
+                       nPCs = 10,
+                       center=TRUE, scale=TRUE, 
+                       use.ods.genes = TRUE, alpha=0.05)
 
 ## velocity model
 library(velocyto.R)
-vel = gene.relative.velocity.estimates(spliced,
+cell.dist <- as.dist(1-cor(t(pcs))) # cell distance in PC space
+vel <- gene.relative.velocity.estimates(spliced,
                                        unspliced,
-                                       kCells=30,
-                                       cell.dist=cell.dist,
-                                       fit.quantile=0.1)
+                                       kCells = 30,
+                                       cell.dist = cell.dist,
+                                       fit.quantile = 0.1)
 
+## save
 pancreas <- list(
   spliced = spliced,
   unspliced = unspliced,
@@ -97,21 +96,23 @@ Compare visualizations
 library(veloviz)
 data("pancreas")
 
+par(mfrow=c(2,2), mar=rep(1,4))
+
 ## 2D embedding by PCA
 emb.pcs = pancreas$pcs[,1:2]
-plotEmbedding(emb.pcs, groups=pancreas$clusters)
+plotEmbedding(emb.pcs, groups=pancreas$clusters, main='PCA')
 
 ## 2D embedding by tSNE
 set.seed(0)
 emb.tsne = Rtsne::Rtsne(pancreas$pcs[,1:10], perplexity=30)$Y
 rownames(emb.tsne) <- rownames(pancreas$pcs)
-plotEmbedding(emb.tsne, groups=pancreas$clusters)
+plotEmbedding(emb.tsne, groups=pancreas$clusters, main='tSNE')
 
 ## 2D embedding by UMAP
 set.seed(0)
 emb.umap = uwot::umap(pancreas$pcs[,1:10], min_dist = 0.5)
 rownames(emb.umap) <- rownames(pancreas$pcs)
-plotEmbedding(emb.umap, groups=pancreas$clusters)
+plotEmbedding(emb.umap, groups=pancreas$clusters, main='UMAP')
 
 ## 2D embedding by veloviz
 vig = buildVeloviz(
@@ -124,14 +125,15 @@ vig = buildVeloviz(
   nPCs = 10,
   center = TRUE,
   scale = TRUE,
-  k = 10,
+  k = 5,
   seed = 0,
-  verbose = FALSE
+  verbose = TRUE
 )
 emb.veloviz = vig$fdg_coords
-plotEmbedding(emb.veloviz, groups=pancreas$clusters)
+plotEmbedding(emb.veloviz, groups=pancreas$clusters, main='veloviz')
 
-g = plotVeloviz(vig, clusters=pancreas$clusters, seed=0)
+par(mfrow=c(1,1), mar=rep(1,4))
+g = plotVeloviz(vig, clusters=pancreas$clusters, seed=0, verbose=TRUE)
 ```
 
 Now we remove cells
@@ -148,25 +150,21 @@ unspliced = unspliced[,good.cells]
 clusters = clusters[good.cells]
 
 ## analyze
-all.counts = spliced + unspliced # use combined spliced and unspliced counts
-all.cpm = normalizeCounts(all.counts) # cpm normalize
-ods.genes = normalizeVariance(all.cpm) # identify overdispersed genes
-all.logODS = log10(all.cpm[ods.genes,]+1) # log transform
-pca = RSpectra::svds(A = t(all.logODS), 
-                     k=50, # 50 PCs
-                     opts = list(center = TRUE, scale = TRUE))
-pcs = pca$u
-rownames(pcs) <- colnames(all.counts)
-colnames(pcs) <- paste0('PC', 1:ncol(pcs))
-cell.dist = as.dist(1-cor(t(pcs))) # cell distance in PC space
+all.counts <- spliced + unspliced # use combined spliced and unspliced counts
+all.cpm <- normalizeDepth(all.counts) # cpm normalize
+pcs <- reduceDimensions(all.cpm, 
+                       nPCs = 10,
+                       center=TRUE, scale=TRUE, 
+                       use.ods.genes = TRUE, alpha=0.05)
 
 ## velocity model
 library(velocyto.R)
-vel = gene.relative.velocity.estimates(spliced,
+cell.dist <- as.dist(1-cor(t(pcs))) # cell distance in PC space
+vel <- gene.relative.velocity.estimates(spliced,
                                        unspliced,
-                                       kCells=30,
-                                       cell.dist=cell.dist,
-                                       fit.quantile=0.1)
+                                       kCells = 30,
+                                       cell.dist = cell.dist,
+                                       fit.quantile = 0.1)
 
 pancreasWithGap <- list(
   spliced = spliced,
@@ -186,21 +184,23 @@ Compare
 library(veloviz)
 data("pancreasWithGap")
 
+par(mfrow=c(2,2), mar=rep(1,4))
+
 ## 2D embedding by PCA
 emb.pcs = pancreasWithGap$pcs[,1:2]
-plotEmbedding(emb.pcs, groups=pancreasWithGap$clusters)
+plotEmbedding(emb.pcs, groups=pancreasWithGap$clusters, main='PCA')
 
 ## 2D embedding by tSNE
 set.seed(0)
 emb.tsne = Rtsne::Rtsne(pancreasWithGap$pcs[,1:10], perplexity=30)$Y
 rownames(emb.tsne) <- rownames(pancreasWithGap$pcs)
-plotEmbedding(emb.tsne, groups=pancreasWithGap$clusters)
+plotEmbedding(emb.tsne, groups=pancreasWithGap$clusters, main='tSNE')
 
 ## 2D embedding by UMAP
 set.seed(0)
 emb.umap = uwot::umap(pancreasWithGap$pcs[,1:10], min_dist = 0.5)
 rownames(emb.umap) <- rownames(pancreasWithGap$pcs)
-plotEmbedding(emb.umap, groups=pancreasWithGap$clusters)
+plotEmbedding(emb.umap, groups=pancreasWithGap$clusters, main='UMAP')
 
 ## 2D embedding by veloviz
 vig = buildVeloviz(
@@ -213,13 +213,14 @@ vig = buildVeloviz(
   nPCs = 10,
   center = TRUE,
   scale = TRUE,
-  k = 10,
+  k = 5,
   seed = 0,
   verbose = FALSE
 )
 emb.veloviz = vig$fdg_coords
-plotEmbedding(emb.veloviz, groups=pancreasWithGap$clusters)
+plotEmbedding(emb.veloviz, groups=pancreasWithGap$clusters, main='veloviz')
 
-g = plotVeloviz(vig, clusters=pancreasWithGap$clusters, seed=0)
+par(mfrow=c(1,1), mar=rep(1,4))
+g = plotVeloviz(vig, clusters = pancreasWithGap$clusters, seed = 0)
 ```
 

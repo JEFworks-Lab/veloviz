@@ -60,8 +60,8 @@ normalizeVariance <- function(
   cpm,
   gam.k                 = 5,
   alpha                 = 0.05,
-  max.adjusted.variance = 5,
-  min.adjusted.variance = 1,
+  max.adjusted.variance = 1e3,
+  min.adjusted.variance = 1e-3,
   verbose               = TRUE,
   plot                  = FALSE,
   details               = FALSE
@@ -181,12 +181,14 @@ bh.adjust <- function(x, log = FALSE) {
   ox
 }
 
-## PCA
+#' PCA
+#'
+#' @export
 reduceDimensions <- function(cpm,
                              center=TRUE,
                              scale=FALSE,
                              use.ods.genes=TRUE,
-                             max.ods.genes=1000,
+                             max.ods.genes=2000,
                              alpha=0.05,
                              nPCs=50,
                              verbose=TRUE,
@@ -194,16 +196,16 @@ reduceDimensions <- function(cpm,
                              details=FALSE)
 {
   ods.genes = normalizeVariance(cpm, alpha=alpha, verbose=verbose, plot=plot, details = TRUE)
-  scale.factor = exp(ods.genes$scale_factor) ## use residual variance q-value as scale factor
+  scale.factor = ods.genes$scale_factor ## use residual variance q-value as scale factor
   names(scale.factor) <- rownames(cpm)
 
   if(use.ods.genes) {
     if(verbose) {
-      print('Normalizing variance...')
+      message('Normalizing variance...')
     }
     if(sum(ods.genes$over_disp) > max.ods.genes) {
       if(verbose) {
-        print(paste0('Limiting to top ', max.ods.genes, ' overdispersed genes...'))
+        message(paste0('Limiting to top ', max.ods.genes, ' overdispersed genes...'))
       }
       best.genes <- names(sort(scale.factor, decreasing=TRUE)[1:max.ods.genes])
       cpm = cpm[best.genes,]
@@ -215,30 +217,40 @@ reduceDimensions <- function(cpm,
   }
 
   ## establish PCs from overdispersed genes
-  m <- cpm
+  if(verbose) {
+    message('Log10 transforming with pseudocount 1...')
+  }
+  m <- log10(cpm+1)
   ## mean
   rmean <- Matrix::rowMeans(m)
   sumx     <- Matrix::rowSums(m)
   sumxx    <- Matrix::rowSums(m^2)
   ## sd
-  rsd <- sqrt(sumxx - 2 * sumx * rmean + ncol(m) * rmean ^ 2)
+  rsd <- sqrt((sumxx - 2 * sumx * rmean + ncol(m) * rmean ^ 2) / (ncol(m)-1))
   if(center) {
-    m_center <- rmean
-  } else {
-    m_center <- FALSE
+    if(verbose) {
+      message('Centering...')
+    }
+    m <- m - rmean
   }
   if(scale) {
+    if(verbose) {
+      message('Using unit variance...')
+    }
     ## regular scale to var = 1
-    m_scale <- rsd
+    m <- m / rsd
   } else {
+    if(verbose) {
+      message('Using residual variance...')
+    }
     ## scale to residual variance
-    m_scale <- rsd/scale.factor
+    m <- m / (rsd/scale.factor)
   }
   pca <- RSpectra::svds(A = Matrix::t(m),
                         k=min(50, nPCs+10),
                         opts = list(
-                          center = m_center,
-                          scale = m_scale,
+                          center = FALSE, ## already done
+                          scale = FALSE, ## already done
                           maxitr = 2000,
                           tol = 1e-10))
 
@@ -247,7 +259,8 @@ reduceDimensions <- function(cpm,
     abline(v=nPCs, col='red')
   }
 
-  pcs <- pca$u[,1:nPCs]
+  #pcs <- pca$u[,1:nPCs]
+  pcs <- t(m) %*% pca$v[,1:nPCs]
   rownames(pcs) <- colnames(cpm)
   colnames(pcs) <- paste0('PC', 1:nPCs)
 

@@ -13,6 +13,7 @@ normalizeVariance(
   max.adjusted.variance = 1000,
   min.adjusted.variance = 0.001,
   verbose = TRUE,
+  plot = FALSE,
   details = FALSE
 )
 }

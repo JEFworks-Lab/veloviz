@@ -2,7 +2,7 @@
 title: "MERFISH example"
 author: "Jean Fan"
 date: "11/17/2020"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -27,8 +27,8 @@ long.genes <- gene_info[2:9051,1]
 short.genes <- gene_info[9280:10279,1]
 bad.genes <- gene_info[,1][grepl('Blank', gene_info[,1])]
 
-## use subset of genes as in original paper
-test.genes <- long.genes 
+## use subset of genes
+test.genes <- long.genes
 cell_gexp <- cell_gexp[test.genes,]
 nuc_gexp <- nuc_gexp[test.genes,]
 cyto_gexp <- cyto_gexp[test.genes,]
@@ -47,14 +47,15 @@ vi <- rowSums(spliced) > 10 & rowSums(unspliced) > 10
 spliced = spliced[vi,]
 unspliced = unspliced[vi,]
 
+library(veloviz)
 ## normalize
 all.counts = spliced + unspliced # use cell count
 all.cpm = normalizeDepth(all.counts) # cpm normalize
 pcs = reduceDimensions(all.cpm, 
-                       nPCs = 10,
+                       nPCs = 30,
                        center=TRUE, scale=FALSE, 
                        use.ods.genes = TRUE, 
-                       max.ods.genes = 2000,
+                       max.ods.genes = 1000,
                        alpha = 0.05,
                        plot=TRUE)
 
@@ -91,41 +92,108 @@ MERFISH <- list(
 usethis::use_data(MERFISH, overwrite = TRUE)
 ```
 
-```{r merfish_main}
+```{r merfish_main_pca}
 library(veloviz)
 data(MERFISH)
 
-par(mfrow=c(2,2))
+par(mfrow=c(2,2), mar=rep(1,4))
 ## 2D embedding by PCA
 emb.pcs = MERFISH$pcs[,1:2]
 plotEmbedding(emb.pcs, col=MERFISH$col, main='PCA')
+emb.pcs = MERFISH$pcs[,2:3]
+plotEmbedding(emb.pcs, col=MERFISH$col, main='PCA')
+emb.pcs = MERFISH$pcs[,3:4]
+plotEmbedding(emb.pcs, col=MERFISH$col, main='PCA')
+emb.pcs = MERFISH$pcs[,4:5]
+plotEmbedding(emb.pcs, col=MERFISH$col, main='PCA')
+```
 
+```{r merfish_main_tsne}
+par(mfrow=c(2,2), mar=rep(1,4))
 ## 2D embedding by tSNE
+set.seed(0)
+emb.tsne = Rtsne::Rtsne(MERFISH$pcs[,1:5], perplexity = 10)$Y
+rownames(emb.tsne) <- rownames(MERFISH$pcs)
+plotEmbedding(emb.tsne, col=MERFISH$col, main='tSNE')
 set.seed(0)
 emb.tsne = Rtsne::Rtsne(MERFISH$pcs[,1:5], perplexity = 30)$Y
 rownames(emb.tsne) <- rownames(MERFISH$pcs)
 plotEmbedding(emb.tsne, col=MERFISH$col, main='tSNE')
+set.seed(0)
+emb.tsne = Rtsne::Rtsne(MERFISH$pcs[,1:5], perplexity = 50)$Y
+rownames(emb.tsne) <- rownames(MERFISH$pcs)
+plotEmbedding(emb.tsne, col=MERFISH$col, main='tSNE')
+set.seed(0)
+emb.tsne = Rtsne::Rtsne(MERFISH$pcs[,1:5], perplexity = 100)$Y
+rownames(emb.tsne) <- rownames(MERFISH$pcs)
+plotEmbedding(emb.tsne, col=MERFISH$col, main='tSNE')
+```
 
+```{r merfish_main_umap}
+par(mfrow=c(2,2), mar=rep(1,4))
 ## 2D embedding by UMAP
+set.seed(0)
+emb.umap = uwot::umap(MERFISH$pcs[,1:5], min_dist = 0.1)
+rownames(emb.umap) <- rownames(MERFISH$pcs)
+plotEmbedding(emb.umap, col=MERFISH$col, main='UMAP')
+set.seed(0)
+emb.umap = uwot::umap(MERFISH$pcs[,1:5], min_dist = 0.3)
+rownames(emb.umap) <- rownames(MERFISH$pcs)
+plotEmbedding(emb.umap, col=MERFISH$col, main='UMAP')
 set.seed(0)
 emb.umap = uwot::umap(MERFISH$pcs[,1:5], min_dist = 0.5)
 rownames(emb.umap) <- rownames(MERFISH$pcs)
 plotEmbedding(emb.umap, col=MERFISH$col, main='UMAP')
+set.seed(0)
+emb.umap = uwot::umap(MERFISH$pcs[,1:5], min_dist = 1)
+rownames(emb.umap) <- rownames(MERFISH$pcs)
+plotEmbedding(emb.umap, col=MERFISH$col, main='UMAP')
+```
 
+```{r merfish_main_veloviz}
+par(mfrow=c(2,2), mar=rep(1,4))
 ## 2D embedding by veloviz
-g <- buildVeloviz(vel$current, 
-                  vel$projected,
+g <- buildVeloviz(MERFISH$vel$current, 
+                  MERFISH$vel$projected,
+                  k = 10, 
+                  nPCs = 5,
+                  center=TRUE, scale=FALSE, 
+                  use.ods.genes = TRUE, 
+                  max.ods.genes = 1000,
+                  alpha = 0.05,
+                  verbose = FALSE)
+plotEmbedding(g$fdg_coords, col = MERFISH$col[rownames(g$fdg_coords)], main='veloviz')
+g <- buildVeloviz(MERFISH$vel$current, 
+                  MERFISH$vel$projected,
                   k = 30, 
                   nPCs = 5,
                   center=TRUE, scale=FALSE, 
                   use.ods.genes = TRUE, 
-                  max.ods.genes = 2000,
+                  max.ods.genes = 1000,
                   alpha = 0.05,
-                  verbose = TRUE)
-plotEmbedding(g$fdg_coords, col = col[rownames(g$fdg_coords)], main='veloviz')
+                  verbose = FALSE)
+plotEmbedding(g$fdg_coords, col = MERFISH$col[rownames(g$fdg_coords)], main='veloviz')
+g <- buildVeloviz(MERFISH$vel$current, 
+                  MERFISH$vel$projected,
+                  k = 50, 
+                  nPCs = 5,
+                  center=TRUE, scale=FALSE, 
+                  use.ods.genes = TRUE, 
+                  max.ods.genes = 1000,
+                  alpha = 0.05,
+                  verbose = FALSE)
+plotEmbedding(g$fdg_coords, col = MERFISH$col[rownames(g$fdg_coords)], main='veloviz')
+g <- buildVeloviz(MERFISH$vel$current, 
+                  MERFISH$vel$projected,
+                  k = 100, 
+                  nPCs = 5,
+                  center=TRUE, scale=FALSE, 
+                  use.ods.genes = TRUE, 
+                  max.ods.genes = 1000,
+                  alpha = 0.05,
+                  verbose = FALSE)
+plotEmbedding(g$fdg_coords, col = MERFISH$col[rownames(g$fdg_coords)], main='veloviz')
 
-par(mfrow=c(1,1))
-plotVeloviz(g, col = col[rownames(g$fdg_coords)])
 ```
 
 ```{r merfish_optional, eval=FALSE}

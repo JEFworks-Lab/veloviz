@@ -10,6 +10,7 @@ buildVeloviz(
   normalize.depth = TRUE,
   depth = 1e+06,
   use.ods.genes = TRUE,
+  max.ods.genes = 2000,
   alpha = 0.05,
   pca = TRUE,
   center = TRUE,

@@ -6,7 +6,7 @@ buildVeloviz <- function(curr, proj,
                          normalize.depth = TRUE,
                          depth = 1e6,
                          use.ods.genes = TRUE,
-                         max.ods.genes = 1000,
+                         max.ods.genes = 2000,
                          alpha = 0.05,
                          pca = TRUE,
                          center = TRUE,
@@ -36,23 +36,23 @@ buildVeloviz <- function(curr, proj,
 
   if(normalize.depth) {
     if(verbose) {
-      print('Normalizing depth...')
+      message('Normalizing depth...')
     }
     curr = normalizeDepth(curr, depthScale = depth, verbose=verbose)
     proj = normalizeDepth(proj, depthScale = depth, verbose=verbose)
   }
 
   ods.genes = normalizeVariance(curr, alpha=alpha, verbose=verbose, details = TRUE)
-  scale.factor = exp(ods.genes$scale_factor) ## use residual variance q-value as scale factor
+  scale.factor = ods.genes$scale_factor ## use residual variance q-value as scale factor
   names(scale.factor) <- rownames(curr)
 
   if(use.ods.genes) {
     if(verbose) {
-      print('Normalizing variance...')
+      message('Normalizing variance...')
     }
     if(sum(ods.genes$over_disp) > max.ods.genes) {
       if(verbose) {
-        print(paste0('Limiting to top ', max.ods.genes, ' overdispersed genes...'))
+        message(paste0('Limiting to top ', max.ods.genes, ' overdispersed genes...'))
       }
       best.genes <- names(sort(scale.factor, decreasing=TRUE)[1:max.ods.genes])
       curr = curr[best.genes,]
@@ -67,58 +67,75 @@ buildVeloviz <- function(curr, proj,
 
   if(pca) {
     if(verbose) {
-      print('Performing dimensionality reduction by PCA...')
+      message('Performing dimensionality reduction by PCA...')
     }
     ## establish PCs from overdispersed genes
-    m <- curr
+    m <- log10(curr+1)
     ## mean
     rmean <- Matrix::rowMeans(m)
     sumx     <- Matrix::rowSums(m)
     sumxx    <- Matrix::rowSums(m^2)
     ## sd
-    rsd <- sqrt(sumxx - 2 * sumx * rmean + ncol(m) * rmean ^ 2)
+    rsd <- sqrt((sumxx - 2 * sumx * rmean + ncol(m) * rmean ^ 2) / (ncol(m)-1))
     if(center) {
-      m_center <- rmean
-    } else {
-      m_center <- FALSE
+      if(verbose) {
+        message('Centering...')
+      }
+      m <- m - rmean
     }
     if(scale) {
+      if(verbose) {
+        message('Using unit variance...')
+      }
       ## regular scale to var = 1
-      m_scale <- rsd
+     m <- m/rsd
     } else {
+      if(verbose) {
+        message('Using residual variance...')
+      }
       ## scale to residual variance
-      m_scale <- rsd/scale.factor
+      m <- m/(rsd/scale.factor)
     }
     pca <- RSpectra::svds(A = Matrix::t(m),
                           k=min(50, nPCs+10),
                           opts = list(
-                            center = m_center,
-                            scale = m_scale,
+                            center = FALSE, ## already done
+                            scale = FALSE, ## already done
                             maxitr = 2000,
                             tol = 1e-10))
 
     ## project current cells onto PCs
-    m <- curr
+    if(verbose) {
+      message('Projecting current cells onto PCs...')
+    }
+    m <- log10(curr+1)
     if(center) {
       m <- m - rmean
     }
     if(scale) {
       m <- m / rsd
+    } else {
+      m <- m/(rsd/scale.factor)
     }
     pca.curr <- Matrix::t(m) %*% pca$v[,1:nPCs]
 
     ## project future onto PCs
-    m <- proj
+    if(verbose) {
+      message('Projecting future cells onto PCs...')
+    }
+    m <- log10(proj+1)
     rmean <- Matrix::rowMeans(m)
     sumx     <- Matrix::rowSums(m)
     sumxx    <- Matrix::rowSums(m^2)
     ## sd
-    rsd <- sqrt(sumxx - 2 * sumx * rmean + ncol(m) * rmean ^ 2)
+    rsd <- sqrt((sumxx - 2 * sumx * rmean + ncol(m) * rmean ^ 2) / (ncol(m)-1))
     if(center) {
       m <- m - rmean
     }
     if(scale) {
       m <- m / rsd
+    } else {
+      m <- m/(rsd/scale.factor)
     }
     pca.proj <- Matrix::t(m) %*% pca$v[,1:nPCs]
 

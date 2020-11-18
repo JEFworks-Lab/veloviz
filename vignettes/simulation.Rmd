@@ -2,9 +2,7 @@
 title: "Simulation"
 author: "Jean Fan"
 date: "11/13/2020"
-output:
-  pdf_document: default
-  html_document: default
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -59,7 +57,7 @@ plot(t(obs),col=col, pch=16)
 points(t(exp),col=col)
 arrows(t(obs)[,1],t(obs)[,2],t(exp)[,1],t(exp)[,2], col=rgb(0,0,0,0.2))
 
-````
+```
 
 Compare embeddings
 
@@ -73,16 +71,16 @@ plot(emb.tsne, col=col, pch=16)
 
 ## 2D embedding by UMAP
 set.seed(0)
-emb.umap = uwot::umap(t(obs), min_dist = 0.5, n_neighbors = 10)
+emb.umap = uwot::umap(t(obs), n_neighbors = 10)
 plot(emb.umap, col=col, pch=16)
 
 ## 2D embedding by veloviz
 vig = buildVeloviz(
   curr = t(obs),
   proj = t(exp),
-  normalize.depth = FALSE,
-  use.ods.genes = FALSE,
-  pca = FALSE,
+  normalize.depth = FALSE, ## no dimensionality reduction
+  use.ods.genes = FALSE, ## no dimensionality reduction
+  pca = FALSE, ## no dimensionality reduction
   k = 10,
   seed = 0,
   verbose = FALSE

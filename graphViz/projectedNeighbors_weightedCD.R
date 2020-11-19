@@ -1,8 +1,8 @@
-sourceCpp("graphVizCD_weighted.cpp")
+sourceCpp("./../graphVizCD_weighted.cpp")
 
 projectedNeighbors = function(observed,projected,k,distance_metric="L2",similarity_metric="cosine",distance_weight = 1, distance_threshold = 1, similarity_threshold = -1){
-  #observed: genes (rows) x cells (columns) matrix of observed cells 
-  #projected: genes (rows) x cells (columns) matrix of projected states of cells in observed (same order)
+  #observed: genes/PCs (rows) x cells (columns) matrix of observed cells 
+  #projected: genes/PCs (rows) x cells (columns) matrix of projected states of cells in observed (same order)
   #k: number of nearest neighbors 
   #distance_metric: "L1" or "L2" to calculate cell-cell distance, d
   #similarity_metric: "cosine" or "pearson" correlation to calculate difference x velocity similarity, sim. NOTE: pearson similarity behaves weird with two dimensions 
@@ -89,7 +89,7 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
   return(out)
 }
 
-graphViz = function(observed, projected, k, distance_metric = "L2", similarity_metric = "cosine", distance_weight = 1, distance_threshold = 1, similarity_threshold = -1, weighted = FALSE, remove_unconnected = TRUE, cell.colors, title = NA, plot = TRUE, return_graph = FALSE){
+graphViz = function(observed, projected, k, distance_metric = "L2", similarity_metric = "cosine", distance_weight = 1, distance_threshold = 1, similarity_threshold = -1, weighted = TRUE, remove_unconnected = TRUE, cell.colors = NA, title = NA, plot = TRUE, return_graph = FALSE){
   #observed, projected, k, distance_metric, similarity_metric, similarity_threshold: same arguments needed for projected neighbors
   #cell.colors: list of length nCells with colors corresponding to cluster IDs
   #return_graph: logical indicating whether to return graph object g and fdg coordinates fdg
@@ -133,6 +133,7 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
   V(g)$size = 2
   E(g)$arrow.size = 0.5
   vertex.names = colnames(observed)
+  #V(g)$name = vertex.names
   
   if (gsize(g)==0){
     print("WARNING: graph has no edges. Try lowering the similarity threshold.")
@@ -159,7 +160,7 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
     #plot(g)
     #plot.igraph(g,layout = fdg,vertex.label = NA, vertex.size = 5, vertex.color = adjustcolor(col = V(g)$color, alpha.f = 0.1), edge.color = "black") #####
     #plot(scale(fdg), col = cell.colors, pch = 16, main = paste("FDG cell coordinates: \n", title))
-    plot(scale(fdg), col = V(g)$color, pch = 16, main = paste(title))
+    plot(scale(fdg), col = V(g)$color, pch = 16, main = paste(title), cex = 0.5)
     
     #plot velocity on FDG embedding 
     # show.velocity.on.embedding.cor(scale(fdg),vel, n=100, scale='sqrt', cell.colors=cell.colors,cex=1, arrow.scale=1,
@@ -172,8 +173,6 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
     out[['graph']] = g
     out[['fdg_coords']] = fdg
     out[['projected_neighbors']] = nns
-    out[['edge_list']] = edgeList
-    out[['edge_weight']] = edgeWeights
     return(out)
   }
   

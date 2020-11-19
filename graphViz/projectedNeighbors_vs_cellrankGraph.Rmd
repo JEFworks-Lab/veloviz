@@ -32,8 +32,6 @@ scv = import("scvelo")
 sc = import("scanpy")
 cr = import("cellrank")
 np = import("numpy")
-pk = import("pickle")
-#scv$logging$print_version()
 ```
 
 ## scVelo - whole trajectory 

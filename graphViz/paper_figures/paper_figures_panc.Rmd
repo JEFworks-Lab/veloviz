@@ -1,0 +1,828 @@
+---
+title: "Generating Paper Figures for Panc Data"
+author: "LylaAtta"
+date: "11/16/2020"
+output: html_document
+---
+
+Summary of steps:  
+1) Standard Embeddings  
+Extract expression data (spliced and unspliced) from scVelo and normalize --> PCA  
+PCs --> UMAP, tSNE, diffusion  
+  
+2) Run velocity  
+PCs --> distances, spliced + unspliced --> velocyto --> current and projected expression  
+
+3) VeloViz  
+Variance stabilize current and projected --> PCA  
+PCs --> veloviz  
+
+Setup:   
+```{r setup, include=FALSE}
+#using velocyto2 evironment 
+knitr::opts_chunk$set(echo = FALSE)
+library(reticulate)
+library(Rcpp)
+library(igraph)
+library(matie)
+library(RANN)
+library(velocyto.R)
+library(MUDAN)
+library(RSpectra)
+library(umap)
+library(Rtsne)
+library(destiny)
+library(ggplot2)
+library(patchwork)
+library(viridis)
+library(svglite)
+source("./../projectedNeighbors_weightedCD.R")
+```
+
+```{r importing scvelo}
+use_condaenv("cellrank",required = TRUE)
+scv = import("scvelo")
+sc = import("scanpy")
+cr = import("cellrank")
+np = import("numpy")
+```
+
+```{r plotting theme 1}
+
+figtheme = theme_bw(base_size = 18) + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.title = element_text(hjust=0.5, size = 36),
+        axis.line=element_blank(),axis.text.x=element_blank(),
+        axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(),axis.title.y=element_blank(),
+        legend.position = 'none')
+
+
+
+        # axis.line = element_line(colour = "black"),
+        # axis.text.y = element_text(hjust = 0, size = 18),
+        # axis.text.x = element_text(size = 18),
+```
+### Composite Distance Schematic  
+
+```{r schematic 1}
+cellpos = matrix(c(1,1,2,2,1,2), ncol = 2, byrow = TRUE)
+cellpos = as.data.frame(cellpos)
+colnames(cellpos) = c("X","Y")
+
+arrowpos = data.frame(x1 = c(1.06,1), x2 = c(1.93,1), y1 = c(1.06,1), y2 = c(1.93,1.9))
+distpos = data.frame(x1 = 1, x2 = 1.9, y1 = 2, y2 = 2)
+anglepos = data.frame(x1 = 1, x2 = 1.15, y1 = 1.25, y2 = 1.15)
+
+textpos = data.frame(rbind(
+  c(1,0.8), #Cell A_c
+  c(1,2.15), #Cell A_p
+  c(2,2.2), #Cell B
+  c(0.85,1.5), #v
+  c(1.5,1.3), #t
+  c(1.5,2.15), #d
+  c(1.12,1.37) #theta
+))
+textlab = c("'Cell A'[c]","'Cell A'[p]", "'Cell B'", expression(bar(v)), expression(bar(t)), "d", expression(theta)) ####fix vector notation 
+textcol = c("black","dim grey","black","black","blue","dim grey","black")
+
+
+schem1 = ggplot(cellpos, aes(x = X, y = Y)) +
+  geom_point(size = 10, colour = c("black", "blue"," dim grey")) + 
+  geom_segment(data = arrowpos, aes(x = x1, y = y1, xend = x2, yend = y2), size = 1.5, colour = c("blue","black"), arrow = arrow(type = "closed")) +
+  geom_segment(data = distpos, aes(x = x1, y = y1, xend = x2, yend = y2), size = 1.5, colour = c("dim grey")) +
+  geom_curve(data = anglepos, aes(x = x1, y = y1, xend = x2, yend = y2), curvature = -0.5) +
+  geom_text(data = textpos, aes(x = X1, y = X2), label = textlab, size = 8, colour = textcol, family = "Arial",parse =TRUE) +
+  xlim(c(0.7,2.3)) + ylim(c(0.7,2.3)) +
+  figtheme +
+  theme(axis.line=element_blank(),axis.text.x=element_blank(),
+        axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(),axis.title.y=element_blank()
+  )
+
+schem1
+
+```
+```{r schematic 2}
+logd = seq(-3,0.9,0.01)
+d = 10^logd #euclidean distance b/w neighbor and projected state
+a = as.numeric(formatC(seq(-pi,pi,((2*pi)/500)),digits = 3)) #angle bw velocity vector and 
+negsim = -1*cos(a)
+inveuc = 1/(1+(d))
+# par(mfrow = c(1,2))
+# plot(a,negsim)
+# plot(d,inveuc)
+pwiseCDs = sapply(inveuc,function(x) x*negsim) #composite distance col=dist, row=angle 
+#### Make heatmap of composite dist 
+#melt for ggplot
+colnames(pwiseCDs) = as.character(d)
+rownames(pwiseCDs) = as.character(a+3.14) #as.character(seq(0,500,1)) #
+cdLong = reshape2::melt(pwiseCDs)
+colnames(cdLong) = c("Angle","Distance","CD")
+cdLong$Angle = as.character(cdLong$Angle)
+cdLong$Distance = as.character(cdLong$Distance)
+#plot heatmap
+schem2 <- ggplot(cdLong, aes(x=Angle, y=Distance, fill=CD)) + geom_raster(interpolate = TRUE) + 
+                        labs(x=expression(theta),y="d",fill = "CD",family = "Arial") + 
+                        scale_fill_viridis(limits = c(-1,1), breaks = c(-1,0,1)) +
+                        scale_y_discrete(breaks = c(0.01,0.1,1)) + 
+                        scale_x_discrete(breaks = c(0,3.14,6.28), labels = c("-180","0","180")) + #breaks = c(-3.14,0,3.14),
+                        theme(text = element_text(size = 22))
+schem2
+
+#??? what is up with 10 
+```
+
+```{r schematic 3}
+#cell of interest
+cellA = data.frame(x = 0, y = 0)
+varrow = data.frame(x1 = 0, x2 = 0, y1 = 0, y2 = 1)
+
+#random neighbors
+set.seed(1)
+cellB = data.frame(x = rnorm(100,0,0.75), y = rnorm(100,1,0.75))
+
+#composite distances of neighbors 
+allcells.curr = rbind(cellA,cellB)
+allcells.proj = allcells.curr
+allcells.proj[1,] = c(0,1)
+cds = pwiseDists(as.matrix(cellA),as.matrix(c(0,1)),as.matrix(cellB),"L2","cosine",1)
+cds = cds[,1]
+
+#add composite distances to cellB
+cellB = cbind(cellB,cds)
+colnames(cellB) = c("x","y","CD")
+
+
+schem3 = ggplot(cellB, aes(x = x, y = y)) +
+  geom_point(size = 3, aes(colour = CD)) + 
+  scale_color_viridis(limits = c(-1,1), breaks = c(-1,0,1)) +
+  geom_point(data = cellA, aes(x = x, y = y), size = 7, colour = "black") +
+  geom_segment(data = varrow, aes(x = x1, y = y1, xend = x2, yend = y2), size = 1.1, colour = c("black"), arrow = arrow(type = "closed")) +
+  xlim(c(-1.2,1.2)) + ylim(c(-0.3,2.3)) +
+  figtheme +
+  theme(axis.line=element_blank(),axis.text.x=element_blank(),
+        axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(),axis.title.y=element_blank()
+  )
+
+schem3
+
+
+```
+
+```{r, fig.width=8, fig.height=4}
+s = schem1 + schem2 + schem3
+s
+```
+
+
+
+### Whole Trajectory Embedding Comparison
+
+Load whole trajectory data:
+```{r load previous whole trajectory}
+adata = py_load_object("./../saved_objects/cellrank_panc_adata.rds")
+
+#extract clusters
+clusters = adata$obs$clusters  
+
+#extract cell barcodes
+cell.names = as.vector(adata$obs_names$values)
+
+#color according to cell type (referred to as cluster here)
+col = rainbow(length(levels(clusters)),s = 0.8, v = 0.8) 
+cell.cols = col[clusters] 
+
+#map cell names to colors and cluster labels
+names(cell.cols) = names(clusters) = cell.names
+```
+
+Extract count data:  
+```{r extract counts, message = FALSE, results='hide', included = FALSE}
+#extract spliced and unspliced counts from adata object
+spliced = as.matrix(t(adata$layers['spliced']))
+unspliced = as.matrix(t(adata$layers['unspliced']))
+
+#extract gene names
+genes = adata$var_names$values
+
+#map row and column names of counts to gene and cell names resp. 
+colnames(spliced) = colnames(unspliced) = cell.names
+rownames(spliced) = rownames(unspliced) = genes
+```
+
+Filter out genes with low expression:  
+```{r filter genes, message = FALSE , included = FALSE, fig.show = 'hide'}
+
+gexpS = log10(rowSums(spliced)+1) #log spliced gene expression 
+gexpU = log10(rowSums(unspliced)+1) #log unspliced gene expression 
+
+par(mfrow = c(2,1))
+hist(gexpS, breaks = 1000, ylim = c(0,20), main = 'Spliced Gene Expression', xlab = 'log10(spliced gene expression + 1)')
+hist(gexpU, breaks = 1000, ylim = c(0,20), main = 'Unspliced Gene Expression', xlab = 'log10(unspliced gene expression + 1)')
+
+# filter genes with < 2 log spliced or < 1 log unspliced  ** scVelo data has already been filtered.. 
+good.genes = genes[gexpS > 1 & gexpU > 1]
+spliced = spliced[good.genes,]
+unspliced = unspliced[good.genes,]
+
+dim(spliced)
+dim(unspliced)
+```
+
+Normalize for dimensional reduction:   
+```{r normalize, results='hide', included = FALSE}
+par(mfrow = c(2,4)) #plot normalization steps 
+
+#use combined spliced and unspliced counts 
+all.exp = spliced + unspliced 
+
+m = rowMeans(all.exp) # gene-wise mean expression
+v = sapply(c(1:nrow(all.exp)), function(x) sd(all.exp[x,])^2) # gene-wise expression variance
+hist(log10(m+1), breaks = 1000, main = "gene mean expression", xlab = "log10(mean expression)")
+plot(log10(m+1), log10(v+1), pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+#cpm normalize - i think this is already normalized from scvelo
+# all.cpm = MUDAN::normalizeCounts(all.exp) 
+# 
+# m = rowMeans(all.cpm) # gene-wise mean expression
+# v = sapply(c(1:nrow(all.cpm)), function(x) sd(all.cpm[x,])^2) # gene-wise expression variance
+# hist(log10(m+1), breaks = 1000, main = "cpm normalized:\ngene mean expression", xlab = "log10(mean expression)")
+# plot(log10(m+1), log10(v+1), pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+#variance stabilize 
+all.norm = MUDAN::normalizeVariance(all.exp,details = TRUE, plot = FALSE) 
+
+m = rowMeans(all.norm$mat) # gene-wise mean expression
+v = sapply(c(1:nrow(all.norm$mat)), function(x) sd(all.norm$mat[x,])^2) # gene-wise expression variance
+hist(log10(m+1), breaks = 1000, main = "variance stabilized:\ngene mean expression", xlab = "log10(mean expression)")
+plot(log10(m+1), log10(v+1), pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+#keep overdispersed genes 
+genes.ods = rownames(all.exp)[all.norm$ods] #overdispersed genes
+all.log.ods = as.matrix(all.norm$mat[all.norm$ods,]) #keep overdispersed genes --> combined spliced + unspliced x ods genes: cpm normalized, variance stabilized, and logged
+
+m = rowMeans(all.log.ods) # gene-wise mean expression
+v = sapply(c(1:nrow(all.log.ods)), function(x) sd(all.log.ods[x,])^2) # gene-wise expression variance
+hist(m, breaks = 1000, main = "overdispersed genes:\ngene mean expression", xlab = "log10(mean expression)")
+plot(m, v, pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+# add gene and cell names
+rownames(all.log.ods) = genes.ods
+colnames(all.log.ods) = cell.names
+```
+
+Dimensional reduction:   
+```{r dimensional reduction, included = FALSE, fig.show = 'hide'}
+pca = svds(A = t(all.log.ods), k=50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
+var = pca$d
+plot(var) # ~10 components 
+```
+
+Plot standard embeddings:  
+```{r plot embeddings, fig.height = 8, fig.width = 8}
+par(mfrow = c(2,2))
+
+#PCA
+emb.pca = pca$u[,1:2]
+row.names(emb.pca) = cell.names
+plot(emb.pca, col = cell.cols, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA")
+legend(x=0.01, y=0.08, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
+
+#UMAP
+set.seed(1)
+emb.umap = umap(pca$u[,1:35], n_neighbors = 50L)$layout
+row.names(emb.umap) = cell.names
+plot(emb.umap,col = cell.cols, pch = 16, xlab = "UMAP X", ylab = "UMAP Y", main = "UMAP")
+legend(x=-5, y=-2, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
+
+#tSNE
+set.seed(1)
+emb.tsne = Rtsne(pca$u[,1:35], is_distance = FALSE, perplexity = 25, num_threads =1, verbose = FALSE)$Y
+row.names(emb.tsne) = cell.names
+plot(emb.tsne, col = cell.cols, pch = 16, main="tSNE")
+legend(x=-30, y=30, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
+
+#diffusion map 
+set.seed(1)
+diffmap = DiffusionMap(pca$u[,1:35], k = 100)
+emb.diffmap = eigenvectors(diffmap)[,1:2]
+row.names(emb.diffmap) = cell.names
+plot(emb.diffmap, col = cell.cols, pch = 16, main = "Diffusion map")
+legend(x=-0.07, y=0.03, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
+
+```
+
+
+Run velocyto:   
+```{r velocity, message = FALSE, results = 'hide', included = FALSE}
+#pairwise cell dists for velocity calculation 
+cell.dist = as.dist(1-cor(t(pca$u)))
+
+#get velocity
+# vel = gene.relative.velocity.estimates(spliced, unspliced, deltaT=1, kCells=30, cell.dist=cell.dist, fit.quantile=0.1, mult=100)
+
+#save for later
+# saveRDS(vel, file = "figure_panc_velocity_complete.rds")
+#read saved velocity
+vel = readRDS("figure_panc_velocity_complete.rds")
+
+#get current and projected transcriptional states
+curr = vel$current
+proj = vel$projected
+
+#get velocity genes - genes with high correlation between spliced and unspliced
+genes.velo = row.names(curr)
+genes.common = intersect(genes.ods,genes.velo) #genes that are both overdispered and have high correlation between spliced and unspliced
+
+```  
+
+Project velocity on standard embeddings: 
+```{r plot velocity, message = FALSE, results = 'hide', included = FALSE}
+
+# #PCA
+# show.velocity.on.embedding.cor(scale(emb.pca), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE,min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2, main = "Velocities on PCA embedding")
+
+# #show velocity on UMAP
+# emb.umap.sub = emb_umap[rownames(emb.pca),]
+# show.velocity.on.embedding.cor(scale(emb.umap.sub), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE,min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2, main = "Velocities on UMAP embedding")
+
+```  
+
+Variance stabilize current and projected trancriptional states
+```{r normalize current and projected, results = 'hide'}
+curr.norm.df = MUDAN::normalizeVariance(curr,details = TRUE, plot = FALSE) #variance stabilize current and get model parameters
+curr.norm = curr.norm.df$mat #variance stabilize current
+proj.norm = proj*curr.norm.df$df$gsf #use same model to variance stabilize projected
+
+#### try with only ods
+```
+
+Dimensional reduction:  
+```{r dim red curr proj, results = 'hide'}
+#PCA 
+pca.velo = svds(A = t(curr.norm), k=50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
+var = pca.velo$d
+
+#get PCA loads
+v = pca.velo$v #loads
+row.names(v) = genes.velo
+v.common = v[genes.common,] #loads for common genes 
+
+#get scores for current and projected
+curr.scores = curr.norm[genes.common,] %>% t() %>% scale(.,scale = FALSE) 
+curr.scores = curr.scores %*% v.common
+
+proj.scores = proj.norm[genes.common,] %>% t() %>% scale(.,scale = FALSE)
+proj.scores = proj.scores %*% v.common
+
+#plot current and projected PC scores
+par(mfrow = c(1,2))
+plot(curr.scores[,1:2], col = cell.cols, pch = 16, main = 'Observed', xlab = "PC 1", ylab = "PC 2")
+plot(proj.scores[,1:2], col = cell.cols, pch = 16, main = 'Projected', xlab = "PC 1", ylab = "PC 2")
+
+```
+VeloViz visualization:  
+```{r graph viz from PCs, results = "hide"}
+#veloviz parameters
+k = 10
+dw = 1 #distance weight
+dt = 0.8 #distance threshold 
+st = 0 #similarity threshold
+
+set.seed(1)
+veloviz = graphViz(t(curr.scores), t(proj.scores), k=k, distance_metric = "L2", similarity_metric = "cosine",
+                   distance_weight = dw, distance_threshold = dt, similarity_threshold = st, weighted = TRUE, 
+                   cell.colors = cell.cols, plot = FALSE, return_graph = TRUE, title = "VeloViz")
+
+emb.veloviz = veloviz$fdg_coords
+plot(emb.veloviz, col = cell.cols[row.names(emb.veloviz)], pch = 16, main = "VeloViz",cex =0.9)
+legend(x=3.5, y=18, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
+
+```
+
+```{r combine plots, fig.height = 8, fig.width = 8}
+#point colors , fig.height = 8, fig.width = 8
+plot.cols = unique(cell.cols)
+names(plot.cols) = as.character(sapply(plot.cols, function(x) clusters[names(cell.cols[which(cell.cols==x)[1]])]))
+
+#PCA
+#convert embedding to data frame for plotting 
+emb.pca.plot = as.data.frame(emb.pca)
+emb.pca.plot = cbind(emb.pca.plot, clusters[rownames(emb.pca.plot)])
+colnames(emb.pca.plot) = c("PC1","PC2","Cell Type")
+
+#make plot
+p.pca = ggplot(emb.pca.plot, aes(x = PC1, y = PC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("PC 1") + ylab("PC 2") + 
+  ggtitle("PCA") +
+  figtheme
+
+#UMAP
+emb.umap.plot = as.data.frame(emb.umap)
+emb.umap.plot = cbind(emb.umap.plot, clusters[rownames(emb.umap.plot)])
+colnames(emb.umap.plot) = c("UMAP X","UMAP Y","Cell Type")
+
+p.umap = ggplot(emb.umap.plot, aes(x = `UMAP X`, y = `UMAP Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("UMAP X") + ylab("UMAP Y") + 
+  ggtitle("UMAP") +
+  figtheme
+
+#tSNE
+emb.tsne.plot = as.data.frame(emb.tsne)
+emb.tsne.plot = cbind(emb.tsne.plot, clusters[rownames(emb.tsne.plot)])
+colnames(emb.tsne.plot) = c("t-SNE X","t-SNE Y","Cell Type")
+
+p.tsne = ggplot(emb.tsne.plot, aes(x = `t-SNE X`, y = `t-SNE Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("t-SNE X") + ylab("t-SNE Y") + 
+  ggtitle("t-SNE") +
+  figtheme
+
+#diffusion map 
+emb.diffmap.plot = as.data.frame(emb.diffmap)
+emb.diffmap.plot = cbind(emb.diffmap.plot, clusters[rownames(emb.diffmap.plot)])
+colnames(emb.diffmap.plot) = c("DC1","DC2","Cell Type")
+
+p.diffmap = ggplot(emb.diffmap.plot, aes(x = DC1, y = DC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("DC 1") + ylab("DC 2") + 
+  ggtitle("Diffusion Map") +
+  figtheme
+
+#veloviz
+emb.veloviz.plot = as.data.frame(emb.veloviz)
+emb.veloviz.plot = cbind(emb.veloviz.plot, clusters[rownames(emb.veloviz.plot)])
+colnames(emb.veloviz.plot) = c("VeloViz X","VeloViz Y","Cell Type")
+
+p.veloviz = ggplot(emb.veloviz.plot, aes(x = `VeloViz X`, y = `VeloViz Y`, color = `Cell Type`)) +
+  geom_point(size = 5) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("VeloViz X") + ylab("VeloViz Y") + 
+  ggtitle("VeloViz") +
+  figtheme +
+  theme(legend.position = c(0.13,0.87), legend.title = element_blank(), legend.text = element_text(size = 24))
+
+
+layout = c(
+  area(t = 1, l = 1, b = 2, r = 2),
+  area(t = 1, l = 3, b = 2, r = 4),
+  area(t = 1, l = 5, b = 2, r = 6),
+  
+  area(t = 3, l = 1, b = 8, r = 6),
+  
+  area(t = 1, l = 7, b = 2, r = 9),
+  area(t = 3, l = 7, b = 4, r = 9),
+  area(t = 5, l = 7, b = 6, r = 9),
+  area(t = 7, l = 7, b = 8, r = 9)
+)
+
+p = schem1 + schem2 + schem3 + p.veloviz + p.pca + p.tsne + p.umap + p.diffmap + 
+  plot_layout(design = layout) +
+  plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(face = "bold", size = 36))
+#+ plot_annotation(title = list("B", "C", "D", "E", "F"))
+p
+ggsave(file = "fig1.svg", plot = p, width = 17, height = 17)
+ggsave(file = "fig1.png", plot = p, width = 17, height = 17)
+
+```
+
+
+### Missing Intermediate Trajectory Embedding Comparison
+
+Load missing intermediate data 
+```{r load previous missing}
+adata.missing = py_load_object("./../saved_objects/cellrank_panc_adata_missing_fev.rds") # missing Fev+
+#adata.missing = py_load_object("./saved_objects/cellrank_panc_adata_missing_ngnhigh.rds") # missing some beta
+
+#extract clusters 
+clusters.missing = adata.missing$obs$clusters 
+
+#extract cell barcodes 
+cell.names.missing = as.vector(adata.missing$obs_names$values)
+
+#color according to cell type (referred to as cluster here)
+cell.cols.missing  = cell.cols[cell.names.missing]
+
+#map cell names to cluster labels 
+names(clusters.missing) = cell.names.missing
+
+```
+
+Extract count data:  
+```{r extract counts missing, message = FALSE, results='hide', included = FALSE}
+#extract spliced and unspliced counts from adata object
+spliced.missing = as.matrix(t(adata.missing$layers['spliced']))
+unspliced.missing = as.matrix(t(adata.missing$layers['unspliced']))
+
+#extract gene names
+genes.missing = adata.missing$var_names$values
+
+#map row and column names of counts to gene and cell names resp. 
+colnames(spliced.missing) = colnames(unspliced.missing) = cell.names.missing
+rownames(spliced.missing) = rownames(unspliced.missing) = genes.missing
+```
+
+Filter out genes with low expression:  
+```{r filter genes missing, message = FALSE , included = FALSE, fig.show = 'hide'}
+
+gexpS.missing = log10(rowSums(spliced.missing)+1) #log spliced gene expression 
+gexpU.missing = log10(rowSums(unspliced.missing)+1) #log unspliced gene expression 
+
+par(mfrow = c(2,1))
+hist(gexpS.missing, breaks = 1000, ylim = c(0,20), main = 'Spliced Gene Expression', xlab = 'log10(spliced gene expression + 1)')
+hist(gexpU.missing, breaks = 1000, ylim = c(0,20), main = 'Unspliced Gene Expression', xlab = 'log10(unspliced gene expression + 1)')
+
+# filter genes with < 2 log spliced or < 1 log unspliced  ** scVelo data has already been filtered.. 
+good.genes.missing = genes.missing[gexpS.missing > 1 & gexpU.missing > 1]
+spliced.missing = spliced.missing[good.genes.missing,]
+unspliced.missing = unspliced.missing[good.genes.missing,]
+
+dim(spliced.missing)
+dim(unspliced.missing)
+```
+
+Normalize for dimensional reduction:   
+```{r normalize missing, results='hide', included = FALSE}
+par(mfrow = c(2,4)) #plot normalization steps 
+
+#use combined spliced and unspliced counts 
+all.exp.missing = spliced.missing + unspliced.missing 
+
+m = rowMeans(all.exp.missing) # gene-wise mean expression
+v = sapply(c(1:nrow(all.exp.missing)), function(x) sd(all.exp.missing[x,])^2) # gene-wise expression variance
+hist(log10(m+1), breaks = 1000, main = "gene mean expression", xlab = "log10(mean expression)")
+plot(log10(m+1), log10(v+1), pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+#cpm normalize - i think this is already normalized from scvelo
+# all.cpm = MUDAN::normalizeCounts(all.exp) 
+# 
+# m = rowMeans(all.cpm) # gene-wise mean expression
+# v = sapply(c(1:nrow(all.cpm)), function(x) sd(all.cpm[x,])^2) # gene-wise expression variance
+# hist(log10(m+1), breaks = 1000, main = "cpm normalized:\ngene mean expression", xlab = "log10(mean expression)")
+# plot(log10(m+1), log10(v+1), pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+#variance stabilize 
+all.norm.missing = MUDAN::normalizeVariance(all.exp.missing,details = TRUE, plot = FALSE) 
+
+m = rowMeans(all.norm.missing$mat) # gene-wise mean expression
+v = sapply(c(1:nrow(all.norm.missing$mat)), function(x) sd(all.norm.missing$mat[x,])^2) # gene-wise expression variance
+hist(log10(m+1), breaks = 1000, main = "variance stabilized:\ngene mean expression", xlab = "log10(mean expression)")
+plot(log10(m+1), log10(v+1), pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+#keep overdispersed genes 
+genes.ods.missing = rownames(all.exp.missing)[all.norm.missing$ods] #overdispersed genes
+all.log.ods.missing = as.matrix(all.norm.missing$mat[all.norm.missing$ods,]) #keep overdispersed genes --> combined spliced + unspliced x ods genes: cpm normalized, variance stabilized, and logged
+
+m = rowMeans(all.log.ods.missing) # gene-wise mean expression
+v = sapply(c(1:nrow(all.log.ods.missing)), function(x) sd(all.log.ods.missing[x,])^2) # gene-wise expression variance
+hist(m, breaks = 1000, main = "overdispersed genes:\ngene mean expression", xlab = "log10(mean expression)")
+plot(m, v, pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+# add gene and cell names
+rownames(all.log.ods.missing) = genes.ods.missing
+colnames(all.log.ods.missing) = cell.names.missing
+```
+
+Dimensional reduction:   
+```{r dimensional reduction missing, included = FALSE, fig.show = 'hide'}
+pca.missing = svds(A = t(all.log.ods.missing), k=50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
+var.missing = pca.missing$d
+plot(var.missing) # ~10 components 
+```
+
+Plot standard embeddings:  
+```{r plot embeddings missing, fig.height = 8, fig.width = 8}
+par(mfrow = c(2,2)) 
+
+#PCA
+emb.pca.missing = pca.missing$u[,1:2]
+row.names(emb.pca.missing) = cell.names.missing
+plot(emb.pca.missing, col = cell.cols.missing, pch = 16, xlab = "PC1", ylab = "PC2", main = "PCA")
+legend(x=-0.025, y=0.09, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
+
+#UMAP
+set.seed(1)
+emb.umap.missing = umap(pca.missing$u[,1:35], n_neighbors = 50L)$layout
+row.names(emb.umap.missing) = cell.names.missing
+plot(emb.umap.missing,col = cell.cols.missing, pch = 16, xlab = "UMAP X", ylab = "UMAP Y", main = "UMAP")
+legend(x=-6, y=6, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
+
+#tSNE
+set.seed(1)
+emb.tsne.missing = Rtsne(pca.missing$u[,1:35], is_distance = FALSE, perplexity = 25, num_threads =1, verbose = FALSE)$Y
+row.names(emb.tsne.missing) = cell.names.missing
+plot(emb.tsne.missing, col = cell.cols.missing, pch = 16, main="tSNE")
+legend(x=-33, y=50, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
+
+#diffusion map 
+set.seed(1)
+diffmap.missing = DiffusionMap(pca.missing$u[,1:35], k = 100)
+emb.diffmap.missing = eigenvectors(diffmap.missing)[,1:2]
+row.names(emb.diffmap.missing) = cell.names.missing
+plot(emb.diffmap.missing, col = cell.cols.missing, pch = 16, main = "Diffusion map")
+legend(x=-0.04, y=0.2, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
+
+```
+
+
+Run velocyto:   
+```{r velocity missing, message = FALSE, results = 'hide', included = FALSE}
+#pairwise cell dists for velocity calculation 
+cell.dist.missing = as.dist(1-cor(t(pca.missing$u)))
+
+#get velocity
+# vel.missing = gene.relative.velocity.estimates(spliced.missing, unspliced.missing, deltaT=1, kCells=30, cell.dist=cell.dist.missing, fit.quantile=0.1, mult=100)
+
+#save for later
+# saveRDS(vel.missing, file = "figure_panc_velocity_missing_fev.rds")
+#read saved velocity
+vel.missing = readRDS("figure_panc_velocity_missing_fev.rds")
+
+#get current and projected transcriptional states
+curr.missing = vel.missing$current
+proj.missing = vel.missing$projected
+
+#get velocity genes - genes with high correlation between spliced and unspliced
+genes.velo.missing = row.names(curr.missing)
+genes.common.missing = intersect(genes.ods.missing,genes.velo.missing) #genes that are both overdispered and have high correlation between spliced and unspliced
+
+```  
+
+Project velocity on standard embeddings: 
+```{r plot velocity missing, message = FALSE, results = 'hide', included = FALSE}
+
+# #PCA
+# show.velocity.on.embedding.cor(scale(emb.pca), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE,min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2, main = "Velocities on PCA embedding")
+
+# #show velocity on UMAP
+# emb.umap.sub = emb_umap[rownames(emb.pca),]
+# show.velocity.on.embedding.cor(scale(emb.umap.sub), vel, n=100, scale='sqrt', cell.colors=cell.cols.sub,cex=1, arrow.scale=1, show.grid.flow=TRUE,min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=2, main = "Velocities on UMAP embedding")
+
+```  
+
+Variance stabilize current and projected trancriptional states
+```{r normalize current and projected, results = 'hide'}
+curr.norm.df.missing = MUDAN::normalizeVariance(curr.missing,details = TRUE, plot = FALSE) #variance stabilize current and get model parameters
+curr.norm.missing = curr.norm.df.missing$mat #variance stabilize current
+proj.norm.missing = proj.missing*curr.norm.df.missing$df$gsf #use same model to variance stabilize projected
+
+#### try with only ods
+```
+
+Dimensional reduction:  
+```{r dim red curr proj missing, results = 'hide'}
+#PCA 
+pca.velo.missing = svds(A = t(curr.norm.missing), k=50, opts = list(center = TRUE, scale = FALSE, maxitr = 2000, tol = 1e-10))
+var = pca.velo.missing$d
+
+#get PCA loads
+v = pca.velo.missing$v #loads
+row.names(v) = genes.velo.missing
+v.common = v[genes.common.missing,] #loads for common genes 
+
+#get scores for current and projected
+curr.scores.missing = curr.norm.missing[genes.common.missing,] %>% t() %>% scale(.,scale = FALSE) 
+curr.scores.missing = curr.scores.missing %*% v.common
+
+proj.scores.missing = proj.norm.missing[genes.common.missing,] %>% t() %>% scale(.,scale = FALSE)
+proj.scores.missing = proj.scores.missing %*% v.common
+
+#plot current and projected PC scores
+par(mfrow = c(1,2))
+plot(curr.scores.missing[,1:2], col = cell.cols.missing, pch = 16, main = 'Observed', xlab = "PC 1", ylab = "PC 2")
+plot(proj.scores.missing[,1:2], col = cell.cols.missing, pch = 16, main = 'Projected', xlab = "PC 1", ylab = "PC 2")
+
+```
+VeloViz visualization:  
+```{r graph viz from PCs, results = "hide"}
+#veloviz parameters
+k = 10
+dw = 1 #distance weight
+dt = 0.8 #distance threshold 
+st = 0 #similarity threshold
+
+set.seed(1)
+veloviz.missing = graphViz(t(curr.scores.missing), t(proj.scores.missing), k=k, distance_metric = "L2", similarity_metric = "cosine",
+                   distance_weight = dw, distance_threshold = dt, similarity_threshold = st, weighted = TRUE, 
+                   cell.colors = cell.cols.missing, plot = FALSE, return_graph = TRUE, title = "VeloViz")
+
+emb.veloviz.missing = veloviz.missing$fdg_coords
+plot(emb.veloviz.missing, col = cell.cols[row.names(emb.veloviz.missing)], pch = 16, main = "VeloViz",cex =0.9)
+legend(x=3.5, y=18, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
+
+```
+```{r plotting theme 2}
+
+figtheme = theme_bw(base_size = 18) + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.title = element_text(hjust=0.5, size = 18),
+        axis.line=element_blank(),axis.text.x=element_blank(),
+        axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(),axis.title.y=element_blank(),
+        legend.position = 'none')
+
+
+
+        # axis.line = element_line(colour = "black"),
+        # axis.text.y = element_text(hjust = 0, size = 18),
+        # axis.text.x = element_text(size = 18),
+```
+
+```{r combine plots missing}
+#point colors , fig.height = 8, fig.width = 8
+plot.cols = unique(cell.cols)
+names(plot.cols) = as.character(sapply(plot.cols, function(x) clusters[names(cell.cols[which(cell.cols==x)[1]])]))
+
+#PCA 
+#convert embedding to data frame for plotting 
+emb.pca.missing.plot = as.data.frame(emb.pca.missing)
+emb.pca.missing.plot = cbind(emb.pca.missing.plot, clusters[rownames(emb.pca.missing.plot)])
+colnames(emb.pca.missing.plot) = c("PC1","PC2","Cell Type")
+
+#make plot
+p.pca = ggplot(emb.pca.missing.plot, aes(x = PC1, y = PC2, color = `Cell Type`)) +
+  geom_point(size = 0.5) + 
+  scale_color_manual(values = plot.cols) +
+  xlab("PC 1") + ylab("PC 2") + ggtitle("PCA") +
+  figtheme
+
+#UMAP
+emb.umap.missing.plot = as.data.frame(emb.umap.missing)
+emb.umap.missing.plot = cbind(emb.umap.missing.plot, clusters[rownames(emb.umap.missing.plot)])
+colnames(emb.umap.missing.plot) = c("UMAP X","UMAP Y","Cell Type")
+
+p.umap = ggplot(emb.umap.missing.plot, aes(x = `UMAP X`, y = `UMAP Y`, color = `Cell Type`)) +
+  geom_point(size = 0.5) + 
+  scale_color_manual(values = plot.cols) +
+  xlab("UMAP X") + ylab("UMAP Y") + ggtitle("UMAP") +
+  figtheme
+
+#tSNE
+emb.tsne.missing.plot = as.data.frame(emb.tsne.missing)
+emb.tsne.missing.plot = cbind(emb.tsne.missing.plot, clusters[rownames(emb.tsne.missing.plot)])
+colnames(emb.tsne.missing.plot) = c("t-SNE X","t-SNE Y","Cell Type")
+
+p.tsne = ggplot(emb.tsne.missing.plot, aes(x = `t-SNE X`, y = `t-SNE Y`, color = `Cell Type`)) +
+  geom_point(size = 0.5) + 
+  scale_color_manual(values = plot.cols) +
+  xlab("t-SNE X") + ylab("t-SNE Y") + ggtitle("t-SNE") +
+  figtheme
+
+#diffusion map 
+emb.diffmap.missing.plot = as.data.frame(emb.diffmap.missing)
+emb.diffmap.missing.plot = cbind(emb.diffmap.missing.plot, clusters[rownames(emb.diffmap.missing.plot)])
+colnames(emb.diffmap.missing.plot) = c("DC1","DC2","Cell Type")
+
+p.diffmap = ggplot(emb.diffmap.missing.plot, aes(x = DC1, y = DC2, color = `Cell Type`)) +
+  geom_point(size = 0.5) + 
+  scale_color_manual(values = plot.cols) +
+  xlab("DC 1") + ylab("DC 2") + ggtitle("Diffusion Map") +
+  
+  figtheme
+
+#veloviz
+emb.veloviz.missing.plot = as.data.frame(emb.veloviz.missing)
+emb.veloviz.missing.plot = cbind(emb.veloviz.missing.plot, clusters[rownames(emb.veloviz.missing.plot)])
+colnames(emb.veloviz.missing.plot) = c("VeloViz X","VeloViz Y","Cell Type")
+
+p.veloviz = ggplot(emb.veloviz.missing.plot, aes(x = `VeloViz X`, y = `VeloViz Y`, color = `Cell Type`)) +
+  geom_point() + 
+  scale_color_manual(values = plot.cols) +
+  xlab("VeloViz X") + ylab("VeloViz Y") + ggtitle("VeloViz") +
+  figtheme +
+  theme(legend.position = c(0.8,0.75), legend.title = element_blank(), legend.text = element_text(size = 12))
+
+
+layout = c(
+  area(t = 1, l = 1, b = 4, r = 4),
+  area(t = 1, l = 5, b = 2, r = 6),
+  area(t = 1, l = 7, b = 2, r = 8),
+  area(t = 3, l = 5, b = 4, r = 6),
+  area(t = 3, l = 7, b = 4, r = 8)
+)
+
+p = p.veloviz + p.pca + p.tsne + p.umap + p.diffmap + plot_layout(design = layout) + plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(face = "bold", size = 24))
+p
+# ggsave(file = "suppfig_panc_missing_fev.png", plot = p, width = 8, height = 5)
+# ggsave(file = "suppfig_panc_missing_fev.svg", plot = p, width = 8, height = 5)
+
+
+```
+
+
+
+
+
+

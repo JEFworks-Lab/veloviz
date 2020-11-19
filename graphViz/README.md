@@ -87,5 +87,12 @@ Adding percentile distance threshold to projectedNeighbors and testing on cycle 
 *Outputs*  
 ./outputs/testingThresholdDist_cyclesim.html  
 
+**pancViz_distthresh_test.Rmd**  
+Testing distance threshold on panc data with missing intermediates.  
+*Outputs*  
+./outputs/pancViz_distthresh_test_missing_fev.html  
+./outputs/pancViz_distthresh_test_missing_ngnhigh.html  
+./outputs/pancViz_distthresh_test_missing_somebeta.html  
+
 **2020_09_RotationPresSims.Rmd**\
 Toy data simulations showing rationale behind composite distance.

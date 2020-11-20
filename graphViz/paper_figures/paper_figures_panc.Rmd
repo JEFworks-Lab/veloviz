@@ -47,24 +47,6 @@ cr = import("cellrank")
 np = import("numpy")
 ```
 
-```{r plotting theme 1}
-
-figtheme = theme_bw(base_size = 18) + 
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        plot.title = element_text(hjust=0.5, size = 36),
-        axis.line=element_blank(),axis.text.x=element_blank(),
-        axis.text.y=element_blank(),axis.ticks=element_blank(),
-        axis.title.x=element_blank(),axis.title.y=element_blank(),
-        legend.position = 'none')
-
-
-
-        # axis.line = element_line(colour = "black"),
-        # axis.text.y = element_text(hjust = 0, size = 18),
-        # axis.text.x = element_text(size = 18),
-```
 ### Composite Distance Schematic  
 
 ```{r schematic 1}
@@ -283,7 +265,7 @@ plot(var) # ~10 components
 ```
 
 Plot standard embeddings:  
-```{r plot embeddings, fig.height = 8, fig.width = 8}
+```{r plot embeddings}
 par(mfrow = c(2,2))
 
 #PCA
@@ -404,7 +386,27 @@ legend(x=3.5, y=18, legend = levels(clusters), col = col, pch = 16, cex = 0.7)
 
 ```
 
-```{r combine plots, fig.height = 8, fig.width = 8}
+```{r plotting theme 1}
+
+figtheme = theme_bw(base_size = 18) + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.title = element_text(hjust=0.5, size = 36),
+        axis.line=element_blank(),axis.text.x=element_blank(),
+        axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(),axis.title.y=element_blank(),
+        legend.position = 'none')
+
+
+
+        # axis.line = element_line(colour = "black"),
+        # axis.text.y = element_text(hjust = 0, size = 18),
+        # axis.text.x = element_text(size = 18),
+```
+
+
+```{r combine plots,}
 #point colors , fig.height = 8, fig.width = 8
 plot.cols = unique(cell.cols)
 names(plot.cols) = as.character(sapply(plot.cols, function(x) clusters[names(cell.cols[which(cell.cols==x)[1]])]))
@@ -491,8 +493,273 @@ p = schem1 + schem2 + schem3 + p.veloviz + p.pca + p.tsne + p.umap + p.diffmap +
   plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(face = "bold", size = 36))
 #+ plot_annotation(title = list("B", "C", "D", "E", "F"))
 p
-ggsave(file = "fig1.svg", plot = p, width = 17, height = 17)
-ggsave(file = "fig1.png", plot = p, width = 17, height = 17)
+# ggsave(file = "fig1.svg", plot = p, width = 17, height = 17)
+# ggsave(file = "fig1.png", plot = p, width = 17, height = 17)
+
+```
+
+Calculate consistency scores for all embeddings  
+```{r consistency score comparisons complete}
+delta.exp = vel$deltaE
+
+cons.pca = consistency(emb.pca,delta.exp,nNeighbors = 10)
+hist(cons.pca,breaks = 500, xlim = c(0,1))
+mean(cons.pca)
+median(cons.pca)
+cons.tsne = consistency(emb.tsne,delta.exp,nNeighbors = 10)
+hist(cons.tsne,breaks = 500, xlim = c(0,1))
+mean(cons.tsne)
+median(cons.tsne)
+cons.umap = consistency(emb.umap,delta.exp,nNeighbors = 10)
+hist(cons.umap,breaks = 500, xlim = c(0,1))
+mean(cons.umap)
+median(cons.umap)
+cons.diffmap = consistency(emb.diffmap,delta.exp,nNeighbors = 10)
+hist(cons.diffmap,breaks = 500, xlim = c(0,1))
+mean(cons.diffmap)
+median(cons.diffmap)
+cons.veloviz = consistency(emb.veloviz,delta.exp[,rownames(emb.veloviz)],nNeighbors = 10)
+hist(cons.veloviz,breaks = 500, xlim = c(0,1))
+mean(cons.veloviz)
+median(cons.veloviz)
+
+
+```
+
+```{r plotting theme 1.2}
+
+figthemeC1 = theme_bw(base_size = 18) + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.title = element_text(hjust=0.5, size = 24),
+        axis.line=element_blank(),axis.text.x=element_blank(),
+        axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(),axis.title.y=element_blank(),
+        legend.position = 'none')
+
+
+
+
+figthemeC2 = theme_bw(base_size = 18) + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.title = element_text(hjust=0.5, size = 24),
+        axis.line=element_line(size = 0.25),
+        # axis.text.x=element_blank(),
+        # axis.text.y=element_blank(),axis.ticks=element_blank(),
+        # axis.title.x=element_blank(),axis.title.y=element_blank(),
+        legend.position = 'none')
+
+
+
+        # axis.line = element_line(colour = "black"),
+        # axis.text.y = element_text(hjust = 0, size = 18),
+        # axis.text.x = element_text(size = 18),
+```
+
+
+```{r}
+#point colors , fig.height = 8, fig.width = 8
+plot.cols = unique(cell.cols)
+names(plot.cols) = as.character(sapply(plot.cols, function(x) clusters[names(cell.cols[which(cell.cols==x)[1]])]))
+
+##PCA
+#convert embedding to data frame for plotting 
+emb.pca.plot = as.data.frame(emb.pca)
+emb.pca.plot = cbind(emb.pca.plot, clusters[rownames(emb.pca.plot)])
+colnames(emb.pca.plot) = c("PC1","PC2","Cell Type")
+
+#make plot
+p.pca = ggplot(emb.pca.plot, aes(x = PC1, y = PC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("PC 1") + ylab("PC 2") + 
+  figthemeC1
+
+#consistency score
+cons.pca = consistency(emb.pca,delta.exp,nNeighbors = 10)
+cons.pca.plot = data.frame(x = cons.pca)
+mn = mean(cons.pca)
+md = median(cons.pca)
+
+#make plot
+h.pca = ggplot(cons.pca.plot, aes(x = x)) + 
+  geom_histogram(bins = 500) +
+  xlim(c(-1,1)) + ylim(0,45) +
+  geom_text(x = -0.5, y = 40, label = paste0("median:\n",formatC(md,digits = 2)), size = 6) +
+  ggtitle('PCA') + xlab("Consistency Score") + ylab("Count") +
+  figthemeC2
+
+p = h.pca + p.pca
+p
+
+
+
+##UMAP
+emb.umap.plot = as.data.frame(emb.umap)
+emb.umap.plot = cbind(emb.umap.plot, clusters[rownames(emb.umap.plot)])
+colnames(emb.umap.plot) = c("UMAP X","UMAP Y","Cell Type")
+
+p.umap = ggplot(emb.umap.plot, aes(x = `UMAP X`, y = `UMAP Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("UMAP X") + ylab("UMAP Y") + 
+  figthemeC1
+
+#consistency score
+cons.umap = consistency(emb.umap,delta.exp,nNeighbors = 10)
+cons.umap.plot = data.frame(x = cons.umap)
+mn = mean(cons.umap)
+md = median(cons.umap)
+
+#make plot
+h.umap = ggplot(cons.umap.plot, aes(x = x)) + 
+  geom_histogram(bins = 500) +
+  xlim(c(-1,1)) + ylim(0,45) +
+  geom_text(x = -0.5, y = 40, label = paste0("median:\n",formatC(md,digits = 2)), size = 6) +
+  ggtitle('UMAP') + xlab("Consistency Score") + ylab("Count") +
+  figthemeC2
+
+
+p = h.umap + p.umap
+p
+
+
+
+
+
+##tSNE
+emb.tsne.plot = as.data.frame(emb.tsne)
+emb.tsne.plot = cbind(emb.tsne.plot, clusters[rownames(emb.tsne.plot)])
+colnames(emb.tsne.plot) = c("t-SNE X","t-SNE Y","Cell Type")
+
+p.tsne = ggplot(emb.tsne.plot, aes(x = `t-SNE X`, y = `t-SNE Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("t-SNE X") + ylab("t-SNE Y") + \
+  figthemeC1
+
+#consistency score
+cons.tsne = consistency(emb.tsne,delta.exp,nNeighbors = 10)
+cons.tsne.plot = data.frame(x = cons.tsne)
+mn = mean(cons.tsne)
+md = median(cons.tsne)
+
+#make plot
+h.tsne = ggplot(cons.tsne.plot, aes(x = x)) + 
+  geom_histogram(bins = 500) +
+  xlim(c(-1,1)) + ylim(0,45) +
+  geom_text(x = -0.5, y = 40, label = paste0("median:\n",formatC(md,digits = 2)), size = 6) +
+  ggtitle('t-SNE') + xlab("Consistency Score") + ylab("Count") +
+  figthemeC2
+
+
+p = h.tsne + p.tsne
+p
+
+
+
+
+
+##diffusion map 
+emb.diffmap.plot = as.data.frame(emb.diffmap)
+emb.diffmap.plot = cbind(emb.diffmap.plot, clusters[rownames(emb.diffmap.plot)])
+colnames(emb.diffmap.plot) = c("DC1","DC2","Cell Type")
+
+p.diffmap = ggplot(emb.diffmap.plot, aes(x = DC1, y = DC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("DC 1") + ylab("DC 2") + 
+  figthemeC1
+
+#consistency score
+cons.diff = consistency(emb.diffmap,delta.exp,nNeighbors = 10)
+cons.diffmap.plot = data.frame(x = cons.diff)
+mn = mean(cons.diff)
+md = median(cons.diff)
+
+#make plot
+h.diffmap = ggplot(cons.diffmap.plot, aes(x = x)) + 
+  geom_histogram(bins = 500) +
+  xlim(c(-1,1)) + ylim(0,45) +
+  geom_text(x = -0.5, y = 40, label = paste0("median:\n",formatC(md,digits = 2)), size = 6) +
+  ggtitle('Diffusion Map') + xlab("Consistency Score") + ylab("Count") +
+  figthemeC2
+
+
+p = h.diffmap + p.diffmap
+p
+
+
+
+##veloviz
+emb.veloviz.plot = as.data.frame(emb.veloviz)
+emb.veloviz.plot = cbind(emb.veloviz.plot, clusters[rownames(emb.veloviz.plot)])
+colnames(emb.veloviz.plot) = c("VeloViz X","VeloViz Y","Cell Type")
+
+p.veloviz = ggplot(emb.veloviz.plot, aes(x = `VeloViz X`, y = `VeloViz Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("VeloViz X") + ylab("VeloViz Y") + 
+  figtheme 
+  #theme(legend.position = c(0.13,0.87), legend.title = element_blank(), legend.text = element_text(size = 24))
+
+#consistency score
+cons.veloviz = consistency(emb.veloviz,delta.exp[,row.names(emb.veloviz)],nNeighbors = 10)
+cons.veloviz.plot = data.frame(x = cons.veloviz)
+mn = mean(cons.veloviz)
+md = median(cons.veloviz)
+
+#make plot
+h.veloviz = ggplot(cons.veloviz.plot, aes(x = x)) + 
+  geom_histogram(bins = 500) +
+  xlim(c(-1,1)) + ylim(0,45) +
+  geom_text(x = -0.5, y = 40, label = paste0("median:\n",formatC(md,digits = 2)), size = 6) +
+  ggtitle('VeloViz') + xlab("Consistency Score") + ylab("Count") +
+  figthemeC2
+
+
+p = h.veloviz + p.veloviz
+p
+
+```
+
+```{r, fig.height = 8, fig.width = 8}
+
+layout = c(
+  area(t = 1, l = 1, b = 2, r = 3),
+  area(t = 1, l = 4, b = 2, r = 5),
+  
+  area(t = 3, l = 1, b = 4, r = 3),
+  area(t = 3, l = 4, b = 4, r = 5),
+  
+  area(t = 5, l = 1, b = 6, r = 3),
+  area(t = 5, l = 4, b = 6, r = 5),
+  
+  area(t = 7, l = 1, b = 8, r = 3),
+  area(t = 7, l = 4, b = 8, r = 5),
+
+  area(t = 9, l = 1, b = 10, r = 3),
+  area(t = 9, l = 4, b = 10, r = 5)
+)
+
+p = h.veloviz + p.veloviz +
+  h.pca + p.pca +
+  h.tsne + p.tsne + 
+  h.umap + p.umap + 
+  h.diffmap + p.diffmap +
+  plot_layout(design = layout) +
+  plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(face = "bold", size = 24))
+
+p
+
+
+ggsave(file = "suppfig_consistency_complete.svg", plot = p, width = 12, height = 17)
+ggsave(file = "suppfig_consistency_complete.png", plot = p, width = 12, height = 17)
+
+
 
 ```
 

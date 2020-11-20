@@ -1,0 +1,2228 @@
+---
+title: "Generating Paper Figures for Simulated Data"
+author: "LylaAtta"
+date: "11/18/2020"
+output: html_document
+---
+Setup:   
+```{r setup, include=FALSE}
+#using velocyto2 evironment 
+knitr::opts_chunk$set(echo = FALSE)
+library(Rcpp)
+library(igraph)
+library(matie)
+library(RANN)
+library(velocyto.R)
+library(MUDAN)
+library(RSpectra)
+library(umap)
+library(Rtsne)
+library(destiny)
+library(ggplot2)
+library(patchwork)
+library(viridis)
+library(svglite)
+source("./../projectedNeighbors_weightedCD.R")
+```
+
+
+## Branching Trajectories
+
+Function to simualate gene expression  
+```{r gene expression current and projected}
+simgenes = function(nCells, nCorGenes, nRandGenes, tc, uc, tp, up, vc, vp){
+  
+  #sim noise
+  noise = 0.01
+  g1noise = matrix(rnorm(nCells*nCorGenes,150,4),nrow = nCells, ncol = nCorGenes)
+  g2noise = matrix(rnorm(nCells*nCorGenes,150,4),nrow = nCells, ncol = nCorGenes)
+  g3noise = matrix(rnorm(nCells*nCorGenes,150,4),nrow = nCells, ncol = nCorGenes)
+  g4noise = matrix(rnorm(nCells*nCorGenes,150,4),nrow = nCells, ncol = nCorGenes)
+  
+  
+  #simulate current gene expression: 4 sets of nCorGenes correlated genes + nRandGenes uncorrelated genes 
+  set.seed(1)
+  g1c = sapply(c(1:nCorGenes), function(x) (((200*uc)/(uc^2 + tc^2 + 0.2)) + g1noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+  g2c = sapply(c(1:nCorGenes), function(x) (((200*tc)/(uc^2 + tc^2 + 0.6)) + g2noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+  g3c = sapply(c(1:nCorGenes), function(x) (((100*(uc^2 + tc^2) - 20)/(uc^2 + tc^2 + 0.2)) + g3noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+  g4c = sapply(c(1:nCorGenes), function(x) (((100*sqrt(vc)) + g4noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise)))
+  gRandc = sapply(c(1:nRandGenes), function(x) rnorm(nCells,200,50)*rnorm(nCells,1,noise))
+  
+  allExpC = cbind(g1c,g2c,g3c,g4c,gRandc)
+  
+  #simulate current gene expression: 4 sets of nCorGenes correlated genes + nRandGenes uncorrelated genes 
+  set.seed(1)
+  g1p = sapply(c(1:nCorGenes), function(x) (((200*up)/(up^2 + tp^2 + 0.2)) + g1noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+  g2p = sapply(c(1:nCorGenes), function(x) (((200*tp)/(up^2 + tp^2 + 0.6)) + g2noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+  g3p = sapply(c(1:nCorGenes), function(x) (((100*(up^2 + tp^2) - 20)/(up^2 + tp^2 + 0.2)) + g3noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise))
+  g4p = sapply(c(1:nCorGenes), function(x) (((100*sqrt(vp)) + g4noise[,x])*rnorm(nCells,1,noise)*rnorm(nCells,1,noise)))
+  
+  gRandp = sapply(c(1:nRandGenes), function(x) rnorm(nCells,200,50)*rnorm(nCells,1,noise))
+  allExpP = cbind(g1p,g2p,g3p,g4p,gRandp)
+  
+  
+  #simulate dropout 
+  nGenes = ncol(allExpP)
+  pDropout = 1/(1+exp((allExpC/100)-1)) #probability of dropout as a function of expression
+  keep = matrix(runif(nCells*nGenes),nrow = nCells, ncol = nGenes)>pDropout
+  expDropoutC = keep*allExpC
+  expDropoutP = keep*allExpP
+  
+  #column and rowname 
+  rownames(expDropoutC) = rownames(expDropoutP) = paste0("C",c(1:nCells))
+  colnames(expDropoutC) = colnames(expDropoutP) = paste0("G",c(1:nGenes))
+  names(tc) = names(tp) = rownames(expDropoutC)
+  
+  simExp = list()
+  simExp[['current']] = expDropoutC
+  simExp[['projected']] = expDropoutP
+  
+  return(simExp)
+}
+
+
+gap.dist.norm = function(emb, cell.names.before, cell.names.after){
+  med.x.before = median(emb[cell.names.before,1])
+  med.y.before = median(emb[cell.names.before,2])
+  med.x.after = median(emb[cell.names.after,1])
+  med.y.after = median(emb[cell.names.after,2])
+  gap.meds = matrix(c(med.x.before,med.x.after,med.y.before,med.y.after),nrow = 2)
+  gap.dist = dist(gap.meds)
+  gap.dist.norm = gap.dist/max(dist(emb))
+  
+  return(gap.dist.norm)
+}
+
+```
+
+
+
+### Three Branch Trajectory  
+
+Create branching pseudotime  
+```{r make three branches}
+nCells = 600
+tgap = 0.05 #time gap between current and projected
+set.seed(1)
+
+#root
+tc = sort(runif(100,0,0.2))
+tp = tc + tgap
+rb = tp>0.2 #which root cells have projected times after branch point
+tp = tp[!rb]
+rb = sample(c(1,2),sum(rb), replace = TRUE)
+uc = rep(0,length(tc))
+up = rep(0,length(tp))
+
+#top branch 
+tc1 = sort(runif(100+sum(rb==1),0.2-tgap,0.4))
+tp1 = tc1 + tgap
+tc1 = tc1[(length(tc1)-99):length(tc1)]
+tb = tp1>0.4 #which branch cells have projected times after terminal branch point 
+tp1 = tp1[!tb]
+tb = sample(c(1,2),sum(tb),replace = TRUE)
+uc1 = tc1-0.2
+up1 = tp1-0.2
+
+#terminal top 
+tc2 = sort(runif(100+sum(tb==1),0.4-tgap,0.8))
+tp2 = tc2 + tgap
+tc2 = tc2[(length(tc2)-99):length(tc2)]
+uc2 = tc2-0.2
+up2 = tp2-0.2
+
+#terminal bottom 
+tc3 = sort(runif(100+sum(tb==2),0.4-tgap,0.8))
+tp3 = tc3 + tgap
+tc3 = tc3[(length(tc3)-99):length(tc3)]
+uc3 = rep(0.2,length(tc3))
+up3 = rep(0.2,length(tp3))
+
+#bottom branch 
+tc4 = sort(runif(200+sum(rb==2),0.2-tgap,0.8))
+tp4 = tc4 + tgap
+tc4 = tc4[(length(tc4)-199):length(tc4)]
+uc4 = 0.2-tc4
+up4 = 0.2-tp4
+
+tc = c(tc,tc1,tc2,tc3,tc4)
+uc = c(uc,uc1,uc2,uc3,uc4)
+tp = c(tp,tp1,tp2,tp3,tp4)
+up = c(up,up1,up2,up3,up4)
+vc = matrix(0,nrow = nCells)
+vp = matrix(0,nrow = nCells)
+
+# plot(tc,uc,col = "black", xlim = c(-0.1, 1.2), ylim = c(-1,1))
+# points(tp,up, col = "red", pch = 4)
+# text(tc[seq(1,600,75)],uc[seq(1,600,50)]+0.1, label = seq(1,600,50), pch = 16, col = "blue")
+# text(tp[seq(1,600,75)],up[seq(1,600,50)]+0.1, label = seq(1,600,50), pch = 16, col = "green")
+
+
+
+```
+
+```{r assigning 5 segment colors}
+trajA = (uc==0)
+trajB = ((uc==(tc-0.2))&(tc<0.4))
+trajC = (uc==(0.2-tc))
+#trajD = (uc==(0.6-tc))
+trajD = (uc==0.2)
+trajE = ((uc==(tc-0.2))&(tc>0.4))
+#trajE = (uc==-0.2)
+#traj = cbind(trajA,trajB,trajC,trajD,trajE)
+
+cell.cols = matrix(NA,nCells)
+cell.cols[trajA] = "black"
+cell.cols[trajB] = "blue"
+cell.cols[trajC] = "green"
+cell.cols[trajD] = "cyan"
+cell.cols[trajE] = "red"
+
+```
+
+```{r plot branches}
+plot(tc,uc,pch = 16, col = cell.cols)
+```
+
+
+```{r simulating gene expression}
+allExp = simgenes(600,75,200,tc,uc,tp,up,vc,vp)
+allExpCurrent = allExp$current
+allExpProjected = allExp$projected
+```
+
+Non-velocity based embedding on current expression  
+```{r non velocity embeddings}
+#dim red , fig.width=12, fig.height=3.5
+
+pca = svds(A = allExpCurrent, k=50, opts = list(center = TRUE, scale = TRUE, maxitr = 2000, tol = 1e-10))
+var = pca$d
+#plot(var) # ~3 components 
+pcs = pca$u
+rownames(pcs) = rownames(allExpCurrent)
+#plot(emb.pca,pch=4)
+
+par(mfrow = c(2,2))
+#PCA
+emb.pca = pcs[,1:2]
+plot(emb.pca, pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols)
+
+#UMAP
+set.seed(1)
+emb.umap = umap(pcs[,1:5], n_neighbors = 15L)$layout
+plot(emb.umap,pch=16,xlab = 'UMAP X', ylab = 'UMAP Y',col = cell.cols)
+
+#tSNE
+set.seed(1)
+emb.tsne = Rtsne(pcs[,1:5], is_distance = FALSE, perplexity = 40, pca = FALSE, num_threads =1, verbose = FALSE)$Y
+plot(emb.tsne,pch=16,xlab = 't-SNE X', ylab = 't-SNE Y',col=cell.cols)
+
+set.seed(1)
+diffmap = DiffusionMap(pcs[,1:5], k=100)
+emb.diffmap = eigenvectors(diffmap)[,1:2]
+plot(emb.diffmap,pch=16,xlab = 'DC1', ylab = 'DC2',col=cell.cols)
+
+```
+
+```{r scores for veloviz}
+par(mfrow = c(2,2))
+m = rowMeans(allExpCurrent) # gene-wise mean expression
+v = sapply(c(1:nrow(allExpCurrent)), function(x) sd(allExpCurrent[x,])^2) # gene-wise expression variance
+hist(log10(m+1), breaks = 1000, main = "gene mean expression", xlab = "log10(mean expression)")
+plot(log10(m+1), log10(v+1), pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+#variance stabilize current and projected expression 
+curr.norm.df = MUDAN::normalizeVariance(allExpCurrent,details = TRUE, plot = FALSE) #variance stabilize current and get model parameters
+curr.norm = curr.norm.df$mat #variance stabilize current
+proj.norm = allExpProjected*curr.norm.df$df$gsf #use same model to variance stabilize projected
+
+m = rowMeans(curr.norm) # gene-wise mean expression
+v = sapply(c(1:nrow(curr.norm)), function(x) sd(curr.norm[x,])^2) # gene-wise expression variance
+hist(log10(m+1), breaks = 1000, main = "gene mean expression", xlab = "log10(mean expression)")
+plot(log10(m+1), log10(v+1), pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+#get PCA scores for current and projected
+v.curr = pca$v 
+curr.scores = curr.norm %*% v.curr
+proj.scores = proj.norm %*% v.curr
+
+par(mfrow = c(1,2))
+curr.scores.scale = scale(curr.scores[,1:2], scale = FALSE) #mean center
+proj.scores.scale = scale(proj.scores[,1:2], scale = FALSE)
+plot(curr.scores.scale,pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols, main="PCA: simulated observed cells")#, xlim = c(-2,3),ylim = c(-2.5,2))
+text(curr.scores.scale[c(400,100,300,550,60,350,570),1],curr.scores.scale[c(400,100,300,550,60,350,570),2],label = c(400,100,300,550,60,350,570), pch = 4)
+plot(proj.scores.scale,pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols, main="PCA: simulated projected cells")#, xlim = c(-2,3),ylim = c(-2.5,2))
+text(proj.scores.scale[c(400,100,300,550,60,350,570),1],proj.scores.scale[c(400,100,300,550,60,350,570),2],label = c(400,100,300,550,60,350,570),pch = 4)
+```
+
+```{r veloviz}
+set.seed(1) # fig.width=6, fig.height=7
+g = graphViz(observed = t(curr.scores[,c(1:5)]), projected = t(proj.scores[,c(1:5)]),
+         k = 100, distance_metric = "L2", similarity_metric = "cosine", 
+         distance_weight = 1, distance_threshold = 1, similarity_threshold = 0.25, 
+         weighted = TRUE, remove_unconnected = TRUE,
+         cell.colors = cell.cols, title = "veloviz embedding", 
+         plot = FALSE, return_graph = TRUE)
+
+emb.veloviz = g$fdg_coords
+plot(emb.veloviz,pch=16,xlab = 'VeloViz X', ylab = 'VeloViz Y',col=cell.cols)
+
+```
+
+Combine plots  
+
+```{r plotting theme 1}
+
+figtheme = theme_bw(base_size = 18) + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.title = element_text(hjust=0.5, size = 24),
+        axis.line=element_blank(),axis.text.x=element_blank(),
+        axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(),axis.title.y=element_blank(),
+        legend.position = 'none')
+
+
+
+        # axis.line = element_line(colour = "black"),
+        # axis.text.y = element_text(hjust = 0, size = 18),
+        # axis.text.x = element_text(size = 18),
+```
+
+```{r combine plots}
+#point colors , fig.height = 8, fig.width = 8
+plot.cols = unique(cell.cols)
+names(plot.cols) = as.character(sapply(plot.cols, function(x) cell.cols[which(cell.cols==x)[1]])) #reorder
+
+#Trajectory schematic 
+traj = data.frame(x = tc, y = uc, c = cell.cols)
+
+p.traj = ggplot(traj, aes(x = x, y = y, color = c)) +
+  geom_point(size = 3) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("PC 1") + ylab("PC 2") + 
+  figtheme
+
+#PCA
+#convert embedding to data frame for plotting 
+emb.pca.plot = as.data.frame(emb.pca)
+emb.pca.plot = cbind(emb.pca.plot, cell.cols)
+colnames(emb.pca.plot) = c("PC1","PC2","Cell Type")
+
+#make plot
+p.pca = ggplot(emb.pca.plot, aes(x = PC1, y = PC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("PC 1") + ylab("PC 2") + 
+  ggtitle("PCA") +
+  figtheme
+
+#UMAP
+emb.umap.plot = as.data.frame(emb.umap)
+emb.umap.plot = cbind(emb.umap.plot, cell.cols)
+colnames(emb.umap.plot) = c("UMAP X","UMAP Y","Cell Type")
+
+p.umap = ggplot(emb.umap.plot, aes(x = `UMAP X`, y = `UMAP Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("UMAP X") + ylab("UMAP Y") + 
+  ggtitle("UMAP") +
+  figtheme
+
+
+#tSNE
+emb.tsne.plot = as.data.frame(emb.tsne)
+emb.tsne.plot = cbind(emb.tsne.plot, cell.cols)
+colnames(emb.tsne.plot) = c("t-SNE X","t-SNE Y","Cell Type")
+
+p.tsne = ggplot(emb.tsne.plot, aes(x = `t-SNE X`, y = `t-SNE Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("t-SNE X") + ylab("t-SNE Y") + 
+  ggtitle("t-SNE") +
+  figtheme
+
+
+#diffusion map 
+emb.diffmap.plot = as.data.frame(emb.diffmap)
+emb.diffmap.plot = cbind(emb.diffmap.plot, cell.cols)
+colnames(emb.diffmap.plot) = c("DC1","DC2","Cell Type")
+
+p.diffmap = ggplot(emb.diffmap.plot, aes(x = DC1, y = DC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("DC 1") + ylab("DC 2") + 
+  ggtitle("Diffusion Map") +
+  figtheme
+
+#veloviz
+emb.veloviz.plot = as.data.frame(emb.veloviz)
+emb.veloviz.plot = cbind(emb.veloviz.plot, cell.cols)
+colnames(emb.veloviz.plot) = c("VeloViz X","VeloViz Y","Cell Type")
+
+p.veloviz = ggplot(emb.veloviz.plot, aes(x = `VeloViz X`, y = `VeloViz Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("VeloViz X") + ylab("VeloViz Y") + 
+  ggtitle("VeloViz") +
+  figtheme 
+  #theme(legend.position = c(0.13,0.87), legend.title = element_blank(), legend.text = element_text(size = 24))
+
+layout = c(
+  area(t = 1, l = 1, b = 2, r = 2),
+  area(t = 1, l = 3, b = 2, r = 4),
+  area(t = 1, l = 5, b = 2, r = 6),
+  area(t = 1, l = 7, b = 2, r = 8),
+  area(t = 1, l = 9, b = 2, r = 10),
+  area(t = 1, l = 11, b = 2, r = 12)
+)
+
+p.three = p.traj + p.veloviz + p.pca + p.tsne + p.umap + p.diffmap + 
+  plot_layout(design = layout) +
+  plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(face = "bold", size = 24))
+p.three
+# ggsave(file = "supp_sim_branch1.svg", plot = p, width = 16, height = 4)
+# ggsave(file = "supp_sim_branch1.png", plot = p, width = 16, height = 4)
+
+```
+
+
+### Four Branch Trajectory  
+
+
+Create branching pseudotime  
+```{r make four branches}
+nCells = 700
+tgap = 0.05 #time gap between current and projected
+set.seed(1)
+
+#root
+tc = sort(runif(100,0,0.2))
+tp = tc + tgap
+rb = tp>0.2 #which root cells have projected times after branch point
+tp = tp[!rb]
+rb = sample(c(1,2),sum(rb), replace = TRUE)
+uc = rep(0,length(tc))
+up = rep(0,length(tp))
+
+#top branch 
+tc1 = sort(runif(100+sum(rb==1),0.2-tgap,0.4))
+tp1 = tc1 + tgap
+tc1 = tc1[(length(tc1)-99):length(tc1)]
+tb = tp1>0.4 #which branch cells have projected times after terminal branch point 
+tp1 = tp1[!tb]
+tb = sample(c(1,2),sum(tb),replace = TRUE)
+uc1 = tc1-0.2
+up1 = tp1-0.2
+
+#terminal top-top 
+tc2 = sort(runif(100+sum(tb==1),0.4-tgap,0.8))
+tp2 = tc2 + tgap
+tc2 = tc2[(length(tc2)-99):length(tc2)]
+uc2 = tc2-0.2
+up2 = tp2-0.2
+
+#terminal top-bottom 
+tc3 = sort(runif(100+sum(tb==2),0.4-tgap,0.8))
+tp3 = tc3 + tgap
+tc3 = tc3[(length(tc3)-99):length(tc3)]
+uc3 = rep(0.2,length(tc3))
+up3 = rep(0.2,length(tp3))
+
+#bottom branch 
+tc4 = sort(runif(100+sum(rb==2),0.2-tgap,0.4))
+tp4 = tc4 + tgap
+tc4 = tc4[(length(tc4)-99):length(tc4)]
+tb4 = tp4>0.4 #which branch cells have projected times after terminal branch point 
+tp4 = tp4[!tb4]
+tb4 = sample(c(1,2),sum(tb4),replace = TRUE)
+uc4 = 0.2-tc4
+up4 = 0.2-tp4
+
+#terminal bottom-bottom 
+tc5 = sort(runif(100+sum(tb4==1),0.4-tgap,0.8))
+tp5 = tc5 + tgap
+tc5 = tc5[(length(tc5)-99):length(tc5)]
+uc5 = 0.2-tc5
+up5 = 0.2-tp5
+
+#terminal bottom-top 
+tc6 = sort(runif(100+sum(tb4==2),0.4-tgap,0.8))
+tp6 = tc6 + tgap
+tc6 = tc6[(length(tc6)-99):length(tc6)]
+uc6 = rep(-0.2,length(tc6))
+up6 = rep(-0.2,length(tp6))
+
+#combine all branches 
+
+tc = c(tc,tc1,tc2,tc3,tc4,tc5,tc6)
+uc = c(uc,uc1,uc2,uc3,uc4,uc5,uc6)
+tp = c(tp,tp1,tp2,tp3,tp4,tp5,tp6)
+up = c(up,up1,up2,up3,up4,up5,up6)
+vc = matrix(0,nrow = nCells)
+vp = matrix(0,nrow = nCells)
+
+# plot(tc,uc,col = "black", xlim = c(-0.1, 1.2), ylim = c(-1,1))
+# points(tp,up, col = "red", pch = 4)
+# text(tc[seq(1,600,75)],uc[seq(1,600,50)]+0.1, label = seq(1,600,50), pch = 16, col = "blue")
+# text(tp[seq(1,600,75)],up[seq(1,600,50)]+0.1, label = seq(1,600,50), pch = 16, col = "green")
+
+
+
+```
+
+```{r assigning 7 segment colors}
+trajA = (uc==0) #root
+trajB = ((uc==(tc-0.2))&(tc<0.4)) #top branch
+trajC = ((uc==(0.2-tc))&(tc<0.4)) #bottom branch
+trajD = (uc==0.2) #top-bottom terminal branch
+trajE = ((uc==(tc-0.2))&(tc>0.4)) #top-top terminal branch 
+trajF = ((uc==(0.2-tc))&(tc>0.4)) #bottom-bottom terminal branch
+trajG = (uc== -0.2) #bottom-top branch
+
+cell.cols = matrix(NA,nCells)
+cell.cols[trajA] = "black"
+cell.cols[trajB] = "blue"
+cell.cols[trajC] = "green"
+cell.cols[trajD] = "cyan"
+cell.cols[trajE] = "red"
+cell.cols[trajF] = "orange"
+cell.cols[trajG] = "purple"
+
+```
+
+```{r plot 4 branches}
+plot(tc,uc,pch = 16, col = cell.cols)
+```
+
+```{r simulating 4 branch gene expression}
+allExp = simgenes(700,75,200,tc,uc,tp,up,vc,vp)
+allExpCurrent = allExp$current
+allExpProjected = allExp$projected
+```
+
+
+Non-velocity based embedding on current expression  
+```{r non velocity embeddings 4 branches }
+#dim red , fig.width=12, fig.height=3.5
+
+pca = svds(A = allExpCurrent, k=50, opts = list(center = TRUE, scale = TRUE, maxitr = 2000, tol = 1e-10))
+var = pca$d
+#plot(var) # ~3 components 
+pcs = pca$u
+rownames(pcs) = rownames(allExpCurrent)
+#plot(emb.pca,pch=4)
+
+par(mfrow = c(2,2))
+#PCA
+emb.pca = pcs[,1:2]
+plot(emb.pca, pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols)
+
+#UMAP
+set.seed(1)
+emb.umap = umap(pcs[,1:5], n_neighbors = 15L)$layout
+plot(emb.umap,pch=16,xlab = 'UMAP X', ylab = 'UMAP Y',col = cell.cols)
+
+#tSNE
+set.seed(1)
+emb.tsne = Rtsne(pcs[,1:5], is_distance = FALSE, perplexity = 40, pca = FALSE, num_threads =1, verbose = FALSE)$Y
+plot(emb.tsne,pch=16,xlab = 't-SNE X', ylab = 't-SNE Y',col=cell.cols)
+
+set.seed(1)
+diffmap = DiffusionMap(pcs[,1:5], k=100)
+emb.diffmap = eigenvectors(diffmap)[,1:2]
+plot(emb.diffmap,pch=16,xlab = 'DC1', ylab = 'DC2',col=cell.cols)
+
+```
+
+
+```{r scores for veloviz 4 branch }
+par(mfrow = c(2,2))
+m = rowMeans(allExpCurrent) # gene-wise mean expression
+v = sapply(c(1:nrow(allExpCurrent)), function(x) sd(allExpCurrent[x,])^2) # gene-wise expression variance
+hist(log10(m+1), breaks = 1000, main = "gene mean expression", xlab = "log10(mean expression)")
+plot(log10(m+1), log10(v+1), pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+#variance stabilize current and projected expression 
+curr.norm.df = MUDAN::normalizeVariance(allExpCurrent,details = TRUE, plot = FALSE) #variance stabilize current and get model parameters
+curr.norm = curr.norm.df$mat #variance stabilize current
+proj.norm = allExpProjected*curr.norm.df$df$gsf #use same model to variance stabilize projected
+
+m = rowMeans(curr.norm) # gene-wise mean expression
+v = sapply(c(1:nrow(curr.norm)), function(x) sd(curr.norm[x,])^2) # gene-wise expression variance
+hist(log10(m+1), breaks = 1000, main = "gene mean expression", xlab = "log10(mean expression)")
+plot(log10(m+1), log10(v+1), pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+#get PCA scores for current and projected
+v.curr = pca$v 
+curr.scores = curr.norm %*% v.curr
+proj.scores = proj.norm %*% v.curr
+
+par(mfrow = c(1,2))
+curr.scores.scale = scale(curr.scores[,1:2], scale = FALSE) #mean center
+proj.scores.scale = scale(proj.scores[,1:2], scale = FALSE)
+plot(curr.scores.scale,pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols, main="PCA: simulated observed cells")#, xlim = c(-2,3),ylim = c(-2.5,2))
+text(curr.scores.scale[c(400,100,300,550,660,350,570),1],curr.scores.scale[c(400,100,300,550,660,350,570),2],label = c(400,100,300,550,660,350,570), pch = 4)
+plot(proj.scores.scale,pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols, main="PCA: simulated projected cells")#, xlim = c(-2,3),ylim = c(-2.5,2))
+text(proj.scores.scale[c(400,100,300,550,660,350,570),1],proj.scores.scale[c(400,100,300,550,660,350,570),2],label = c(400,100,300,550,660,350,570),pch = 4)
+```
+
+```{r veloviz 4 branch}
+set.seed(1) # fig.width=6, fig.height=7
+g = graphViz(observed = t(curr.scores[,c(1:5)]), projected = t(proj.scores[,c(1:5)]),
+         k = 30, distance_metric = "L2", similarity_metric = "cosine", 
+         distance_weight = 1, distance_threshold = 1, similarity_threshold = 0, 
+         weighted = TRUE, remove_unconnected = TRUE,
+         cell.colors = cell.cols, title = "veloviz embedding", 
+         plot = FALSE, return_graph = TRUE)
+
+emb.veloviz = g$fdg_coords
+plot(emb.veloviz,pch=16,xlab = 'VeloViz X', ylab = 'VeloViz Y',col=cell.cols)
+
+```
+
+Combine plots  
+
+```{r plotting theme 2}
+
+figtheme = theme_bw(base_size = 18) + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.title = element_text(hjust=0.5, size = 24),
+        axis.line=element_blank(),axis.text.x=element_blank(),
+        axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(),axis.title.y=element_blank(),
+        legend.position = 'none')
+
+
+
+        # axis.line = element_line(colour = "black"),
+        # axis.text.y = element_text(hjust = 0, size = 18),
+        # axis.text.x = element_text(size = 18),
+```
+
+```{r combine plots 4 branch}
+#point colors , fig.height = 8, fig.width = 8
+plot.cols = unique(cell.cols)
+names(plot.cols) = as.character(sapply(plot.cols, function(x) cell.cols[which(cell.cols==x)[1]])) #reorder
+
+#Trajectory schematic 
+traj = data.frame(x = tc, y = uc, c = cell.cols)
+
+p.traj = ggplot(traj, aes(x = x, y = y, color = c)) +
+  geom_point(size = 3) + 
+  scale_color_manual(values = plot.cols) +
+  figtheme
+
+#PCA
+#convert embedding to data frame for plotting 
+emb.pca.plot = as.data.frame(emb.pca)
+emb.pca.plot = cbind(emb.pca.plot, cell.cols)
+colnames(emb.pca.plot) = c("PC1","PC2","Cell Type")
+
+#make plot
+p.pca = ggplot(emb.pca.plot, aes(x = PC1, y = PC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("PC 1") + ylab("PC 2") + 
+  ggtitle("PCA") +
+  figtheme
+
+#UMAP
+emb.umap.plot = as.data.frame(emb.umap)
+emb.umap.plot = cbind(emb.umap.plot, cell.cols)
+colnames(emb.umap.plot) = c("UMAP X","UMAP Y","Cell Type")
+
+p.umap = ggplot(emb.umap.plot, aes(x = `UMAP X`, y = `UMAP Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("UMAP X") + ylab("UMAP Y") + 
+  ggtitle("UMAP") +
+  figtheme
+
+
+#tSNE
+emb.tsne.plot = as.data.frame(emb.tsne)
+emb.tsne.plot = cbind(emb.tsne.plot, cell.cols)
+colnames(emb.tsne.plot) = c("t-SNE X","t-SNE Y","Cell Type")
+
+p.tsne = ggplot(emb.tsne.plot, aes(x = `t-SNE X`, y = `t-SNE Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("t-SNE X") + ylab("t-SNE Y") + 
+  ggtitle("t-SNE") +
+  figtheme
+
+
+#diffusion map 
+emb.diffmap.plot = as.data.frame(emb.diffmap)
+emb.diffmap.plot = cbind(emb.diffmap.plot, cell.cols)
+colnames(emb.diffmap.plot) = c("DC1","DC2","Cell Type")
+
+p.diffmap = ggplot(emb.diffmap.plot, aes(x = DC1, y = DC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("DC 1") + ylab("DC 2") + 
+  ggtitle("Diffusion Map") +
+  figtheme
+
+#veloviz
+emb.veloviz.plot = as.data.frame(emb.veloviz)
+emb.veloviz.plot = cbind(emb.veloviz.plot, cell.cols)
+colnames(emb.veloviz.plot) = c("VeloViz X","VeloViz Y","Cell Type")
+
+p.veloviz = ggplot(emb.veloviz.plot, aes(x = `VeloViz X`, y = `VeloViz Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("VeloViz X") + ylab("VeloViz Y") + 
+  ggtitle("VeloViz") +
+  figtheme 
+  #theme(legend.position = c(0.13,0.87), legend.title = element_blank(), legend.text = element_text(size = 24))
+
+layout = c(
+  area(t = 1, l = 1, b = 2, r = 2),
+  area(t = 1, l = 3, b = 2, r = 4),
+  area(t = 1, l = 5, b = 2, r = 6),
+  area(t = 1, l = 7, b = 2, r = 8),
+  area(t = 1, l = 9, b = 2, r = 10),
+  area(t = 1, l = 11, b = 2, r = 12)
+)
+
+p.four = p.traj + p.veloviz + p.pca + p.tsne + p.umap + p.diffmap + 
+  plot_layout(design = layout) +
+  plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(face = "bold", size = 24))
+p.four
+# ggsave(file = "supp_sim_branch2.svg", plot = p, width = 16, height = 4)
+# ggsave(file = "supp_sim_branch2.png", plot = p, width = 16, height = 4)
+
+```
+
+
+
+
+
+
+
+
+
+
+## Cycling Trajectory  
+```{r cycle current}
+## make circle like cell cycle
+par(mfrow=c(1,1))
+x <- matrix(rnorm(1000),nc=2)
+y <- x/sqrt(rowSums(x^2))
+z = rnorm(500)
+
+## add some jitter
+obs <- t(y)
+traj = obs
+obs <- jitter(obs, amount = 0.25)
+## order points counterclockwise
+angle <- atan2(obs[2,], obs[1,])
+#angle
+
+obs <- obs[, order(angle)]
+traj = traj[,order(angle)]
+obs = rbind(obs,z)
+#obs
+## rainbow
+col = colorRampPalette(c(rainbow(10)))(ncol(obs))
+labels <- paste0('cell', 1:ncol(obs))
+## plot
+plot(t(obs)[,1:2],col=col, pch=16)
+text(t(obs[,seq(175,225,5)])[,1:2], labels[seq(175,225,5)])
+
+colnames(obs) <- labels
+
+plot(t(traj),col = col,pch = 16)
+```
+
+```{r cycle projected}
+## rotate circle slightly
+f = pi*0.1 # adjust as needed
+exp = t(obs)[,1:2]
+exp[,1] = obs[1,]*cos(f) - obs[2,]*sin(f)
+exp[,2] = obs[2,]*cos(f) + obs[1,]*sin(f)
+exp = t(exp)
+zexp = rnorm(500)
+exp = rbind(exp,zexp)
+
+plot(t(obs),col=col, pch=16)
+points(t(exp)[,1:2],col=col)
+arrows(t(obs)[,1],t(obs)[,2],t(exp)[,1],t(exp)[,2])
+
+colnames(exp) <- labels
+```
+Non-velocity based embedding on current expression  
+```{r non velocity embeddings cycle }
+#dim red , fig.width=12, fig.height=3.5
+
+pca = svds(A = t(obs), k=3, opts = list(center = TRUE, scale = TRUE, maxitr = 2000, tol = 1e-10))
+var = pca$d
+#plot(var) # ~3 components 
+pcs = pca$u
+rownames(pcs) = colnames(obs)
+
+par(mfrow = c(2,2))
+#PCA
+emb.pca = pcs[,1:2]
+plot(emb.pca, pch=16, xlab = 'PC1', ylab = 'PC2', col = col)
+
+#UMAP
+set.seed(1)
+emb.umap = umap(pcs[,1:3], n_neighbors = 100L)$layout
+plot(emb.umap,pch=16,xlab = 'UMAP X', ylab = 'UMAP Y',col = col)
+
+#tSNE
+set.seed(1)
+emb.tsne = Rtsne(pcs[,1:3], is_distance = FALSE, perplexity = 100, pca = FALSE, num_threads =1, verbose = FALSE)$Y
+plot(emb.tsne,pch=16,xlab = 't-SNE X', ylab = 't-SNE Y',col=col)
+
+#diffusion map
+set.seed(1)
+diffmap = DiffusionMap(pcs[,1:3], k=50)
+emb.diffmap = eigenvectors(diffmap)[,1:2]
+plot(emb.diffmap,pch=16,xlab = 'DC1', ylab = 'DC2',col=col)
+
+```
+
+
+
+```{r cycle veloviz}
+#, fig.width=7,fig.height=7
+set.seed(1) # fig.width=6, fig.height=7
+g = graphViz(observed = obs, projected = exp,
+         k = 30, distance_metric = "L2", similarity_metric = "cosine", 
+         distance_weight = 1, distance_threshold = 1, similarity_threshold = 0.25, 
+         weighted = TRUE, remove_unconnected = TRUE,
+         cell.colors = col, title = "veloviz embedding", 
+         plot = FALSE, return_graph = TRUE)
+emb.veloviz = g$fdg_coords
+plot(emb.veloviz, col=col, pch=16)
+
+```
+Combine plots  
+
+```{r plotting theme 2}
+
+figtheme = theme_bw(base_size = 18) + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.title = element_text(hjust=0.5, size = 24),
+        axis.line=element_blank(),axis.text.x=element_blank(),
+        axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(),axis.title.y=element_blank(),
+        legend.position = 'none')
+
+
+
+        # axis.line = element_line(colour = "black"),
+        # axis.text.y = element_text(hjust = 0, size = 18),
+        # axis.text.x = element_text(size = 18),
+```
+
+
+```{r combine plots 4 branch, fig.height = 8, fig.width = 8}
+#point colors , fig.height = 8, fig.width = 8
+# plot.cols = unique(col)
+# names(plot.cols) = as.character(sapply(plot.cols, function(x) col[which(col==x)[1]])) #reorder
+
+#Trajectory schematic 
+traj = data.frame(x = traj[1,], y = traj[2,], c = col)
+colnames(traj) = c("x","y","c")
+
+p.traj = ggplot(traj, aes(x = x, y = y, color = c)) +
+  geom_point(size = 3) + 
+  scale_color_manual(values = col) +
+  figtheme
+
+#PCA
+#convert embedding to data frame for plotting 
+emb.pca.plot = as.data.frame(emb.pca)
+emb.pca.plot = cbind(emb.pca.plot, col)
+colnames(emb.pca.plot) = c("PC1","PC2","Cell Type")
+
+#make plot
+p.pca = ggplot(emb.pca.plot, aes(x = PC1, y = PC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = col) +
+  #xlab("PC 1") + ylab("PC 2") + 
+  ggtitle("PCA") +
+  figtheme
+
+#UMAP
+emb.umap.plot = as.data.frame(emb.umap)
+emb.umap.plot = cbind(emb.umap.plot, col)
+colnames(emb.umap.plot) = c("UMAP X","UMAP Y","Cell Type")
+
+p.umap = ggplot(emb.umap.plot, aes(x = `UMAP X`, y = `UMAP Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = col) +
+  #xlab("UMAP X") + ylab("UMAP Y") + 
+  ggtitle("UMAP") +
+  figtheme
+
+
+#tSNE
+emb.tsne.plot = as.data.frame(emb.tsne)
+emb.tsne.plot = cbind(emb.tsne.plot, col)
+colnames(emb.tsne.plot) = c("t-SNE X","t-SNE Y","Cell Type")
+
+p.tsne = ggplot(emb.tsne.plot, aes(x = `t-SNE X`, y = `t-SNE Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = col) +
+  #xlab("t-SNE X") + ylab("t-SNE Y") + 
+  ggtitle("t-SNE") +
+  figtheme
+
+
+#diffusion map 
+emb.diffmap.plot = as.data.frame(emb.diffmap)
+emb.diffmap.plot = cbind(emb.diffmap.plot, col)
+colnames(emb.diffmap.plot) = c("DC1","DC2","Cell Type")
+
+p.diffmap = ggplot(emb.diffmap.plot, aes(x = DC1, y = DC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = col) +
+  #xlab("DC 1") + ylab("DC 2") + 
+  ggtitle("Diffusion Map") +
+  figtheme
+
+#veloviz
+emb.veloviz.plot = as.data.frame(emb.veloviz)
+emb.veloviz.plot = cbind(emb.veloviz.plot, col)
+colnames(emb.veloviz.plot) = c("VeloViz X","VeloViz Y","Cell Type")
+
+p.veloviz = ggplot(emb.veloviz.plot, aes(x = `VeloViz X`, y = `VeloViz Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = col) +
+  #xlab("VeloViz X") + ylab("VeloViz Y") + 
+  ggtitle("VeloViz") +
+  figtheme 
+  #theme(legend.position = c(0.13,0.87), legend.title = element_blank(), legend.text = element_text(size = 24))
+
+layout = c(
+  area(t = 1, l = 1, b = 2, r = 2),
+  area(t = 1, l = 3, b = 2, r = 4),
+  area(t = 1, l = 5, b = 2, r = 6),
+  area(t = 1, l = 7, b = 2, r = 8),
+  area(t = 1, l = 9, b = 2, r = 10),
+  area(t = 1, l = 11, b = 2, r = 12)
+)
+
+p.cycle = p.traj + p.veloviz + p.pca + p.tsne + p.umap + p.diffmap + 
+  plot_layout(design = layout) +
+  plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(face = "bold", size = 24))
+p.cycle
+# ggsave(file = "cycle.svg", plot = p, width = 16, height = 4)
+# ggsave(file = "cycle.png", plot = p, width = 16, height = 4)
+
+```
+
+## Combine all complete trajectories  
+```{r combine complete, fig.height = 8, fig.width = 8}
+# p.three
+# p.four
+# p.cycle
+# 
+
+layout = c(
+  area(t = 1, l = 1, b = 2, r = 2),
+  area(t = 1, l = 3, b = 2, r = 4),
+  area(t = 1, l = 5, b = 2, r = 6),
+  area(t = 1, l = 7, b = 2, r = 8),
+  area(t = 1, l = 9, b = 2, r = 10),
+  area(t = 1, l = 11, b = 2, r = 12),
+  
+  area(t = 3, l = 1, b = 4, r = 12),
+  area(t = 5, l = 1, b = 6, r = 12))
+  
+  # area(t = 3, l = 1, b = 4, r = 2),
+  # area(t = 3, l = 3, b = 4, r = 4),
+  # area(t = 3, l = 5, b = 4, r = 6),
+  # area(t = 3, l = 7, b = 4, r = 8),
+  # area(t = 3, l = 9, b = 4, r = 10),
+  # area(t = 3, l = 11, b = 4, r = 12))#,
+  # 
+#   area(t = 5, l = 1, b = 6, r = 2),
+#   area(t = 5, l = 3, b = 6, r = 4),
+#   area(t = 5, l = 5, b = 6, r = 6),
+#   area(t = 5, l = 7, b = 6, r = 8),
+#   area(t = 5, l = 9, b = 6, r = 10),
+#   area(t = 5, l = 11, b = 6, r = 12),
+# )
+
+p.all = p.cycle + p.three + p.four + 
+  plot_layout(design = layout) +
+  plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(face = "bold", size = 24))
+
+p.all
+# ggsave(file = "sim_complete2.svg", plot = p.all, width = 16, height = 12)
+# ggsave(file = "sim_complete2.png", plot = p.all, width = 16, height = 12)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Incomplete Branching Trajectories
+
+### Incomplete Three Branch Trajectory  
+Create branching pseudotime  
+```{r make three branches and remove intermediates}
+nCells = 600
+tgap = 0.05 #time gap between current and projected
+set.seed(1)
+
+#root
+tc = sort(runif(100,0,0.2))
+tp = tc + tgap
+rb = tp>0.2 #which root cells have projected times after branch point
+tp = tp[!rb]
+rb = sample(c(1,2),sum(rb), replace = TRUE)
+uc = rep(0,length(tc))
+up = rep(0,length(tp))
+
+#top branch 
+tc1 = sort(runif(100+sum(rb==1),0.2-tgap,0.4))
+tp1 = tc1 + tgap
+tc1 = tc1[(length(tc1)-99):length(tc1)]
+tb = tp1>0.4 #which branch cells have projected times after terminal branch point 
+tp1 = tp1[!tb]
+tb = sample(c(1,2),sum(tb),replace = TRUE)
+uc1 = tc1-0.2
+up1 = tp1-0.2
+
+#terminal top 
+tc2 = sort(runif(100+sum(tb==1),0.4-tgap,0.8))
+tp2 = tc2 + tgap
+tc2 = tc2[(length(tc2)-99):length(tc2)]
+uc2 = tc2-0.2
+up2 = tp2-0.2
+
+#terminal bottom 
+tc3 = sort(runif(100+sum(tb==2),0.4-tgap,0.8))
+tp3 = tc3 + tgap
+tc3 = tc3[(length(tc3)-99):length(tc3)]
+uc3 = rep(0.2,length(tc3))
+up3 = rep(0.2,length(tp3))
+
+#bottom branch 
+tc4 = sort(runif(200+sum(rb==2),0.2-tgap,0.8))
+tp4 = tc4 + tgap
+tc4 = tc4[(length(tc4)-199):length(tc4)]
+uc4 = 0.2-tc4
+up4 = 0.2-tp4
+
+#combine trajectories  
+tc = c(tc,tc1,tc2,tc3,tc4)
+tp = c(tp,tp1,tp2,tp3,tp4)
+uc = c(uc,uc1,uc2,uc3,uc4)
+up = c(up,up1,up2,up3,up4)
+vc = matrix(0,nrow = nCells)
+vp = matrix(0,nrow = nCells)
+
+#remove top branch segment 
+keep = !((uc==tc-0.2)&(tc<0.4))
+tc = tc[keep]
+tp = tp[keep]
+uc = uc[keep]
+up = up[keep]
+vc = vc[keep]
+vp = vp[keep]
+nCells = length(tc)
+
+
+# plot(tc,uc,col = "black", xlim = c(-0.1, 1.2), ylim = c(-1,1))
+# points(tp,up, col = "red", pch = 4)
+# text(tc[seq(1,600,75)],uc[seq(1,600,50)]+0.1, label = seq(1,600,50), pch = 16, col = "blue")
+# text(tp[seq(1,600,75)],up[seq(1,600,50)]+0.1, label = seq(1,600,50), pch = 16, col = "green")
+
+
+
+```
+
+```{r assigning 5 segment colors}
+trajA = (uc==0)
+trajB = ((uc==(tc-0.2))&(tc<0.4))
+trajC = (uc==(0.2-tc))
+#trajD = (uc==(0.6-tc))
+trajD = (uc==0.2)
+trajE = ((uc==(tc-0.2))&(tc>0.4))
+#trajE = (uc==-0.2)
+#traj = cbind(trajA,trajB,trajC,trajD,trajE)
+
+cell.cols = matrix(NA,nCells)
+cell.cols[trajA] = "black"
+cell.cols[trajB] = "blue"
+cell.cols[trajC] = "green"
+cell.cols[trajD] = "cyan"
+cell.cols[trajE] = "red"
+
+cells.before = (trajA & (tc>0.15))
+cells.after = ((trajE | trajD) & (tc<0.45))
+
+```
+
+```{r plot branches}
+plot(tc,uc,pch = 16, col = cell.cols)
+points(tc[cells.before],uc[cells.before],pch = 4,cex = 3, col = "light green")
+points(tc[cells.after],uc[cells.after],pch = 4,cex = 3, col = "dark green")
+
+```
+
+
+```{r simulating gene expression}
+allExp = simgenes(nCells,75,200,tc,uc,tp,up,vc,vp)
+allExpCurrent = allExp$current
+allExpProjected = allExp$projected
+
+cell.names = rownames(allExpCurrent)
+cell.names.before = cell.names[cells.before]
+cell.names.after = cell.names[cells.after]
+```
+
+Non-velocity based embedding on current expression  
+```{r non velocity embeddings}
+#dim red , fig.width=12, fig.height=3.5
+
+pca = svds(A = allExpCurrent, k=50, opts = list(center = TRUE, scale = TRUE, maxitr = 2000, tol = 1e-10))
+var = pca$d
+#plot(var) # ~3 components 
+pcs = pca$u
+rownames(pcs) = cell.names
+#plot(emb.pca,pch=4)
+
+par(mfrow = c(2,2))
+#PCA
+emb.pca = pcs[,1:2]
+plot(emb.pca, pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols)
+
+#UMAP
+set.seed(1)
+emb.umap = umap(pcs[,1:5], n_neighbors = 70L)$layout
+rownames(emb.umap) = cell.names
+plot(emb.umap,pch=16,xlab = 'UMAP X', ylab = 'UMAP Y',col = cell.cols)
+
+#tSNE
+set.seed(1)
+emb.tsne = Rtsne(pcs[,1:5], is_distance = FALSE, perplexity = 20, pca = FALSE, num_threads =1, verbose = FALSE)$Y
+rownames(emb.tsne) = cell.names
+plot(emb.tsne,pch=16,xlab = 't-SNE X', ylab = 't-SNE Y',col=cell.cols)
+
+#diffusion map
+set.seed(1)
+diffmap = DiffusionMap(pcs[,1:5], k=20)
+emb.diffmap = eigenvectors(diffmap)[,1:2]
+rownames(emb.diffmap) = cell.names
+plot(emb.diffmap,pch=16,xlab = 'DC1', ylab = 'DC2',col=cell.cols)
+
+```
+
+```{r scores for veloviz}
+par(mfrow = c(2,2))
+m = rowMeans(allExpCurrent) # gene-wise mean expression
+v = sapply(c(1:nrow(allExpCurrent)), function(x) sd(allExpCurrent[x,])^2) # gene-wise expression variance
+hist(log10(m+1), breaks = 1000, main = "gene mean expression", xlab = "log10(mean expression)")
+plot(log10(m+1), log10(v+1), pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+#variance stabilize current and projected expression 
+curr.norm.df = MUDAN::normalizeVariance(allExpCurrent,details = TRUE, plot = FALSE) #variance stabilize current and get model parameters
+curr.norm = curr.norm.df$mat #variance stabilize current
+proj.norm = allExpProjected*curr.norm.df$df$gsf #use same model to variance stabilize projected
+
+m = rowMeans(curr.norm) # gene-wise mean expression
+v = sapply(c(1:nrow(curr.norm)), function(x) sd(curr.norm[x,])^2) # gene-wise expression variance
+hist(log10(m+1), breaks = 1000, main = "gene mean expression", xlab = "log10(mean expression)")
+plot(log10(m+1), log10(v+1), pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+#get PCA scores for current and projected
+v.curr = pca$v 
+curr.scores = curr.norm %*% v.curr
+proj.scores = proj.norm %*% v.curr
+
+par(mfrow = c(1,2))
+curr.scores.scale = scale(curr.scores[,1:2], scale = FALSE) #mean center
+proj.scores.scale = scale(proj.scores[,1:2], scale = FALSE)
+plot(curr.scores.scale,pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols, main="PCA: simulated observed cells")#, xlim = c(-2,3),ylim = c(-2.5,2))
+text(curr.scores.scale[c(200,100,300,250,60,350,470),1],curr.scores.scale[c(200,100,300,250,60,350,470),2],label = c(200,100,300,250,60,350,470), pch = 4)
+plot(proj.scores.scale,pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols, main="PCA: simulated projected cells")#, xlim = c(-2,3),ylim = c(-2.5,2))
+text(proj.scores.scale[c(200,100,300,250,60,350,470),1],proj.scores.scale[c(200,100,300,250,60,350,470),2],label = c(200,100,300,250,60,350,470),pch = 4)
+```
+
+```{r veloviz}
+set.seed(1) # fig.width=6, fig.height=7
+g = graphViz(observed = t(curr.scores[,c(1:5)]), projected = t(proj.scores[,c(1:5)]),
+         k = 60, distance_metric = "L2", similarity_metric = "cosine", 
+         distance_weight = 50, distance_threshold = 1, similarity_threshold = 0, 
+         weighted = TRUE, remove_unconnected = TRUE,
+         cell.colors = cell.cols, title = "veloviz embedding", 
+         plot = FALSE, return_graph = TRUE)
+
+emb.veloviz = g$fdg_coords
+plot(emb.veloviz,pch=16,xlab = 'VeloViz X', ylab = 'VeloViz Y',col=cell.cols)
+
+
+```
+
+Combine plots  
+```{r plotting theme 1}
+
+figtheme = theme_bw(base_size = 18) + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.title = element_text(hjust=0.5, size = 24),
+        axis.line=element_blank(),axis.text.x=element_blank(),
+        axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(),axis.title.y=element_blank(),
+        legend.position = 'none')
+
+
+
+        # axis.line = element_line(colour = "black"),
+        # axis.text.y = element_text(hjust = 0, size = 18),
+        # axis.text.x = element_text(size = 18),
+```
+
+```{r combine plots, fig.height = 8, fig.width = 8}
+#point colors , fig.height = 8, fig.width = 8
+plot.cols = unique(cell.cols)
+names(plot.cols) = as.character(sapply(plot.cols, function(x) cell.cols[which(cell.cols==x)[1]])) #reorder
+
+#Trajectory schematic 
+traj = data.frame(x = tc, y = uc, c = cell.cols)
+
+p.traj = ggplot(traj, aes(x = x, y = y, color = c)) +
+  geom_point(size = 3) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("PC 1") + ylab("PC 2") + 
+  figtheme
+
+#PCA
+#convert embedding to data frame for plotting 
+emb.pca.plot = as.data.frame(emb.pca)
+emb.pca.plot = cbind(emb.pca.plot, cell.cols)
+colnames(emb.pca.plot) = c("PC1","PC2","Cell Type")
+
+#make plot
+p.pca = ggplot(emb.pca.plot, aes(x = PC1, y = PC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("PC 1") + ylab("PC 2") + 
+  ggtitle("PCA") +
+  figtheme
+
+#UMAP
+emb.umap.plot = as.data.frame(emb.umap)
+emb.umap.plot = cbind(emb.umap.plot, cell.cols)
+colnames(emb.umap.plot) = c("UMAP X","UMAP Y","Cell Type")
+
+p.umap = ggplot(emb.umap.plot, aes(x = `UMAP X`, y = `UMAP Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("UMAP X") + ylab("UMAP Y") + 
+  ggtitle("UMAP") +
+  figtheme
+
+
+#tSNE
+emb.tsne.plot = as.data.frame(emb.tsne)
+emb.tsne.plot = cbind(emb.tsne.plot, cell.cols)
+colnames(emb.tsne.plot) = c("t-SNE X","t-SNE Y","Cell Type")
+
+p.tsne = ggplot(emb.tsne.plot, aes(x = `t-SNE X`, y = `t-SNE Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("t-SNE X") + ylab("t-SNE Y") + 
+  ggtitle("t-SNE") +
+  figtheme
+
+
+#diffusion map 
+emb.diffmap.plot = as.data.frame(emb.diffmap)
+emb.diffmap.plot = cbind(emb.diffmap.plot, cell.cols)
+colnames(emb.diffmap.plot) = c("DC1","DC2","Cell Type")
+
+p.diffmap = ggplot(emb.diffmap.plot, aes(x = DC1, y = DC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("DC 1") + ylab("DC 2") + 
+  ggtitle("Diffusion Map") +
+  figtheme
+
+#veloviz
+emb.veloviz.plot = as.data.frame(emb.veloviz)
+emb.veloviz.plot = cbind(emb.veloviz.plot, cell.cols)
+colnames(emb.veloviz.plot) = c("VeloViz X","VeloViz Y","Cell Type")
+
+p.veloviz = ggplot(emb.veloviz.plot, aes(x = `VeloViz X`, y = `VeloViz Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("VeloViz X") + ylab("VeloViz Y") + 
+  ggtitle("VeloViz") +
+  figtheme 
+  #theme(legend.position = c(0.13,0.87), legend.title = element_blank(), legend.text = element_text(size = 24))
+
+layout = c(
+  area(t = 1, l = 1, b = 2, r = 2),
+  area(t = 1, l = 3, b = 2, r = 4),
+  area(t = 1, l = 5, b = 2, r = 6),
+  area(t = 1, l = 7, b = 2, r = 8),
+  area(t = 1, l = 9, b = 2, r = 10),
+  area(t = 1, l = 11, b = 2, r = 12)
+)
+
+p.three.missing = p.traj + p.veloviz + p.pca + p.tsne + p.umap + p.diffmap + 
+  plot_layout(design = layout) +
+  plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(face = "bold", size = 24))
+p.three.missing
+# ggsave(file = "supp_sim_branch_missing1.svg", plot = p.three.missing, width = 16, height = 4)
+# ggsave(file = "supp_sim_branch_missing1.png", plot = p.three.missing, width = 16, height = 4)
+
+```
+
+Gap Distance  
+```{r gap distance}
+## PCA
+# pca.med.x.before = median(emb.pca[cell.names.before,1])
+# pca.med.y.before = median(emb.pca[cell.names.before,2])
+# pca.med.x.after = median(emb.pca[cell.names.after,1])
+# pca.med.y.after = median(emb.pca[cell.names.after,2])
+# pca.gap.meds = matrix(c(pca.med.x.before,pca.med.x.after,pca.med.y.before,pca.med.y.after),nrow = 2)
+# pca.gap.dist = dist(pca.gap.meds)
+# pca.gap.dist.norm = pca.gap.dist/max(dist(emb.pca))
+
+pca.gap.dist.norm = gap.dist.norm(emb.pca, cell.names.before, cell.names.after)
+tsne.gap.dist.norm = gap.dist.norm(emb.tsne, cell.names.before, cell.names.after)
+umap.gap.dist.norm = gap.dist.norm(emb.umap, cell.names.before, cell.names.after)
+diffmap.gap.dist.norm = gap.dist.norm(emb.diffmap, cell.names.before, cell.names.after)
+veloviz.gap.dist.norm = gap.dist.norm(emb.veloviz, cell.names.before, cell.names.after)
+
+pca.gap.dist.norm 
+tsne.gap.dist.norm 
+umap.gap.dist.norm 
+diffmap.gap.dist.norm 
+veloviz.gap.dist.norm 
+
+```
+
+```{r combine plots with dist, fig.height = 8, fig.width = 8}
+#point colors , fig.height = 8, fig.width = 8
+plot.cols = unique(cell.cols)
+names(plot.cols) = as.character(sapply(plot.cols, function(x) cell.cols[which(cell.cols==x)[1]])) #reorder
+
+#Trajectory schematic 
+traj = data.frame(x = tc, y = uc, c = cell.cols)
+
+p.traj = ggplot(traj, aes(x = x, y = y, color = c)) +
+  geom_point(size = 3) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("PC 1") + ylab("PC 2") + 
+  figtheme
+
+#PCA
+#convert embedding to data frame for plotting 
+emb.pca.plot = as.data.frame(emb.pca)
+emb.pca.plot = cbind(emb.pca.plot, cell.cols)
+colnames(emb.pca.plot) = c("PC1","PC2","Cell Type")
+
+#make plot
+p.pca = ggplot(emb.pca.plot, aes(x = PC1, y = PC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  geom_text(x = 0.06, y = -0.06, label = paste0("Gap\nDistance:\n",formatC(pca.gap.dist.norm,digits = 2)), size = 4, color = "black") +
+  #xlab("PC 1") + ylab("PC 2") + 
+  ggtitle("PCA") +
+  figtheme
+
+#UMAP
+emb.umap.plot = as.data.frame(emb.umap)
+emb.umap.plot = cbind(emb.umap.plot, cell.cols)
+colnames(emb.umap.plot) = c("UMAP X","UMAP Y","Cell Type")
+
+p.umap = ggplot(emb.umap.plot, aes(x = `UMAP X`, y = `UMAP Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  geom_text(x = -3, y = -3, label = paste0("Gap\nDistance:\n",formatC(umap.gap.dist.norm,digits = 2)), size = 4, color = "black") +
+  #xlab("UMAP X") + ylab("UMAP Y") + 
+  ggtitle("UMAP") +
+  figtheme
+
+
+#tSNE
+emb.tsne.plot = as.data.frame(emb.tsne)
+emb.tsne.plot = cbind(emb.tsne.plot, cell.cols)
+colnames(emb.tsne.plot) = c("t-SNE X","t-SNE Y","Cell Type")
+
+p.tsne = ggplot(emb.tsne.plot, aes(x = `t-SNE X`, y = `t-SNE Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  geom_text(x = -20, y = -15, label = paste0("Gap\nDistance:\n",formatC(tsne.gap.dist.norm,digits = 2)), size = 4, color = "black") +
+  #xlab("t-SNE X") + ylab("t-SNE Y") + 
+  ggtitle("t-SNE") +
+  figtheme
+
+
+#diffusion map 
+emb.diffmap.plot = as.data.frame(emb.diffmap)
+emb.diffmap.plot = cbind(emb.diffmap.plot, cell.cols)
+colnames(emb.diffmap.plot) = c("DC1","DC2","Cell Type")
+
+p.diffmap = ggplot(emb.diffmap.plot, aes(x = DC1, y = DC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  geom_text(x = 0.03, y = -0.05, label = paste0("Gap\nDistance:\n",formatC(diffmap.gap.dist.norm,digits = 2)), size = 4, color = "black") +
+  #xlab("DC 1") + ylab("DC 2") + 
+  ggtitle("Diffusion Map") +
+  figtheme
+
+#veloviz
+emb.veloviz.plot = as.data.frame(emb.veloviz)
+emb.veloviz.plot = cbind(emb.veloviz.plot, cell.cols)
+colnames(emb.veloviz.plot) = c("VeloViz X","VeloViz Y","Cell Type")
+
+p.veloviz = ggplot(emb.veloviz.plot, aes(x = `VeloViz X`, y = `VeloViz Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  geom_text(x = 65, y = 180, label = paste0("Gap\nDistance:\n",formatC(veloviz.gap.dist.norm,digits = 2)), size = 4, color = "black") +
+  #xlab("VeloViz X") + ylab("VeloViz Y") + 
+  ggtitle("VeloViz") +
+  figtheme 
+  #theme(legend.position = c(0.13,0.87), legend.title = element_blank(), legend.text = element_text(size = 24))
+
+layout = c(
+  area(t = 1, l = 1, b = 2, r = 2),
+  area(t = 1, l = 3, b = 2, r = 4),
+  area(t = 1, l = 5, b = 2, r = 6),
+  area(t = 1, l = 7, b = 2, r = 8),
+  area(t = 1, l = 9, b = 2, r = 10),
+  area(t = 1, l = 11, b = 2, r = 12)
+)
+
+p.three.missing = p.traj + p.veloviz + p.pca + p.tsne + p.umap + p.diffmap + 
+  plot_layout(design = layout) +
+  plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(face = "bold", size = 24))
+p.three.missing
+ggsave(file = "supp_sim_branch1_missing_dist.svg", plot = p.three.missing, width = 16, height = 4)
+ggsave(file = "supp_sim_branch1_missing_dist.png", plot = p.three.missing, width = 16, height = 4)
+
+```
+
+
+
+
+
+
+
+### Incomplete Four Branch Trajectory  
+
+
+Create branching pseudotime  
+```{r make four branches}
+nCells = 700
+tgap = 0.05 #time gap between current and projected
+set.seed(1)
+
+#root
+tc = sort(runif(100,0,0.2))
+tp = tc + tgap
+rb = tp>0.2 #which root cells have projected times after branch point
+tp = tp[!rb]
+rb = sample(c(1,2),sum(rb), replace = TRUE)
+uc = rep(0,length(tc))
+up = rep(0,length(tp))
+
+#top branch 
+tc1 = sort(runif(100+sum(rb==1),0.2-tgap,0.4))
+tp1 = tc1 + tgap
+tc1 = tc1[(length(tc1)-99):length(tc1)]
+tb = tp1>0.4 #which branch cells have projected times after terminal branch point 
+tp1 = tp1[!tb]
+tb = sample(c(1,2),sum(tb),replace = TRUE)
+uc1 = tc1-0.2
+up1 = tp1-0.2
+
+#terminal top-top 
+tc2 = sort(runif(100+sum(tb==1),0.4-tgap,0.8))
+tp2 = tc2 + tgap
+tc2 = tc2[(length(tc2)-99):length(tc2)]
+uc2 = tc2-0.2
+up2 = tp2-0.2
+
+#terminal top-bottom 
+tc3 = sort(runif(100+sum(tb==2),0.4-tgap,0.8))
+tp3 = tc3 + tgap
+tc3 = tc3[(length(tc3)-99):length(tc3)]
+uc3 = rep(0.2,length(tc3))
+up3 = rep(0.2,length(tp3))
+
+#bottom branch 
+tc4 = sort(runif(100+sum(rb==2),0.2-tgap,0.4))
+tp4 = tc4 + tgap
+tc4 = tc4[(length(tc4)-99):length(tc4)]
+tb4 = tp4>0.4 #which branch cells have projected times after terminal branch point 
+tp4 = tp4[!tb4]
+tb4 = sample(c(1,2),sum(tb4),replace = TRUE)
+uc4 = 0.2-tc4
+up4 = 0.2-tp4
+
+#terminal bottom-bottom 
+tc5 = sort(runif(100+sum(tb4==1),0.4-tgap,0.8))
+tp5 = tc5 + tgap
+tc5 = tc5[(length(tc5)-99):length(tc5)]
+uc5 = 0.2-tc5
+up5 = 0.2-tp5
+
+#terminal bottom-top 
+tc6 = sort(runif(100+sum(tb4==2),0.4-tgap,0.8))
+tp6 = tc6 + tgap
+tc6 = tc6[(length(tc6)-99):length(tc6)]
+uc6 = rep(-0.2,length(tc6))
+up6 = rep(-0.2,length(tp6))
+
+#combine all branches 
+
+tc = c(tc,tc1,tc2,tc3,tc4,tc5,tc6)
+uc = c(uc,uc1,uc2,uc3,uc4,uc5,uc6)
+tp = c(tp,tp1,tp2,tp3,tp4,tp5,tp6)
+up = c(up,up1,up2,up3,up4,up5,up6)
+vc = matrix(0,nrow = nCells)
+vp = matrix(0,nrow = nCells)
+
+
+#remove top branch segment 
+keep = !((uc==0.2-tc)&(tc<0.35))
+tc = tc[keep]
+tp = tp[keep]
+uc = uc[keep]
+up = up[keep]
+vc = vc[keep]
+vp = vp[keep]
+nCells = length(tc)
+
+
+
+# plot(tc,uc,col = "black", xlim = c(-0.1, 1.2), ylim = c(-1,1))
+# points(tp,up, col = "red", pch = 4)
+# text(tc[seq(1,600,75)],uc[seq(1,600,50)]+0.1, label = seq(1,600,50), pch = 16, col = "blue")
+# text(tp[seq(1,600,75)],up[seq(1,600,50)]+0.1, label = seq(1,600,50), pch = 16, col = "green")
+
+
+
+```
+
+```{r assigning 7 segment colors}
+trajA = (uc==0) #root
+trajB = ((uc==(tc-0.2))&(tc<0.4)) #top branch
+trajC = ((uc==(0.2-tc))&(tc<0.4)) #bottom branch
+trajD = (uc==0.2) #top-bottom terminal branch
+trajE = ((uc==(tc-0.2))&(tc>0.4)) #top-top terminal branch 
+trajF = ((uc==(0.2-tc))&(tc>0.4)) #bottom-bottom terminal branch
+trajG = (uc== -0.2) #bottom-top branch
+
+cell.cols = matrix(NA,nCells)
+cell.cols[trajA] = "black"
+cell.cols[trajB] = "blue"
+cell.cols[trajC] = "green"
+cell.cols[trajD] = "cyan"
+cell.cols[trajE] = "red"
+cell.cols[trajF] = "orange"
+cell.cols[trajG] = "purple"
+
+cells.before = (trajA & (tc>0.15))
+cells.after = ((trajC | trajF | trajG) & (tc<0.45))
+
+```
+
+```{r plot 4 branches}
+plot(tc,uc,pch = 16, col = cell.cols)
+
+points(tc[cells.before],uc[cells.before],pch = 4,cex = 3, col = "light green")
+points(tc[cells.after],uc[cells.after],pch = 4,cex = 3, col = "dark green")
+```
+
+```{r simulating 4 branch gene expression}
+allExp = simgenes(nCells,75,200,tc,uc,tp,up,vc,vp)
+allExpCurrent = allExp$current
+allExpProjected = allExp$projected
+
+cell.names = rownames(allExpCurrent)
+cell.names.before = cell.names[cells.before]
+cell.names.after = cell.names[cells.after]
+```
+
+
+Non-velocity based embedding on current expression  
+```{r non velocity embeddings 4 branches }
+#dim red , fig.width=12, fig.height=3.5
+
+pca = svds(A = allExpCurrent, k=50, opts = list(center = TRUE, scale = TRUE, maxitr = 2000, tol = 1e-10))
+var = pca$d
+#plot(var) # ~3 components 
+pcs = pca$u
+rownames(pcs) = cell.names
+#plot(emb.pca,pch=4)
+
+par(mfrow = c(2,2))
+#PCA
+emb.pca = pcs[,1:2]
+plot(emb.pca, pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols)
+
+#UMAP
+set.seed(1)
+emb.umap = umap(pcs[,1:5], n_neighbors = 20L)$layout
+rownames(emb.umap) = cell.names
+plot(emb.umap,pch=16,xlab = 'UMAP X', ylab = 'UMAP Y',col = cell.cols)
+
+#tSNE
+set.seed(1)
+emb.tsne = Rtsne(pcs[,1:5], is_distance = FALSE, perplexity = 40, pca = FALSE, num_threads =1, verbose = FALSE)$Y
+rownames(emb.tsne) = cell.names
+plot(emb.tsne,pch=16,xlab = 't-SNE X', ylab = 't-SNE Y',col=cell.cols)
+
+#diffusion map
+set.seed(1)
+diffmap = DiffusionMap(pcs[,1:5], k=100)
+emb.diffmap = eigenvectors(diffmap)[,1:2]
+rownames(emb.diffmap) = cell.names
+plot(emb.diffmap,pch=16,xlab = 'DC1', ylab = 'DC2',col=cell.cols)
+
+```
+
+
+```{r scores for veloviz 4 branch }
+par(mfrow = c(2,2))
+m = rowMeans(allExpCurrent) # gene-wise mean expression
+v = sapply(c(1:nrow(allExpCurrent)), function(x) sd(allExpCurrent[x,])^2) # gene-wise expression variance
+hist(log10(m+1), breaks = 1000, main = "gene mean expression", xlab = "log10(mean expression)")
+plot(log10(m+1), log10(v+1), pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+#variance stabilize current and projected expression 
+curr.norm.df = MUDAN::normalizeVariance(allExpCurrent,details = TRUE, plot = FALSE) #variance stabilize current and get model parameters
+curr.norm = curr.norm.df$mat #variance stabilize current
+proj.norm = allExpProjected*curr.norm.df$df$gsf #use same model to variance stabilize projected
+
+m = rowMeans(curr.norm) # gene-wise mean expression
+v = sapply(c(1:nrow(curr.norm)), function(x) sd(curr.norm[x,])^2) # gene-wise expression variance
+hist(log10(m+1), breaks = 1000, main = "gene mean expression", xlab = "log10(mean expression)")
+plot(log10(m+1), log10(v+1), pch = 4, main = "variance vs. mean", xlab = "log10(mean expression)", ylab = "log10(expression variance)")
+
+#get PCA scores for current and projected
+v.curr = pca$v 
+curr.scores = curr.norm %*% v.curr
+proj.scores = proj.norm %*% v.curr
+
+par(mfrow = c(1,2))
+curr.scores.scale = scale(curr.scores[,1:2], scale = FALSE) #mean center
+proj.scores.scale = scale(proj.scores[,1:2], scale = FALSE)
+plot(curr.scores.scale,pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols, main="PCA: simulated observed cells")#, xlim = c(-2,3),ylim = c(-2.5,2))
+text(curr.scores.scale[c(400,100,300,550,260,350,570),1],curr.scores.scale[c(400,100,300,550,260,350,570),2],label = c(400,100,300,550,260,350,570), pch = 4)
+plot(proj.scores.scale,pch=16, xlab = 'PC1', ylab = 'PC2', col = cell.cols, main="PCA: simulated projected cells")#, xlim = c(-2,3),ylim = c(-2.5,2))
+text(proj.scores.scale[c(400,100,300,550,260,350,570),1],proj.scores.scale[c(400,100,300,550,260,350,570),2],label = c(400,100,300,550,260,350,570),pch = 4)
+```
+
+```{r veloviz 4 branch}
+set.seed(1) # fig.width=6, fig.height=7
+g = graphViz(observed = t(curr.scores[,c(1:5)]), projected = t(proj.scores[,c(1:5)]),
+         k = 130, distance_metric = "L2", similarity_metric = "cosine", 
+         distance_weight = 0.5, distance_threshold = 1, similarity_threshold = 0.25, 
+         weighted = TRUE, remove_unconnected = TRUE,
+         cell.colors = cell.cols, title = "veloviz embedding", 
+         plot = FALSE, return_graph = TRUE)
+
+emb.veloviz = g$fdg_coords
+plot(emb.veloviz,pch=16,xlab = 'VeloViz X', ylab = 'VeloViz Y',col=cell.cols)
+
+```
+
+Combine plots  
+
+```{r plotting theme 2}
+
+figtheme = theme_bw(base_size = 18) + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.title = element_text(hjust=0.5, size = 24),
+        axis.line=element_blank(),axis.text.x=element_blank(),
+        axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(),axis.title.y=element_blank(),
+        legend.position = 'none')
+
+
+
+        # axis.line = element_line(colour = "black"),
+        # axis.text.y = element_text(hjust = 0, size = 18),
+        # axis.text.x = element_text(size = 18),
+```
+
+```{r combine plots 4 branch, fig.height = 8, fig.width = 8}
+#point colors , fig.height = 8, fig.width = 8
+plot.cols = unique(cell.cols)
+names(plot.cols) = as.character(sapply(plot.cols, function(x) cell.cols[which(cell.cols==x)[1]])) #reorder
+
+#Trajectory schematic 
+traj = data.frame(x = tc, y = uc, c = cell.cols)
+
+p.traj = ggplot(traj, aes(x = x, y = y, color = c)) +
+  geom_point(size = 3) + 
+  scale_color_manual(values = plot.cols) +
+  figtheme
+
+#PCA
+#convert embedding to data frame for plotting 
+emb.pca.plot = as.data.frame(emb.pca)
+emb.pca.plot = cbind(emb.pca.plot, cell.cols)
+colnames(emb.pca.plot) = c("PC1","PC2","Cell Type")
+
+#make plot
+p.pca = ggplot(emb.pca.plot, aes(x = PC1, y = PC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("PC 1") + ylab("PC 2") + 
+  ggtitle("PCA") +
+  figtheme
+
+#UMAP
+emb.umap.plot = as.data.frame(emb.umap)
+emb.umap.plot = cbind(emb.umap.plot, cell.cols)
+colnames(emb.umap.plot) = c("UMAP X","UMAP Y","Cell Type")
+
+p.umap = ggplot(emb.umap.plot, aes(x = `UMAP X`, y = `UMAP Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("UMAP X") + ylab("UMAP Y") + 
+  ggtitle("UMAP") +
+  figtheme
+
+
+#tSNE
+emb.tsne.plot = as.data.frame(emb.tsne)
+emb.tsne.plot = cbind(emb.tsne.plot, cell.cols)
+colnames(emb.tsne.plot) = c("t-SNE X","t-SNE Y","Cell Type")
+
+p.tsne = ggplot(emb.tsne.plot, aes(x = `t-SNE X`, y = `t-SNE Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("t-SNE X") + ylab("t-SNE Y") + 
+  ggtitle("t-SNE") +
+  figtheme
+
+
+#diffusion map 
+emb.diffmap.plot = as.data.frame(emb.diffmap)
+emb.diffmap.plot = cbind(emb.diffmap.plot, cell.cols)
+colnames(emb.diffmap.plot) = c("DC1","DC2","Cell Type")
+
+p.diffmap = ggplot(emb.diffmap.plot, aes(x = DC1, y = DC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("DC 1") + ylab("DC 2") + 
+  ggtitle("Diffusion Map") +
+  figtheme
+
+#veloviz
+emb.veloviz.plot = as.data.frame(emb.veloviz)
+emb.veloviz.plot = cbind(emb.veloviz.plot, cell.cols)
+colnames(emb.veloviz.plot) = c("VeloViz X","VeloViz Y","Cell Type")
+
+p.veloviz = ggplot(emb.veloviz.plot, aes(x = `VeloViz X`, y = `VeloViz Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("VeloViz X") + ylab("VeloViz Y") + 
+  ggtitle("VeloViz") +
+  figtheme 
+  #theme(legend.position = c(0.13,0.87), legend.title = element_blank(), legend.text = element_text(size = 24))
+
+layout = c(
+  area(t = 1, l = 1, b = 2, r = 2),
+  area(t = 1, l = 3, b = 2, r = 4),
+  area(t = 1, l = 5, b = 2, r = 6),
+  area(t = 1, l = 7, b = 2, r = 8),
+  area(t = 1, l = 9, b = 2, r = 10),
+  area(t = 1, l = 11, b = 2, r = 12)
+)
+
+p.four.missing = p.traj + p.veloviz + p.pca + p.tsne + p.umap + p.diffmap + 
+  plot_layout(design = layout) +
+  plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(face = "bold", size = 24))
+p.four.missing
+# ggsave(file = "supp_sim_branch_missing2-2.svg", plot = p.four.missing, width = 16, height = 4)
+# ggsave(file = "supp_sim_branch_missing2-2.png", plot = p.four.missing, width = 16, height = 4)
+
+```
+
+Gap Distance  
+```{r gap distance}
+## PCA
+# pca.med.x.before = median(emb.pca[cell.names.before,1])
+# pca.med.y.before = median(emb.pca[cell.names.before,2])
+# pca.med.x.after = median(emb.pca[cell.names.after,1])
+# pca.med.y.after = median(emb.pca[cell.names.after,2])
+# pca.gap.meds = matrix(c(pca.med.x.before,pca.med.x.after,pca.med.y.before,pca.med.y.after),nrow = 2)
+# pca.gap.dist = dist(pca.gap.meds)
+# pca.gap.dist.norm = pca.gap.dist/max(dist(emb.pca))
+
+pca.gap.dist.norm = gap.dist.norm(emb.pca, cell.names.before, cell.names.after)
+tsne.gap.dist.norm = gap.dist.norm(emb.tsne, cell.names.before, cell.names.after)
+umap.gap.dist.norm = gap.dist.norm(emb.umap, cell.names.before, cell.names.after)
+diffmap.gap.dist.norm = gap.dist.norm(emb.diffmap, cell.names.before, cell.names.after)
+veloviz.gap.dist.norm = gap.dist.norm(emb.veloviz, cell.names.before, cell.names.after)
+
+pca.gap.dist.norm 
+tsne.gap.dist.norm 
+umap.gap.dist.norm 
+diffmap.gap.dist.norm 
+veloviz.gap.dist.norm 
+
+```
+
+
+```{r combine plots with dist, fig.height = 8, fig.width = 8}
+#point colors , fig.height = 8, fig.width = 8
+plot.cols = unique(cell.cols)
+names(plot.cols) = as.character(sapply(plot.cols, function(x) cell.cols[which(cell.cols==x)[1]])) #reorder
+
+#Trajectory schematic 
+traj = data.frame(x = tc, y = uc, c = cell.cols)
+
+p.traj = ggplot(traj, aes(x = x, y = y, color = c)) +
+  geom_point(size = 3) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("PC 1") + ylab("PC 2") + 
+  figtheme
+
+#PCA
+#convert embedding to data frame for plotting 
+emb.pca.plot = as.data.frame(emb.pca)
+emb.pca.plot = cbind(emb.pca.plot, cell.cols)
+colnames(emb.pca.plot) = c("PC1","PC2","Cell Type")
+
+#make plot
+p.pca = ggplot(emb.pca.plot, aes(x = PC1, y = PC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  geom_text(x = -0.05, y = 0.08, label = paste0("Gap\nDistance:\n",formatC(pca.gap.dist.norm,digits = 2)), size = 4, color = "black") +
+  #xlab("PC 1") + ylab("PC 2") + 
+  ggtitle("PCA") +
+  figtheme
+
+#UMAP
+emb.umap.plot = as.data.frame(emb.umap)
+emb.umap.plot = cbind(emb.umap.plot, cell.cols)
+colnames(emb.umap.plot) = c("UMAP X","UMAP Y","Cell Type")
+
+p.umap = ggplot(emb.umap.plot, aes(x = `UMAP X`, y = `UMAP Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  geom_text(x = -3, y = 9, label = paste0("Gap\nDistance:\n",formatC(umap.gap.dist.norm,digits = 2)), size = 4, color = "black") +
+  #xlab("UMAP X") + ylab("UMAP Y") + 
+  ggtitle("UMAP") +
+  figtheme
+
+
+#tSNE
+emb.tsne.plot = as.data.frame(emb.tsne)
+emb.tsne.plot = cbind(emb.tsne.plot, cell.cols)
+colnames(emb.tsne.plot) = c("t-SNE X","t-SNE Y","Cell Type")
+
+p.tsne = ggplot(emb.tsne.plot, aes(x = `t-SNE X`, y = `t-SNE Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  geom_text(x = -7, y = 24, label = paste0("Gap\nDistance:\n",formatC(tsne.gap.dist.norm,digits = 2)), size = 4, color = "black") +
+  #xlab("t-SNE X") + ylab("t-SNE Y") + 
+  ggtitle("t-SNE") +
+  figtheme
+
+
+#diffusion map 
+emb.diffmap.plot = as.data.frame(emb.diffmap)
+emb.diffmap.plot = cbind(emb.diffmap.plot, cell.cols)
+colnames(emb.diffmap.plot) = c("DC1","DC2","Cell Type")
+
+p.diffmap = ggplot(emb.diffmap.plot, aes(x = DC1, y = DC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  geom_text(x = -0.05, y = 0.08, label = paste0("Gap\nDistance:\n",formatC(diffmap.gap.dist.norm,digits = 2)), size = 4, color = "black") +
+  #xlab("DC 1") + ylab("DC 2") + 
+  ggtitle("Diffusion Map") +
+  figtheme
+
+#veloviz
+emb.veloviz.plot = as.data.frame(emb.veloviz)
+emb.veloviz.plot = cbind(emb.veloviz.plot, cell.cols)
+colnames(emb.veloviz.plot) = c("VeloViz X","VeloViz Y","Cell Type")
+
+p.veloviz = ggplot(emb.veloviz.plot, aes(x = `VeloViz X`, y = `VeloViz Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  geom_text(x = -4, y = 4.5, label = paste0("Gap\nDistance:\n",formatC(veloviz.gap.dist.norm,digits = 2)), size = 4, color = "black") +
+  #xlab("VeloViz X") + ylab("VeloViz Y") + 
+  ggtitle("VeloViz") +
+  figtheme 
+  #theme(legend.position = c(0.13,0.87), legend.title = element_blank(), legend.text = element_text(size = 24))
+
+layout = c(
+  area(t = 1, l = 1, b = 2, r = 2),
+  area(t = 1, l = 3, b = 2, r = 4),
+  area(t = 1, l = 5, b = 2, r = 6),
+  area(t = 1, l = 7, b = 2, r = 8),
+  area(t = 1, l = 9, b = 2, r = 10),
+  area(t = 1, l = 11, b = 2, r = 12)
+)
+
+p.four.missing = p.traj + p.veloviz + p.pca + p.tsne + p.umap + p.diffmap + 
+  plot_layout(design = layout) +
+  plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(face = "bold", size = 24))
+p.four.missing
+ggsave(file = "supp_sim_branch2_missing_dist.svg", plot = p.four.missing, width = 16, height = 4)
+ggsave(file = "supp_sim_branch2_missing_dist.png", plot = p.four.missing, width = 16, height = 4)
+
+```
+
+
+
+
+
+
+
+
+## Cycling Trajectory  
+```{r cycle current}
+## make circle like cell cycle
+par(mfrow=c(1,1))
+x <- matrix(rnorm(1000),nc=2)
+y <- x/sqrt(rowSums(x^2))
+z = rnorm(500)
+
+## add some jitter
+obs <- t(y)
+traj = obs
+obs <- jitter(obs, amount = 0.25)
+## order points counterclockwise
+angle <- atan2(obs[2,], obs[1,])
+#angle
+
+obs <- obs[, order(angle)]
+traj = traj[,order(angle)]
+obs = rbind(obs,z)
+#obs
+## rainbow
+col = colorRampPalette(c(rainbow(10)))(ncol(obs))
+labels <- paste0('cell', 1:ncol(obs))
+## plot
+plot(t(obs)[,1:2],col=col, pch=16)
+text(t(obs[,seq(175,225,5)])[,1:2], labels[seq(175,225,5)])
+
+colnames(obs) <- labels
+colnames(traj) = labels
+names(col) = labels
+
+#plot(t(traj),col = col,pch = 16)
+```
+
+Remove some transient cells
+
+```{r jeantestremove}
+cells.keep <- setdiff(labels, paste0('cell', 200:300))
+# cells.keep
+
+labels <- labels[which(labels %in% cells.keep)]
+obs <- obs[,cells.keep]
+traj = traj[,cells.keep]
+col = col[cells.keep]
+plot(t(obs),col=col, pch=16)
+
+cells.before = ((traj[1,]>0.5)&(traj[,2]<0))
+cells.after = ((traj[1,]>0.5)&(traj[,2]>0))
+
+points(t(obs[,cells.before]), pch = 18,col = "dark red",cex = 1.5)
+points(t(obs[,cells.after]),pch = 18,col = "dark red",cex = 1.5)
+
+```
+
+```{r}
+plot(t(traj),col = col,pch = 16)
+points(t(traj[,(cells.before|cells.after)]), pch = 18,col = "dark red",cex = 1.5)
+nCells = ncol(traj)
+cell.names.after = labels[cells.before]
+cell.names.after = labels[cells.after]
+```
+
+
+
+```{r cycle projected}
+## rotate circle slightly
+f = pi*0.1 # adjust as needed
+exp = t(obs)[,1:2]
+exp[,1] = obs[1,]*cos(f) - obs[2,]*sin(f)
+exp[,2] = obs[2,]*cos(f) + obs[1,]*sin(f)
+exp = t(exp)
+zexp = rnorm(nCells)
+exp = rbind(exp,zexp)
+
+plot(t(obs),col=col, pch=16)
+points(t(exp)[,1:2],col=col)
+arrows(t(obs)[,1],t(obs)[,2],t(exp)[,1],t(exp)[,2])
+
+colnames(exp) <- labels
+```
+Non-velocity based embedding on current expression  
+```{r non velocity embeddings cycle }
+#dim red , fig.width=12, fig.height=3.5
+
+pca = svds(A = t(obs), k=3, opts = list(center = TRUE, scale = TRUE, maxitr = 2000, tol = 1e-10))
+var = pca$d
+#plot(var) # ~3 components 
+pcs = pca$u
+rownames(pcs) = labels
+
+par(mfrow = c(2,2))
+#PCA
+emb.pca = pcs[,1:2]
+plot(emb.pca, pch=16, xlab = 'PC1', ylab = 'PC2', col = col)
+
+#UMAP
+set.seed(1)
+emb.umap = umap(pcs[,1:3], n_neighbors = 100L)$layout
+rownames(emb.umap) = labels
+plot(emb.umap,pch=16,xlab = 'UMAP X', ylab = 'UMAP Y',col = col)
+
+#tSNE
+set.seed(1)
+emb.tsne = Rtsne(pcs[,1:3], is_distance = FALSE, perplexity = 100, pca = FALSE, num_threads =1, verbose = FALSE)$Y
+plot(emb.tsne,pch=16,xlab = 't-SNE X', ylab = 't-SNE Y',col=col)
+
+#diffusion map
+set.seed(1)
+diffmap = DiffusionMap(pcs[,1:3], k=50)
+emb.diffmap = eigenvectors(diffmap)[,1:2]
+rownames(emb.diffmap) = labels
+plot(emb.diffmap,pch=16,xlab = 'DC1', ylab = 'DC2',col=col)
+
+```
+
+
+
+```{r cycle veloviz}
+#, fig.width=7,fig.height=7
+set.seed(1) # fig.width=6, fig.height=7
+g = graphViz(observed = obs, projected = exp,
+         k = 30, distance_metric = "L2", similarity_metric = "cosine", 
+         distance_weight = 1, distance_threshold = 1, similarity_threshold = 0, 
+         weighted = TRUE, remove_unconnected = TRUE,
+         cell.colors = col, title = "veloviz embedding", 
+         plot = FALSE, return_graph = TRUE)
+emb.veloviz = g$fdg_coords
+plot(emb.veloviz, col=col, pch=16)
+
+```
+Combine plots  
+
+```{r plotting theme 2}
+
+figtheme = theme_bw(base_size = 18) + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.title = element_text(hjust=0.5, size = 24),
+        axis.line=element_blank(),axis.text.x=element_blank(),
+        axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(),axis.title.y=element_blank(),
+        legend.position = 'none')
+
+
+
+        # axis.line = element_line(colour = "black"),
+        # axis.text.y = element_text(hjust = 0, size = 18),
+        # axis.text.x = element_text(size = 18),
+```
+
+
+```{r combine plots 4 branch}
+#point colors , fig.height = 8, fig.width = 8
+plot.cols = unique(col)
+# names(plot.cols) = as.character(sapply(plot.cols, function(x) cell.names[names(col[which(col==x)[1]])])) #reorder
+
+
+#Trajectory schematic 
+traj = data.frame(x = traj[1,], y = traj[2,], c = col)
+colnames(traj) = c("x","y","c")
+
+p.traj = ggplot(traj, aes(x = x, y = y, color = c)) +
+  geom_point(size = 3) + 
+  scale_color_manual(values = plot.cols) +
+  figtheme
+
+
+#PCA
+#convert embedding to data frame for plotting 
+emb.pca.plot = as.data.frame(emb.pca)
+emb.pca.plot = cbind(emb.pca.plot, col)
+colnames(emb.pca.plot) = c("PC1","PC2","Cell Type")
+
+#make plot
+p.pca = ggplot(emb.pca.plot, aes(x = PC1, y = PC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("PC 1") + ylab("PC 2") + 
+  ggtitle("PCA") +
+  figtheme
+
+#UMAP
+emb.umap.plot = as.data.frame(emb.umap)
+emb.umap.plot = cbind(emb.umap.plot, col)
+colnames(emb.umap.plot) = c("UMAP X","UMAP Y","Cell Type")
+
+p.umap = ggplot(emb.umap.plot, aes(x = `UMAP X`, y = `UMAP Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("UMAP X") + ylab("UMAP Y") + 
+  ggtitle("UMAP") +
+  figtheme
+
+
+#tSNE
+emb.tsne.plot = as.data.frame(emb.tsne)
+emb.tsne.plot = cbind(emb.tsne.plot, col)
+colnames(emb.tsne.plot) = c("t-SNE X","t-SNE Y","Cell Type")
+
+p.tsne = ggplot(emb.tsne.plot, aes(x = `t-SNE X`, y = `t-SNE Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("t-SNE X") + ylab("t-SNE Y") + 
+  ggtitle("t-SNE") +
+  figtheme
+
+
+#diffusion map 
+emb.diffmap.plot = as.data.frame(emb.diffmap)
+emb.diffmap.plot = cbind(emb.diffmap.plot, col)
+colnames(emb.diffmap.plot) = c("DC1","DC2","Cell Type")
+
+p.diffmap = ggplot(emb.diffmap.plot, aes(x = DC1, y = DC2, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("DC 1") + ylab("DC 2") + 
+  ggtitle("Diffusion Map") +
+  figtheme
+
+#veloviz
+emb.veloviz.plot = as.data.frame(emb.veloviz)
+emb.veloviz.plot = cbind(emb.veloviz.plot, col)
+colnames(emb.veloviz.plot) = c("VeloViz X","VeloViz Y","Cell Type")
+
+p.veloviz = ggplot(emb.veloviz.plot, aes(x = `VeloViz X`, y = `VeloViz Y`, color = `Cell Type`)) +
+  geom_point(size = 1) + 
+  scale_color_manual(values = plot.cols) +
+  #xlab("VeloViz X") + ylab("VeloViz Y") + 
+  ggtitle("VeloViz") +
+  figtheme 
+  #theme(legend.position = c(0.13,0.87), legend.title = element_blank(), legend.text = element_text(size = 24))
+
+layout = c(
+  area(t = 1, l = 1, b = 2, r = 2),
+  area(t = 1, l = 3, b = 2, r = 4),
+  area(t = 1, l = 5, b = 2, r = 6),
+  area(t = 1, l = 7, b = 2, r = 8),
+  area(t = 1, l = 9, b = 2, r = 10),
+  area(t = 1, l = 11, b = 2, r = 12)
+)
+
+p.cycle.missing = p.traj + p.veloviz + p.pca + p.tsne + p.umap + p.diffmap + 
+  plot_layout(design = layout) +
+  plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(face = "bold", size = 24))
+p.cycle.missing
+ggsave(file = "cycle_missing.svg", plot = p.cycle.missing, width = 16, height = 4)
+ggsave(file = "cycle_missing.png", plot = p.cycle.missing, width = 16, height = 4)
+
+```
+
+
+Gap Distance  
+```{r gap distance}
+## PCA
+# pca.med.x.before = median(emb.pca[cell.names.before,1])
+# pca.med.y.before = median(emb.pca[cell.names.before,2])
+# pca.med.x.after = median(emb.pca[cell.names.after,1])
+# pca.med.y.after = median(emb.pca[cell.names.after,2])
+# pca.gap.meds = matrix(c(pca.med.x.before,pca.med.x.after,pca.med.y.before,pca.med.y.after),nrow = 2)
+# pca.gap.dist = dist(pca.gap.meds)
+# pca.gap.dist.norm = pca.gap.dist/max(dist(emb.pca))
+
+pca.gap.dist.norm = gap.dist.norm(emb.pca, cell.names.before, cell.names.after)
+tsne.gap.dist.norm = gap.dist.norm(emb.tsne, cell.names.before, cell.names.after)
+umap.gap.dist.norm = gap.dist.norm(emb.umap, cell.names.before, cell.names.after)
+diffmap.gap.dist.norm = gap.dist.norm(emb.diffmap, cell.names.before, cell.names.after)
+veloviz.gap.dist.norm = gap.dist.norm(emb.veloviz, cell.names.before, cell.names.after)
+
+pca.gap.dist.norm 
+tsne.gap.dist.norm 
+umap.gap.dist.norm 
+diffmap.gap.dist.norm 
+veloviz.gap.dist.norm 
+
+```
+
+
+
+
+
+### Combine all complete trajectories  
+```{r combine complete, fig.height = 8, fig.width = 8}
+# p.three
+# p.four
+# p.cycle
+# 
+
+layout = c(
+  area(t = 1, l = 1, b = 2, r = 2),
+  area(t = 1, l = 3, b = 2, r = 4),
+  area(t = 1, l = 5, b = 2, r = 6),
+  area(t = 1, l = 7, b = 2, r = 8),
+  area(t = 1, l = 9, b = 2, r = 10),
+  area(t = 1, l = 11, b = 2, r = 12),
+  
+  area(t = 3, l = 1, b = 4, r = 12),
+  area(t = 5, l = 1, b = 6, r = 12))
+  
+  # area(t = 3, l = 1, b = 4, r = 2),
+  # area(t = 3, l = 3, b = 4, r = 4),
+  # area(t = 3, l = 5, b = 4, r = 6),
+  # area(t = 3, l = 7, b = 4, r = 8),
+  # area(t = 3, l = 9, b = 4, r = 10),
+  # area(t = 3, l = 11, b = 4, r = 12))#,
+  # 
+#   area(t = 5, l = 1, b = 6, r = 2),
+#   area(t = 5, l = 3, b = 6, r = 4),
+#   area(t = 5, l = 5, b = 6, r = 6),
+#   area(t = 5, l = 7, b = 6, r = 8),
+#   area(t = 5, l = 9, b = 6, r = 10),
+#   area(t = 5, l = 11, b = 6, r = 12),
+# )
+
+p.all = p.cycle.missing + p.three.missing + p.four.missing + 
+  plot_layout(design = layout) +
+  plot_annotation(tag_levels = "A") & theme(plot.tag = element_text(face = "bold", size = 24))
+
+p.all
+ggsave(file = "figsup_sim_missing.svg", plot = p.all, width = 16, height = 12)
+ggsave(file = "figsup_sim_missing.png", plot = p.all, width = 16, height = 12)
+
+```
+

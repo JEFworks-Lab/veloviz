@@ -60,12 +60,11 @@ spliced <- spliced[vi,]
 unspliced <- unspliced[vi,]
 
 ## analyze
-all.counts <- spliced + unspliced # use combined spliced and unspliced counts
-all.cpm <- normalizeDepth(all.counts) # cpm normalize
-pcs <- reduceDimensions(all.cpm, 
-                       nPCs = 10,
-                       center=TRUE, scale=TRUE, 
-                       use.ods.genes = TRUE, alpha=0.05)
+counts <- spliced + unspliced # use combined spliced and unspliced counts
+cpm <- normalizeDepth(counts) # cpm normalize
+matnorm <- normalizeVariance(cpm)
+matnorm <- log10(matnorm + 1)
+pcs <- reduceDimensions(matnorm, center = TRUE, scale = TRUE, nPCs = 50)
 
 ## velocity model
 library(velocyto.R)
@@ -86,7 +85,6 @@ pancreas <- list(
   vel = vel
 )
 usethis::use_data(pancreas, overwrite=TRUE)
-
 ```
 
 Compare visualizations
@@ -118,7 +116,7 @@ plotEmbedding(emb.umap, groups=pancreas$clusters, main='UMAP')
 vig = buildVeloviz(
   curr = pancreas$vel$curr,
   proj = pancreas$vel$proj,
-  normalize.depth = TRUE,
+  normalize.depth = FALSE,
   use.ods.genes = TRUE,
   alpha = 0.05,
   pca = TRUE,
@@ -150,12 +148,11 @@ unspliced = unspliced[,good.cells]
 clusters = clusters[good.cells]
 
 ## analyze
-all.counts <- spliced + unspliced # use combined spliced and unspliced counts
-all.cpm <- normalizeDepth(all.counts) # cpm normalize
-pcs <- reduceDimensions(all.cpm, 
-                       nPCs = 10,
-                       center=TRUE, scale=TRUE, 
-                       use.ods.genes = TRUE, alpha=0.05)
+counts <- spliced + unspliced # use combined spliced and unspliced counts
+cpm <- normalizeDepth(counts) # cpm normalize
+matnorm <- normalizeVariance(cpm)
+matnorm <- log10(matnorm + 1)
+pcs <- reduceDimensions(matnorm, center = TRUE, scale = TRUE, nPCs = 50)
 
 ## velocity model
 library(velocyto.R)
@@ -206,7 +203,7 @@ plotEmbedding(emb.umap, groups=pancreasWithGap$clusters, main='UMAP')
 vig = buildVeloviz(
   curr = pancreasWithGap$vel$curr,
   proj = pancreasWithGap$vel$proj,
-  normalize.depth = TRUE,
+  normalize.depth = FALSE,
   use.ods.genes = TRUE,
   alpha = 0.05,
   pca = TRUE,

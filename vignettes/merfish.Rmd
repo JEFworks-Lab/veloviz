@@ -49,15 +49,11 @@ unspliced = unspliced[vi,]
 
 library(veloviz)
 ## normalize
-all.counts = spliced + unspliced # use cell count
-all.cpm = normalizeDepth(all.counts) # cpm normalize
-pcs = reduceDimensions(all.cpm, 
-                       nPCs = 30,
-                       center=TRUE, scale=FALSE, 
-                       use.ods.genes = TRUE, 
-                       max.ods.genes = 1000,
-                       alpha = 0.05,
-                       plot=TRUE)
+counts = spliced + unspliced # use cell count
+cpm = normalizeDepth(counts) # cpm normalize
+matnorm = normalizeVariance(cpm)
+matnorm = log10(matnorm+1)
+pcs <- reduceDimensions(matnorm, center = TRUE, scale = TRUE, nPCs = 50)
 
 ## use first 2 PCs as embedding
 emb <- pcs[,1:2]
@@ -69,7 +65,10 @@ obs <- emb[order(angle), ]
 col = colorRampPalette(c(rainbow(10)))(nrow(obs))
 names(col) = rownames(obs)
 ## double check
-plot(emb, col=col[rownames(emb)], pch=16)
+plotEmbedding(emb, col=col[rownames(emb)])
+sapply(c('MCM6', 'CCNF'), function(g) {
+  plotEmbedding(emb, col=scale(matnorm[g,], main=g)
+})
 
 ## velocity model
 library(velocyto.R)

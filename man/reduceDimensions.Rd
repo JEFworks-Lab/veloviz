@@ -5,12 +5,10 @@
 \title{PCA}
 \usage{
 reduceDimensions(
-  cpm,
+  matnorm,
   center = TRUE,
-  scale = FALSE,
-  use.ods.genes = TRUE,
+  scale = TRUE,
   max.ods.genes = 2000,
-  alpha = 0.05,
   nPCs = 50,
   verbose = TRUE,
   plot = FALSE,

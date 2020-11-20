@@ -42,26 +42,33 @@ buildVeloviz <- function(curr, proj,
     proj = normalizeDepth(proj, depthScale = depth, verbose=verbose)
   }
 
-  ods.genes = normalizeVariance(curr, alpha=alpha, verbose=verbose, details = TRUE)
-  scale.factor = ods.genes$scale_factor ## use residual variance q-value as scale factor
-  names(scale.factor) <- rownames(curr)
-
   if(use.ods.genes) {
     if(verbose) {
-      message('Normalizing variance...')
+      message('Identifying overdispersed genes...')
     }
-    if(sum(ods.genes$over_disp) > max.ods.genes) {
+    matnorm.info = normalizeVariance(curr, alpha=alpha, verbose=verbose, details = TRUE)
+    curr = matnorm.info$matnorm
+    scale.factor = matnorm.info$df$scale_factor
+    names(scale.factor) <- rownames(matnorm.info$df)
+
+    ## scale variance
+    m <- proj
+    rmean <- Matrix::rowMeans(m)
+    sumx     <- Matrix::rowSums(m)
+    sumxx    <- Matrix::rowSums(m^2)
+    rsd <- sqrt((sumxx - 2 * sumx * rmean + ncol(m) * rmean ^ 2) / (ncol(m)-1))
+    ## use same scale factor as curr
+    proj <- proj / rsd * scale.factor[names(rsd)]
+    proj <- proj[rownames(curr),]
+
+    if(nrow(curr) > max.ods.genes) {
       if(verbose) {
-        message(paste0('Limiting to top ', max.ods.genes, ' overdispersed genes...'))
+        message(paste0('Limiting to top ', max.ods.genes, ' highly expressed genes...'))
       }
-      best.genes <- names(sort(scale.factor, decreasing=TRUE)[1:max.ods.genes])
+      rmean <- Matrix::rowMeans(curr)
+      best.genes <- names(sort(rmean, decreasing=TRUE)[1:max.ods.genes])
       curr = curr[best.genes,]
       proj = proj[best.genes,]
-      scale.factor = scale.factor[best.genes]
-    } else {
-      curr = curr[ods.genes$over_disp,]
-      proj = proj[ods.genes$over_disp,]
-      scale.factor = scale.factor[ods.genes$over_disp]
     }
   }
 
@@ -89,12 +96,6 @@ buildVeloviz <- function(curr, proj,
       }
       ## regular scale to var = 1
      m <- m/rsd
-    } else {
-      if(verbose) {
-        message('Using residual variance...')
-      }
-      ## scale to residual variance
-      m <- m/(rsd/scale.factor)
     }
     pca <- RSpectra::svds(A = Matrix::t(m),
                           k=min(50, nPCs+10),
@@ -114,8 +115,6 @@ buildVeloviz <- function(curr, proj,
     }
     if(scale) {
       m <- m / rsd
-    } else {
-      m <- m/(rsd/scale.factor)
     }
     pca.curr <- Matrix::t(m) %*% pca$v[,1:nPCs]
 
@@ -134,8 +133,6 @@ buildVeloviz <- function(curr, proj,
     }
     if(scale) {
       m <- m / rsd
-    } else {
-      m <- m/(rsd/scale.factor)
     }
     pca.proj <- Matrix::t(m) %*% pca$v[,1:nPCs]
 

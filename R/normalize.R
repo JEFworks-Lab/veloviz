@@ -82,7 +82,7 @@ normalizeVariance <- function(
   cpm_center <- Matrix::rowMeans(cpm)
   sumx      <- Matrix::rowSums(cpm)
   sumxx     <- Matrix::rowSums(cpm^2)
-  cpm_var   <- sumxx - 2 * sumx * cpm_center + ncol(cpm) * cpm_center ^ 2
+  cpm_var   <- (sumxx - 2 * sumx * cpm_center + ncol(cpm) * cpm_center ^ 2)/(ncol(cpm)-1)
 
   df <- data.frame(
     log_mean     = log(cpm_center),
@@ -140,11 +140,13 @@ normalizeVariance <- function(
 
   clamp <- function(x, min, max) pmax(min, pmin(max, x))
 
+  ## previously included old variance in scale factor
+  ## remove to accommodate application to new matrix with new variance
   #df$scale_factor <- sqrt(
   #  clamp(df$qv, min.adjusted.variance, max.adjusted.variance) /
-  #    exp(df$log_variance)
+  #  exp(df$log_variance)
   #)
-  #df$scale_factor <- clamp(df$res, min.adjusted.variance, max.adjusted.variance)
+  ## residual variance is scale factor
   df$scale_factor <- clamp(df$qv, min.adjusted.variance, max.adjusted.variance)
   df$scale_factor[!is.finite(df$scale_factor)] <- 0
 
@@ -159,10 +161,16 @@ normalizeVariance <- function(
          col = ifelse(df$over_disp, "red", "black"), pch=".")
   }
 
+  matnorm <- cpm/sqrt(exp(df$log_var))*sqrt(df$scale_factor)
+  matnorm <- matnorm[df$over_disp,]
+
   if(details) {
-    return(df)
+    return(list(
+      matnorm=matnorm,
+      ods=rownames(cpm)[df$over_disp],
+      df=df))
   } else {
-    return(rownames(df)[df$over_disp])
+    return(matnorm)
   }
 }
 ## BH P-value adjustment with a log option
@@ -184,43 +192,28 @@ bh.adjust <- function(x, log = FALSE) {
 #' PCA
 #'
 #' @export
-reduceDimensions <- function(cpm,
+reduceDimensions <- function(matnorm,
                              center=TRUE,
-                             scale=FALSE,
-                             use.ods.genes=TRUE,
+                             scale=TRUE,
                              max.ods.genes=2000,
-                             alpha=0.05,
                              nPCs=50,
                              verbose=TRUE,
                              plot=FALSE,
                              details=FALSE)
 {
-  ods.genes = normalizeVariance(cpm, alpha=alpha, verbose=verbose, plot=plot, details = TRUE)
-  scale.factor = ods.genes$scale_factor ## use residual variance q-value as scale factor
-  names(scale.factor) <- rownames(cpm)
 
-  if(use.ods.genes) {
-    if(verbose) {
-      message('Normalizing variance...')
-    }
-    if(sum(ods.genes$over_disp) > max.ods.genes) {
+
+  if(nrow(matnorm) > max.ods.genes) {
       if(verbose) {
-        message(paste0('Limiting to top ', max.ods.genes, ' overdispersed genes...'))
+        message(paste0('Limiting to top ', max.ods.genes, ' highly expressed genes...'))
       }
-      best.genes <- names(sort(scale.factor, decreasing=TRUE)[1:max.ods.genes])
-      cpm = cpm[best.genes,]
-      scale.factor = scale.factor[best.genes]
-    } else {
-      cpm = cpm[ods.genes$over_disp,]
-      scale.factor = scale.factor[ods.genes$over_disp]
-    }
+      rmean <- Matrix::rowMeans(matnorm)
+      best.genes <- names(sort(rmean, decreasing=TRUE)[1:max.ods.genes])
+      matnorm = matnorm[best.genes,]
   }
 
-  ## establish PCs from overdispersed genes
-  if(verbose) {
-    message('Log10 transforming with pseudocount 1...')
-  }
-  m <- log10(cpm+1)
+  ## PCA
+  m <- matnorm
   ## mean
   rmean <- Matrix::rowMeans(m)
   sumx     <- Matrix::rowSums(m)
@@ -239,12 +232,6 @@ reduceDimensions <- function(cpm,
     }
     ## regular scale to var = 1
     m <- m / rsd
-  } else {
-    if(verbose) {
-      message('Using residual variance...')
-    }
-    ## scale to residual variance
-    m <- m / (rsd/scale.factor)
   }
   pca <- RSpectra::svds(A = Matrix::t(m),
                         k=min(50, nPCs+10),
@@ -259,7 +246,6 @@ reduceDimensions <- function(cpm,
     abline(v=nPCs, col='red')
   }
 
-  #pcs <- pca$u[,1:nPCs]
   pcs <- t(m) %*% pca$v[,1:nPCs]
   rownames(pcs) <- colnames(cpm)
   colnames(pcs) <- paste0('PC', 1:nPCs)

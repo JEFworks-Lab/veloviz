@@ -62,7 +62,7 @@ arrows(t(obs)[,1],t(obs)[,2],t(exp)[,1],t(exp)[,2], col=rgb(0,0,0,0.2))
 Compare embeddings
 
 ```{r compare}
-library(veloviz)
+#library(veloviz)
 
 ## 2D embedding by tSNE
 set.seed(0)
@@ -75,7 +75,7 @@ emb.umap = uwot::umap(t(obs), n_neighbors = 10)
 plot(emb.umap, col=col, pch=16)
 
 ## 2D embedding by veloviz
-vig = buildVeloviz(
+vig = veloviz::buildVeloviz(
   curr = t(obs),
   proj = t(exp),
   normalize.depth = FALSE, ## no dimensionality reduction
@@ -88,5 +88,5 @@ vig = buildVeloviz(
 emb.veloviz = vig$fdg_coords
 plot(emb.veloviz, col=col, pch=16)
 
-g = plotVeloviz(vig, col=col, seed=0)
+g = veloviz::plotVeloviz(vig, col=col, seed=0)
 ```

@@ -14,6 +14,7 @@ library(reticulate)
 library(velocyto.R)
 ```
 
+# Visualization using VeloViz  
 ## Preprocessing  
 Inputs to VeloViz are the scores in PCA space of the current and projected transcriptional states, which we get here by calculating RNA velocity using velocyto.  
 To get current and projected PC scores from raw counts, we first follow standard filtering, normalization, and dimensional reduction steps and then calculate velocity. (Steps 1-4 can be skipped by loading the example dataset in the VeloViz package - see 4*).    
@@ -98,10 +99,11 @@ vel = gene.relative.velocity.estimates(spliced,
 ```
 
 4*) Load example from VeloViz  
-**This example dataset is available with the veloviz package:  
+This example dataset is available with the veloviz package.  
 ```{r load from veloviz}
 clusters = pancreas$clusters # cell type annotations
-vel = pancreas$vel
+pcs = pancreas$pcs # PCs used to make other embeddings (UMAP,tSNE..)
+vel = pancreas$vel # velocity
 ```
 
 
@@ -151,12 +153,12 @@ proj.pca = proj.pca - p.rmean
 #scale variance
 c.sumx = Matrix::rowSums(curr.pca)
 c.sumxx = Matrix::rowSums(curr.pca^2)
-c.rsd = sqrt((c.sumxx - 2 * c.sumx * c.rmean + ncol(curr.pca) * c.rmean ^ 2) / (ncol(curr.pca)-1))
+c.rsd = sqrt((c.sumxx - 2*c.sumx*c.rmean + ncol(curr.pca)*c.rmean^2)/(ncol(curr.pca)-1))
 curr.pca = curr.pca/c.rsd
 
 p.sumx = Matrix::rowSums(proj.pca)
 p.sumxx = Matrix::rowSums(proj.pca^2)
-p.rsd = sqrt((p.sumxx - 2 * p.sumx * p.rmean + ncol(proj.pca) * p.rmean ^ 2) / (ncol(proj.pca)-1))
+p.rsd = sqrt((p.sumxx - 2*p.sumx*p.rmean + ncol(proj.pca)*p.rmean^2)/(ncol(proj.pca)-1))
 proj.pca = proj.pca/p.rsd
 
 #PCA
@@ -233,7 +235,8 @@ veloviz = buildVeloviz(
   distance.weight = 1,
   distance.threshold = 0.5,
   weighted = TRUE,
-  verbose = TRUE
+  seed = 0,
+  verbose = FALSE
 )
 
 emb.veloviz = veloviz$fdg_coords
@@ -275,10 +278,80 @@ plotEmbedding(emb.veloviz, groups=clusters[rownames(emb.veloviz)], main='veloviz
 
 ```
 
+\newpage
+
+# Visualization with missing intermediates using VeloViz  
+Load data: this is the same dataset as above but missing a proportion of Ngn3 high EP cells  
+```{r get data missing}
+clusters = pancreasWithGap$clusters # cell type annotations
+pcs = pancreasWithGap$pcs # PCs used to make other embeddings (UMAP,tSNE..)
+vel = pancreasWithGap$vel # velocity
+```
+
+Create VeloViz embedding  
+```{r veloviz missing}
+curr = vel$current
+proj = vel$projected
+
+veloviz = buildVeloviz(
+  curr = curr, proj = proj,
+  normalize.depth = TRUE, 
+  use.ods.genes = TRUE,
+  alpha = 0.05,
+  pca = TRUE,
+  nPCs = 20,
+  center = TRUE,
+  scale = TRUE, 
+  k = 5,
+  similarity.threshold = 0.25,
+  distance.weight = 1,
+  distance.threshold = 0.5,
+  weighted = TRUE,
+  seed = 0,
+  verbose = FALSE
+)
+
+emb.veloviz = veloviz$fdg_coords
+plotEmbedding(emb.veloviz, groups=clusters[rownames(emb.veloviz)], main='veloviz')
+
+par(mfrow=c(1,1), mar=rep(1,4))
+g = plotVeloviz(veloviz, clusters=clusters[rownames(emb.veloviz)], seed=0, verbose=TRUE)
+```
+
+Compare to other embeddings  
+```{r, fig.height = 7, fig.width=8}
+par(mfrow = c(2,2))
+
+#PCA
+emb.pca = pcs[,1:2]
+plotEmbedding(emb.pca, groups=pancreas$clusters, main='PCA')
+
+#tSNE
+set.seed(0)
+emb.tsne = Rtsne::Rtsne(pcs, perplexity=30)$Y
+rownames(emb.tsne) = rownames(pcs)
+plotEmbedding(emb.tsne, groups=pancreas$clusters, main='tSNE', 
+              xlab = "t-SNE X", ylab = "t-SNE Y")
+
+##UMAP
+set.seed(0)
+emb.umap = uwot::umap(pcs, min_dist = 0.5)
+rownames(emb.umap) <- rownames(pcs)
+plotEmbedding(emb.umap, groups=pancreas$clusters, main='UMAP',
+              xlab = "UMAP X", ylab = "UMAP Y")
+
+#veloviz
+plotEmbedding(emb.veloviz, groups=clusters[rownames(emb.veloviz)], main='veloviz')
+
+
+```
+
+
+
 
 \newpage 
 
-## Scratch
+
 
 ```{r getdata, eval=FALSE, include = FALSE}
 use_condaenv("cellrank", required = TRUE)
@@ -351,9 +424,10 @@ pancreas <- list(
 usethis::use_data(pancreas, overwrite=TRUE)
 ```
 
-Compare visualizations
+
 
 ```{r fulleval, eval = FALSE, include = FALSE}
+#Compare visualizations
 ## load data
 library(veloviz)
 data("pancreas")
@@ -398,9 +472,10 @@ par(mfrow=c(1,1), mar=rep(1,4))
 g = plotVeloviz(vig, clusters=pancreas$clusters, seed=0, verbose=TRUE)
 ```
 
-Now we remove cells
+
 
 ```{r removecells, eval=FALSE, include = FALSE}
+#Now we remove cells
 ## remove EP cells along original trajectory
 x = emb.original[,1]
 vi = x > -5 & x < 0
@@ -438,9 +513,9 @@ pancreasWithGap <- list(
 usethis::use_data(pancreasWithGap, overwrite=TRUE)
 ```
 
-Compare
 
 ```{r subeval, eval = FALSE, include = FALSE}
+#Compare
 ## load data
 library(veloviz)
 data("pancreasWithGap")

@@ -11,6 +11,7 @@ projectedNeighbors(
   distance_metric = "L2",
   similarity_metric = "cosine",
   distance_weight = 1,
+  distance_threshold = 1,
   similarity_threshold = -1
 )
 }

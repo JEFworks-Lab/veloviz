@@ -251,7 +251,7 @@ g = plotVeloviz(veloviz, clusters=clusters[rownames(emb.veloviz)], seed=0, verbo
 
 \newpage 
 ## Compare to other embeddings
-```{r, fig.height = 7, fig.width=8}
+```{r other embeddings, fig.height = 7, fig.width=8}
 par(mfrow = c(2,2))
 
 #PCA

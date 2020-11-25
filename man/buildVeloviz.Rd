@@ -19,6 +19,7 @@ buildVeloviz(
   k = 10,
   similarity.threshold = 0,
   distance.weight = 1,
+  distance.threshold = 1,
   weighted = FALSE,
   verbose = FALSE,
   details = FALSE,

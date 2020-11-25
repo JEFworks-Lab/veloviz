@@ -1,13 +1,39 @@
-#' Pancreas dataset
+#' Pancreas scRNA-seq data
+#' 
+#' Pancreatic endocrinogenesis scRNA-seq from Bastidas-Ponce et. al., 
+#' Development 2019 accessed via scVelo package and 
+#' subsampled to 739 cells. 
+#' 
+#' 
+#' 
+#' @format list of 6 objects:
+#' \describe{
+#' \item{spliced}{matrix, 7192 genes x 739 cells of spliced counts}
+#' \item{unspliced}{matrix, 7192 genes x 739 cells of unspliced counts}
+#' \item{clusters}{factor of cell type annotations from scVelo}
+#' \item{pcs}{matrix, 739 x 50 cell scores in 60 PCs}
+#' \item{cell.dist}{dist, pairwise cell distances in PC space used to compute velocity}
+#' \item{vel}{list, output from running velocyto using spliced, unspliced, and cell.dist}
+#' }
 #'
-#' @format Info
-#'
-#' @source \url{link}
+#' @source \url{https://dev.biologists.org/content/146/12/dev173849.long}
 "pancreas"
 
-#' Pancreas subsetted dataset
+#' Pancreas scRNA-seq data missing intermediates
+#' 
+#' Pancreatic endocrinogenesis scRNA-seq from Bastidas-Ponce et. al., 
+#' Development 2019 accessed via scVelo package with missing Ngn3 high EP cells
+#' and subsampled to 660 cells. 
 #'
-#' @format Info
+#' @format list of 6 objects:
+#' \describe{
+#' \item{spliced}{matrix, 7192 genes x 739 cells of spliced counts}
+#' \item{unspliced}{matrix, 7192 genes x 739 cells of unspliced counts}
+#' \item{clusters}{factor of cell type annotations from scVelo}
+#' \item{pcs}{matrix, 739 x 50 cell scores in 60 PCs}
+#' \item{cell.dist}{dist, pairwise cell distances in PC space used to compute velocity}
+#' \item{vel}{list, output from running velocyto using spliced, unspliced, and cell.dist}
+#' }
 #'
-#' @source \url{link}
+#' @source \url{https://dev.biologists.org/content/146/12/dev173849.long}
 "pancreasWithGap"

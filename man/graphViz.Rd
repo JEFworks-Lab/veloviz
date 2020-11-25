@@ -11,10 +11,11 @@ graphViz(
   distance_metric = "L2",
   similarity_metric = "cosine",
   distance_weight = 1,
+  distance_threshold = 1,
   similarity_threshold = -1,
-  weighted = FALSE,
+  weighted = TRUE,
   remove_unconnected = TRUE,
-  cell.colors,
+  cell.colors = NA,
   title = NA,
   plot = TRUE,
   return_graph = FALSE

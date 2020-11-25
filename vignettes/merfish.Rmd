@@ -6,12 +6,96 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, results = 'hide')
+library(veloviz)
 ```
 
 ## MERFISH
+[add description of data]  
 
-```{r merfish_init, eval=FALSE}
+Load preprocessed data  
+```{r load data}
+col = MERFISH$col
+pcs = MERFISH$pcs
+vel = MERFISH$vel
+```
+
+Build VeloViz graph  
+```{r veloviz}
+curr = vel$current
+proj = vel$projected
+
+
+veloviz = buildVeloviz(
+  curr = curr, proj = proj,
+  normalize.depth = TRUE, 
+  use.ods.genes = TRUE,
+  alpha = 0.05,
+  pca = TRUE,
+  nPCs = 2,
+  center = TRUE,
+  scale = TRUE, 
+  k = 50,
+  similarity.threshold = 0,
+  distance.weight = 0.01,
+  distance.threshold = 0.9,
+  weighted = TRUE,
+  seed = 0,
+  verbose = FALSE
+)
+
+par(mfrow=c(1,2))
+emb.veloviz = veloviz$fdg_coords
+plotEmbedding(emb.veloviz, groups=col[rownames(emb.veloviz)], main='veloviz')
+
+g = plotVeloviz(veloviz, clusters=col[rownames(emb.veloviz)], seed=0, verbose=TRUE)
+
+
+```
+
+Compare to other embeddings  
+```{r, fig.height = 7, fig.width=8}
+par(mfrow = c(2,2))
+
+#PCA
+emb.pcs = MERFISH$pcs[,1:2]
+plotEmbedding(emb.pcs, col=MERFISH$col, main='PCA')
+
+#tSNE 
+set.seed(0)
+emb.tsne = Rtsne::Rtsne(MERFISH$pcs[,1:5], perplexity = 100)$Y
+rownames(emb.tsne) = rownames(MERFISH$pcs)
+plotEmbedding(emb.tsne, col=MERFISH$col, main='tSNE', 
+              xlab = "t-SNE X", ylab = "t-SNE Y")
+
+#UMAP
+set.seed(0)
+emb.umap = umap::umap(pcs[,1:5], min_dist = 0.3)$layout
+rownames(emb.umap) = rownames(MERFISH$pcs)
+plotEmbedding(emb.umap, col=MERFISH$col, main='UMAP',
+              xlab = "UMAP X", ylab = "UMAP Y")
+
+#veloviz
+plotEmbedding(emb.veloviz, groups=col[rownames(emb.veloviz)], main='veloviz')
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r merfish_init, eval=FALSE, include = FALSE}
 dir <- 'path/to/downloaded/data'
 cell_gexp <- as.matrix(read.csv(paste0(dir, 'S12_cell_gexp.csv.gz'), 
                                 row.names=1))
@@ -91,7 +175,7 @@ MERFISH <- list(
 usethis::use_data(MERFISH, overwrite = TRUE)
 ```
 
-```{r merfish_main_pca}
+```{r merfish_main_pca, eval=FALSE, include = FALSE}
 library(veloviz)
 data(MERFISH)
 
@@ -107,7 +191,7 @@ emb.pcs = MERFISH$pcs[,4:5]
 plotEmbedding(emb.pcs, col=MERFISH$col, main='PCA')
 ```
 
-```{r merfish_main_tsne}
+```{r merfish_main_tsne, eval=FALSE, include = FALSE}
 par(mfrow=c(2,2), mar=rep(1,4))
 ## 2D embedding by tSNE
 set.seed(0)
@@ -128,7 +212,7 @@ rownames(emb.tsne) <- rownames(MERFISH$pcs)
 plotEmbedding(emb.tsne, col=MERFISH$col, main='tSNE')
 ```
 
-```{r merfish_main_umap}
+```{r merfish_main_umap, eval=FALSE, include = FALSE}
 par(mfrow=c(2,2), mar=rep(1,4))
 ## 2D embedding by UMAP
 set.seed(0)
@@ -149,7 +233,7 @@ rownames(emb.umap) <- rownames(MERFISH$pcs)
 plotEmbedding(emb.umap, col=MERFISH$col, main='UMAP')
 ```
 
-```{r merfish_main_veloviz}
+```{r merfish_main_veloviz, eval=FALSE, include = FALSE}
 par(mfrow=c(2,2), mar=rep(1,4))
 ## 2D embedding by veloviz
 g <- buildVeloviz(MERFISH$vel$current, 
@@ -195,7 +279,7 @@ plotEmbedding(g$fdg_coords, col = MERFISH$col[rownames(g$fdg_coords)], main='vel
 
 ```
 
-```{r merfish_optional, eval=FALSE}
+```{r merfish_optional, eval=FALSE, include = FALSE}
 library(velocyto.R)
 show.velocity.on.embedding.cor(scale(emb.pcs), vel, 
                                n = 100, show.grid.flow = TRUE, grid.n = 20,

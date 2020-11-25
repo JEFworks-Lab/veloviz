@@ -37,3 +37,22 @@
 #'
 #' @source \url{https://dev.biologists.org/content/146/12/dev173849.long}
 "pancreasWithGap"
+
+#' MERFISH scRNA-seq data
+#' 
+#' MERFISH sequencing of U20S cells in culture, subsampled to 645 cells. 
+#' 
+#' 
+#' 
+#' @format list of 6 objects:
+#' \describe{
+#' \item{nuc}{matrix, 9050 genes x 645 cells of nuclear counts}
+#' \item{cyto}{matrix, 9050 genes x 645 cells of cytoplasmic counts}
+#' \item{col}{factor of cell colors corresponding to position in cell cycle}
+#' \item{pcs}{matrix, 645 x 50 cell scores in 60 PCs}
+#' \item{cell.dist}{dist, pairwise cell distances in PC space used to compute velocity}
+#' \item{vel}{list, output from running velocyto using spliced, unspliced, and cell.dist}
+#' }
+#'
+#' @source \url{}
+"MERFISH"

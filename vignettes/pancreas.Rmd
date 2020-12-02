@@ -8,13 +8,15 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, results = 'hide')
+knitr::opts_chunk$set(echo = TRUE, results = 'hide', message = FALSE, warning = FALSE)
 library(veloviz)
 library(reticulate)
 library(velocyto.R)
 ```
 
 # Visualization using VeloViz  
+In this example, we will compare the velocity-informed 2D embedding created by VeloViz to other commonly used embeddings. We will go through the standard workflow needed to generate the VeloViz visualization using the pancreas endocrinogenesis dataset as an example.  
+
 ## Preprocessing  
 Inputs to VeloViz are the scores in PCA space of the current and projected transcriptional states, which we get here by calculating RNA velocity using velocyto.  
 To get current and projected PC scores from raw counts, we first follow standard filtering, normalization, and dimensional reduction steps and then calculate velocity. (Steps 1-4 can be skipped by loading the example dataset in the VeloViz package - see 4*).    
@@ -183,9 +185,9 @@ proj.scores = Matrix::t(proj.pca) %*% pca$v[,1:10]
 Now we can use the PC projections of the current and projected transcriptional states to build the VeloViz graph. To build the graph, we have to specify multiple parameters that control the features of the graph:  
 **`k`**: how many out-edges each cell can have  
 **`similarity_threshold`**: cosine similarity threshold specifying how similar the velocity and cell transition vectors have to be for an out-edge to be included  
-**`distance_weight`**: weight for distance in PC space between projected state and neighbor - with large weights, graph will prioritize linking cells where projected states and neighbors are close in PC space; with small weights, graph will prioritize linking cells where velocity and cell transition vectors are similar  
-**`distance_threshold`**: quantile threshold specifying minimum distance in PC space between projected state and neighbor for out-edge to be included  
-**`weighted`**: whether to use composite distance to determine graph edge weights (`TRUE`) or to assign all edges equal weights (`FALSE`).    
+**`distance_weight`**: weight for distance component of composite distance - with large weights, graph will prioritize linking cells where projected states and neighbors are close in PC space; with small weights, graph will prioritize linking cells where velocity and cell transition vectors are most similar  
+**`distance_threshold`**: quantile threshold specifying minimum distance in PC space between projected state and neighbor for out-edge to be included - e.g. a distance threshold of 0.2 means that any edges where the distance component is not in the smallest 20% of distances in PC space will be removed from the graph   
+**`weighted`**: whether to use composite distance to determine graph edge weights (`TRUE`) or to assign all edges equal weights (`FALSE`)    
 
 
 ```{r veloviz}

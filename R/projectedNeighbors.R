@@ -1,10 +1,15 @@
 #' Get projected neighbors
-#'
+#' @param observed PCs (rows) x cells (columns) matrix of observed transcriptional state projected into PC space
+#' @param projected PCs (rows) x cells (columns) matrix of projected transcriptional states. Cell should be in same order as in `observed`
+#' @param k Number of nearest neighbors to assign each cell
+#' @param distance_metric Method to compute distance component of composite distance. "L1" or "L2", default = "L2"
+#' @param similarity_metric Method to compute similarity between velocity and cell transition matrices. "cosine" or "pearson", default = "cosine"
+#' @param distance_weight 
 #' @export
 #'
 projectedNeighbors = function(observed,projected,k,distance_metric="L2",similarity_metric="cosine",distance_weight = 1, distance_threshold = 1, similarity_threshold = -1){
-  #observed: genes/PCs (rows) x cells (columns) matrix of observed cells 
-  #projected: genes/PCs (rows) x cells (columns) matrix of projected states of cells in observed (same order)
+  #observed: PCs (rows) x cells (columns) matrix of observed transcriptional states projected into PC space
+  #projected: PCs (rows) x cells (columns) matrix of projected transcriptional states. Cell should be in same order as in `observed`
   #k: number of nearest neighbors 
   #distance_metric: "L1" or "L2" to calculate cell-cell distance, d
   #similarity_metric: "cosine" or "pearson" correlation to calculate difference x velocity similarity, sim. NOTE: pearson similarity behaves weird with two dimensions 

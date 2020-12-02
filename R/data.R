@@ -54,5 +54,5 @@
 #' \item{vel}{list, output from running velocyto using spliced, unspliced, and cell.dist}
 #' }
 #'
-#' @source \url{}
+#' @source \url{https://www.pnas.org/content/116/39/19490}
 "MERFISH"

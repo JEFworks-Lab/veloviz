@@ -15,12 +15,51 @@ graphViz(
   similarity_threshold = -1,
   weighted = TRUE,
   remove_unconnected = TRUE,
-  cell.colors = NA,
-  title = NA,
+  return_graph = FALSE,
   plot = TRUE,
-  return_graph = FALSE
+  cell.colors = NA,
+  title = NA
 )
+}
+\arguments{
+\item{observed}{PCs (rows) x cells (columns) matrix of observed transcriptional state projected into PC space}
+
+\item{projected}{PCs (rows) x cells (columns) matrix of projected transcriptional states. Cell should be in same order as in \code{observed}}
+
+\item{k}{Number of nearest neighbors to assign each cell}
+
+\item{distance_metric}{Method to compute distance component of composite distance. "L1" or "L2", default = "L2"}
+
+\item{similarity_metric}{Method to compute similarity between velocity and cell transition matrices. "cosine" or "pearson", default = "cosine"}
+
+\item{distance_weight}{Weight of distance component of composite distance, default = 1}
+
+\item{distance_threshold}{quantile threshold for distance component above which to remove edges, default = 1 i.e. no edges removed}
+
+\item{similarity_threshold}{similarity threshold below which to remove edges, default = -1 i.e. no edges removed}
+
+\item{weighted}{if TRUE, assigns edge weights based on composite distance, if FALSE assigns equal weights to all edges, default = TRUE}
+
+\item{remove_unconnected}{if TRUE, does not plot cells with no edges, default = TRUE}
+
+\item{return_graph}{if TRUE, returns igraph object \code{graph}, force-directed layout coordinates \code{fdg_coords}, and \code{projected_neighbors} object detailing composite distance values and components, default = FALSE}
+
+\item{plot}{if TRUE, plots graph and force-directed layout}
+
+\item{cell.colors}{cell.colors to use for plotting}
+
+\item{title}{title to use for plot}
+}
+\value{
+\code{graph} igraph object of VeloViz graph
+
+\code{fdg_coords} cells (rows) x 2 coordinates of force-directed layout of VeloViz graph
+
+\code{projectedNeighbors} output of \code{projectedNeighbors}
 }
 \description{
 Visualize as velocity informed force directed graph
+}
+\seealso{
+\code{\link{projectedNeighbors}}
 }

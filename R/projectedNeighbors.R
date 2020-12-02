@@ -1,21 +1,24 @@
-#' Get projected neighbors
+#' Computes composite distances between all cell pairs and returns k-nearest neighbors and edge weights needed to build VeloViz graph.
+#' 
 #' @param observed PCs (rows) x cells (columns) matrix of observed transcriptional state projected into PC space
 #' @param projected PCs (rows) x cells (columns) matrix of projected transcriptional states. Cell should be in same order as in `observed`
 #' @param k Number of nearest neighbors to assign each cell
 #' @param distance_metric Method to compute distance component of composite distance. "L1" or "L2", default = "L2"
 #' @param similarity_metric Method to compute similarity between velocity and cell transition matrices. "cosine" or "pearson", default = "cosine"
-#' @param distance_weight 
+#' @param distance_weight Weight of distance component of composite distance, default = 1
+#' @param distance_threshold quantile threshold for distance component above which to remove edges, default = 1 i.e. no edges removed
+#' @param similarity_threshold similarity threshold below which to remove edges, default = -1 i.e. no edges removed
+#' 
+#' @return `kNNs` cells (rows) x k (columns) matrix of indices of each cell's nearest neighbors computed based on composite distance. Edges removed based on distance or similarity threshold will be NA.
+#' @return `edge_weights` cells (rows) x k (columns) matrix of edge weights computed based on composite distance. Edges removed based on distance or similarity threshold will be NA. 
+#' @return `all_dists` cells x cells matrix of all pairwise composite distances
+#' @return `dist_comp` components of composite distance: `invDist` distance component, `negSim` similarity component 
+#' 
+#' @seealso \code{\link{graphViz}}
+#' 
 #' @export
 #'
 projectedNeighbors = function(observed,projected,k,distance_metric="L2",similarity_metric="cosine",distance_weight = 1, distance_threshold = 1, similarity_threshold = -1){
-  #observed: PCs (rows) x cells (columns) matrix of observed transcriptional states projected into PC space
-  #projected: PCs (rows) x cells (columns) matrix of projected transcriptional states. Cell should be in same order as in `observed`
-  #k: number of nearest neighbors 
-  #distance_metric: "L1" or "L2" to calculate cell-cell distance, d
-  #similarity_metric: "cosine" or "pearson" correlation to calculate difference x velocity similarity, sim. NOTE: pearson similarity behaves weird with two dimensions 
-  #distance_weight: weight w in inverse distance component of composite distance: CD = [1/(1+w*d)]*[- sim]
-  #distance threshold: [0,1], proportion of largest inverse distances to include when determining which edges to include. e.g. 0.1 --> keeps edges with top 10% of inverse distances 
-  #similarity_threshold: minimum similarity between velocity vector and cell_i-->nn_i vector for edge to be included. default: all edges included. 
   
   observed = t(observed)
   projected = t(projected)
@@ -97,10 +100,31 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
 }
 
 #' Visualize as velocity informed force directed graph
-#'
+#' 
+#' @param observed PCs (rows) x cells (columns) matrix of observed transcriptional state projected into PC space
+#' @param projected PCs (rows) x cells (columns) matrix of projected transcriptional states. Cell should be in same order as in `observed`
+#' @param k Number of nearest neighbors to assign each cell
+#' @param distance_metric Method to compute distance component of composite distance. "L1" or "L2", default = "L2"
+#' @param similarity_metric Method to compute similarity between velocity and cell transition matrices. "cosine" or "pearson", default = "cosine"
+#' @param distance_weight Weight of distance component of composite distance, default = 1
+#' @param distance_threshold quantile threshold for distance component above which to remove edges, default = 1 i.e. no edges removed
+#' @param similarity_threshold similarity threshold below which to remove edges, default = -1 i.e. no edges removed
+#' @param weighted if TRUE, assigns edge weights based on composite distance, if FALSE assigns equal weights to all edges, default = TRUE
+#' @param remove_unconnected if TRUE, does not plot cells with no edges, default = TRUE 
+#' @param return_graph if TRUE, returns igraph object `graph`, force-directed layout coordinates `fdg_coords`, and `projected_neighbors` object detailing composite distance values and components, default = FALSE
+#' @param plot if TRUE, plots graph and force-directed layout
+#' @param cell.colors cell.colors to use for plotting 
+#' @param title title to use for plot
+#' 
+#' @return `graph` igraph object of VeloViz graph
+#' @return `fdg_coords` cells (rows) x 2 coordinates of force-directed layout of VeloViz graph
+#' @return `projectedNeighbors` output of `projectedNeighbors`
+#' 
+#' @seealso \code{\link{projectedNeighbors}}
+#' 
 #' @export
 #'
-graphViz = function(observed, projected, k, distance_metric = "L2", similarity_metric = "cosine", distance_weight = 1, distance_threshold = 1, similarity_threshold = -1, weighted = TRUE, remove_unconnected = TRUE, cell.colors = NA, title = NA, plot = TRUE, return_graph = FALSE){
+graphViz = function(observed, projected, k, distance_metric = "L2", similarity_metric = "cosine", distance_weight = 1, distance_threshold = 1, similarity_threshold = -1, weighted = TRUE, remove_unconnected = TRUE, return_graph = FALSE,  plot = TRUE, cell.colors = NA, title = NA){
   #observed, projected, k, distance_metric, similarity_metric, similarity_threshold: same arguments needed for projected neighbors
   #cell.colors: list of length nCells with colors corresponding to cluster IDs
   #return_graph: logical indicating whether to return graph object g and fdg coordinates fdg

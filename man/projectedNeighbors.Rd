@@ -2,7 +2,7 @@
 % Please edit documentation in R/projectedNeighbors.R
 \name{projectedNeighbors}
 \alias{projectedNeighbors}
-\title{Get projected neighbors}
+\title{Computes composite distances between all cell pairs and returns k-nearest neighbors and edge weights needed to build VeloViz graph.}
 \usage{
 projectedNeighbors(
   observed,
@@ -15,6 +15,35 @@ projectedNeighbors(
   similarity_threshold = -1
 )
 }
+\arguments{
+\item{observed}{PCs (rows) x cells (columns) matrix of observed transcriptional state projected into PC space}
+
+\item{projected}{PCs (rows) x cells (columns) matrix of projected transcriptional states. Cell should be in same order as in \code{observed}}
+
+\item{k}{Number of nearest neighbors to assign each cell}
+
+\item{distance_metric}{Method to compute distance component of composite distance. "L1" or "L2", default = "L2"}
+
+\item{similarity_metric}{Method to compute similarity between velocity and cell transition matrices. "cosine" or "pearson", default = "cosine"}
+
+\item{distance_weight}{Weight of distance component of composite distance, default = 1}
+
+\item{distance_threshold}{quantile threshold for distance component above which to remove edges, default = 1 i.e. no edges removed}
+
+\item{similarity_threshold}{similarity threshold below which to remove edges, default = -1 i.e. no edges removed}
+}
+\value{
+\code{kNNs} cells (rows) x k (columns) matrix of indices of each cell's nearest neighbors computed based on composite distance. Edges removed based on distance or similarity threshold will be NA.
+
+\code{edge_weights} cells (rows) x k (columns) matrix of edge weights computed based on composite distance. Edges removed based on distance or similarity threshold will be NA.
+
+\code{all_dists} cells x cells matrix of all pairwise composite distances
+
+\code{dist_comp} components of composite distance: \code{invDist} distance component, \code{negSim} similarity component
+}
 \description{
-Get projected neighbors
+Computes composite distances between all cell pairs and returns k-nearest neighbors and edge weights needed to build VeloViz graph.
+}
+\seealso{
+\code{\link{graphViz}}
 }

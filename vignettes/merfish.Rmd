@@ -21,21 +21,20 @@ vel = MERFISH$vel
 ```
 
 Build VeloViz graph  
-```{r veloviz}
+```{r veloviz, fig.height = 11, fig.width = 7}
 curr = vel$current
 proj = vel$projected
 
-
 veloviz = buildVeloviz(
-  curr = curr, proj = proj,
+  curr = curr, 
+  proj = proj,
   normalize.depth = TRUE, 
-  use.ods.genes = TRUE,
-  alpha = 0.05,
+  use.ods.genes = FALSE,
   pca = TRUE,
-  nPCs = 2,
+  nPCs = 5,
   center = TRUE,
   scale = TRUE, 
-  k = 50,
+  k = 5,
   similarity.threshold = 0,
   distance.weight = 0.01,
   distance.threshold = 0.9,
@@ -44,40 +43,60 @@ veloviz = buildVeloviz(
   verbose = FALSE
 )
 
-par(mfrow=c(1,2))
+par(mfrow=c(3,2))
 emb.veloviz = veloviz$fdg_coords
 plotEmbedding(emb.veloviz, groups=col[rownames(emb.veloviz)], main='veloviz')
-
 g = plotVeloviz(veloviz, clusters=col[rownames(emb.veloviz)], seed=0, verbose=TRUE)
-
+sapply(c('MCM6', 'CDC6', 'KIF2C', 'CCNF'), function(g) {
+  gexp <- scale(curr[g,])[,1]
+  plotEmbedding(emb.veloviz, col=gexp, main=g)
+})
 
 ```
 
 Compare to other embeddings  
-```{r, fig.height = 7, fig.width=8}
-par(mfrow = c(2,2))
+```{r, fig.height = 11, fig.width = 7}
 
 #PCA
-emb.pcs = MERFISH$pcs[,1:2]
-plotEmbedding(emb.pcs, col=MERFISH$col, main='PCA')
+layout(matrix(c(1,1,2,3,4,5), 3, 2, byrow = TRUE))
+emb.pcs = pcs[,1:2]
+plotEmbedding(emb.pcs, col=col, main='PCA')
+sapply(c('MCM6', 'CDC6', 'KIF2C', 'CCNF'), function(g) {
+  gexp <- scale(curr[g,])[,1]
+  plotEmbedding(emb.pcs, col=gexp, main=g)
+})
 
 #tSNE 
-set.seed(0)
-emb.tsne = Rtsne::Rtsne(MERFISH$pcs[,1:5], perplexity = 100)$Y
-rownames(emb.tsne) = rownames(MERFISH$pcs)
-plotEmbedding(emb.tsne, col=MERFISH$col, main='tSNE', 
+set.seed(1)
+layout(matrix(c(1,1,2,3,4,5), 3, 2, byrow = TRUE))
+emb.tsne = Rtsne::Rtsne(pcs[,1:5], perplexity = 100)$Y
+rownames(emb.tsne) = rownames(pcs)
+plotEmbedding(emb.tsne, col=col, main='tSNE', 
               xlab = "t-SNE X", ylab = "t-SNE Y")
+sapply(c('MCM6', 'CDC6', 'KIF2C', 'CCNF'), function(g) {
+  gexp <- scale(curr[g,])[,1]
+  plotEmbedding(emb.tsne, col=gexp, main=g)
+})
 
 #UMAP
-set.seed(0)
+set.seed(1)
+layout(matrix(c(1,1,2,3,4,5), 3, 2, byrow = TRUE))
 emb.umap = umap::umap(pcs[,1:5], min_dist = 0.3)$layout
-rownames(emb.umap) = rownames(MERFISH$pcs)
-plotEmbedding(emb.umap, col=MERFISH$col, main='UMAP',
+rownames(emb.umap) = rownames(pcs)
+plotEmbedding(emb.umap, col=col, main='UMAP',
               xlab = "UMAP X", ylab = "UMAP Y")
+sapply(c('MCM6', 'CDC6', 'KIF2C', 'CCNF'), function(g) {
+  gexp <- scale(curr[g,])[,1]
+  plotEmbedding(emb.umap, col=gexp, main=g)
+})
 
 #veloviz
+layout(matrix(c(1,1,2,3,4,5), 3, 2, byrow = TRUE))
 plotEmbedding(emb.veloviz, groups=col[rownames(emb.veloviz)], main='veloviz')
-
+sapply(c('MCM6', 'CDC6', 'KIF2C', 'CCNF'), function(g) {
+  gexp <- scale(curr[g,])[,1]
+  plotEmbedding(emb.veloviz, col=gexp, main=g)
+})
 
 ```
 

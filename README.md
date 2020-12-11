@@ -6,7 +6,7 @@
 
 `VeloViz` creates an RNA-velocity-informed 2D embedding for single cell transcriptomics data.
 
-![](https://github.com/JEFworks/veloviz/blob/package/fig1a.png)
+![](https://github.com/JEFworks/veloviz/blob/package/docs/img/readme_schematic.png)
 
 The overall approach is detailed in the following publication: [add link]
 
@@ -21,7 +21,7 @@ devtools::install_github('JEFworks/veloviz')
 
 ## Example
 
-Below is a short example showing how to create a VeloViz embedding on sc-RNAseq data. In depth tutorials and examples using other data sets are available in our vignettes.  
+Below is a short example showing how to create a VeloViz embedding on sc-RNAseq data.   
 
 ``` r
 library(veloviz)
@@ -52,8 +52,35 @@ seed = 0,
 verbose = FALSE
 )
 
-# visualize VeloViz embedding
+# extract VeloViz embedding
 emb.veloviz = veloviz$fdg_coords
+
+# compare to other embeddings
+
+par(mfrow = c(2,2))
+#PCA
+emb.pca = pcs[,1:2]
+plotEmbedding(emb.pca, groups=pancreas$clusters, main='PCA')
+
+#tSNE
+set.seed(0)
+emb.tsne = Rtsne::Rtsne(pcs, perplexity=30)$Y rownames(emb.tsne) = rownames(pcs)
+plotEmbedding(emb.tsne, groups=pancreas$clusters, main='tSNE',
+xlab = "t-SNE X", ylab = "t-SNE Y")
+
+#UMAP
+set.seed(0)
+emb.umap = uwot::umap(pcs, min_dist = 0.5)
+rownames(emb.umap) <- rownames(pcs)
+plotEmbedding(emb.umap, groups=pancreas$clusters, main='UMAP',
+xlab = "UMAP X", ylab = "UMAP Y")
+
+#VeloViz
 plotEmbedding(emb.veloviz, groups=clusters[rownames(emb.veloviz)], main='veloviz')
 
 ```
+![](https://github.com/JEFworks/veloviz/blob/package/docs/img/readme_example.png)
+
+## Tutorials
+In depth tutorials and examples using other data sets are available in our vignettes.  
+[add link]

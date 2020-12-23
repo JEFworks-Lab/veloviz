@@ -12,7 +12,7 @@ library(velocyto.R)
 ```
 
 # Visualization using VeloViz  
-In this example, we will compare the velocity-informed 2D embedding created by VeloViz to other commonly used embeddings. We will go through the standard workflow needed to generate the VeloViz visualization using the pancreas endocrinogenesis dataset as an example.  
+In this tutorial, we will compare the velocity-informed 2D embedding created by VeloViz to other commonly used embeddings. We will go through the workflow needed to generate the VeloViz visualization using the pancreas endocrinogenesis dataset as an example. We will also compare results with VeloViz and other embeddings when some intermediate cells in the developmental trajectory are missing.    
 
 ## Preprocessing  
 Inputs to VeloViz are the scores in PCA space of the current and projected transcriptional states, which we get here by calculating RNA velocity using velocyto.  

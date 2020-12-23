@@ -8,54 +8,53 @@ library(veloviz)
 ```
 
 # VeloViz Parameters 
-In this example, we will explore the different user-inputted parameters to VeloViz and their effects on the 2D embedding. To do this, we will create a cell cycle simulation with missing intermediates and create VeloViz graphs with various parameter values.    
+In this tutorial, we will explore the different user-inputted parameters to VeloViz and their effects on the 2D embedding. To do this, we will create a cell cycle simulation with missing intermediates and create VeloViz graphs with various parameter values.    
 
-## Create simulated cell cycle  
-```{r cycle current}
-par(mfrow = c(1,2))
-## make 2D circle like cell cycle + noise in 3D 
+## Create simulated cell cycle
+```{r simulate full cycle, fig.width=7, fig.height=8}
 set.seed(1)
-x <- matrix(rnorm(1000),nc=2)
-y <- x/sqrt(rowSums(x^2))
-z = rnorm(500)
 
-## make trajectory and order points counterclockwise
-traj = y
-angle <- atan2(traj[,2], traj[,1]) 
-traj = traj[order(angle),]
+#make unit circle
+t = runif(500,min=0,max=2*pi)
+u1 = cos(t)
+u2 = sin(t)
+traj = cbind(u1,u2)
 
-## make observed and add noise
-obs = traj
-obs <- jitter(obs, amount = 0.25) 
-obs = cbind(obs,z)
+#OBSERVED
+#add noise and uncorrelated dimension
+u1 = jitter(u1, amount = 0.25)
+u2 = jitter(u2, amount = 0.25)
+u3 = rnorm(500)
+obs = cbind(u1,u2,u3)
 
-## color by position in cycle and add cell labels
+#order by pseduotime 
+traj = traj[order(t),]
+obs = obs[order(t),]
+
+#color by pseudotime
 col = colorRampPalette(c(rainbow(10)))(nrow(obs))
-
 labels <- paste0('cell', 1:nrow(obs))
-rownames(obs) = labels
 rownames(traj) = labels
-names(col) = labels
+rownames(obs) = labels
 
-plot(obs[,1:2], col=col, pch=16, main = "simulated cycle", xlab = "X", ylab = "Y")
-points(obs[c(1,100,200,300,400,500),], pch = 4, col = "black")
-text(obs[c(1,100,200,300,400,500),1:2]-0.1, labels[c(1,100,200,300,400,500)])
+par(mfrow = c(2,2))
+plot(traj, col = col, main = "trajectory")
+plot(obs[,1:2], col = col,main = "observed")
 
+#PROJECTED
+#rotate by angle a
+a = 0.1*pi
+exp.u1 = cos(a)*obs[,1] - sin(a)*obs[,2]
+exp.u2 = sin(a)*obs[,1] + cos(a)*obs[,2]
+set.seed(1)
+exp.u3 = rnorm(500)
+exp = cbind(exp.u1,exp.u2,exp.u3)
+rownames(exp) = labels
 
-## make projected by rotating circle 
-angle.rot = pi*0.1 # angle to rotate by 
-exp = obs[,1:2]
-exp[,1] = obs[,1]*cos(angle.rot) - obs[,2]*sin(angle.rot)
-exp[,2] = obs[,2]*cos(angle.rot) + obs[,1]*sin(angle.rot)
-zexp = rnorm(500) #3D 
-exp = cbind(exp,zexp)
-rownames(exp) <- labels
-
-## plot observed and expected 
-plot(obs[,1:2],col=col, pch=16, 
-       main = "simulated observed \nand projected", xlab = "X", ylab = "Y")
+plot(exp[,1:2],col = col, main = "expected")
+plot(obs[,1:2],col=col, pch=16)
 points(exp[,1:2],col=col)
-arrows(obs[,1:2][,1],obs[,1:2][,2],exp[,1:2][,1],exp[,1:2][,2])
+arrows(obs[,1],obs[,2],exp[,1],exp[,2])
 
 ```
 
@@ -109,28 +108,75 @@ plot(emb.veloviz, pch = 16, main = "VeloViz", xlab = '', ylab = '',col=col)
 ```
 
 ## Incomplete Cycle 
-```{r incomplete cycle}
-par(mfrow = c(1,2))
-## cells to keep 
-labels.keep <- setdiff(labels, paste0('cell', 200:300))
+```{r simulate incomplete cycle, fig.width = 7, fig.height = 9}
+set.seed(1)
 
-## incomplete observed and expected
-traj.missing = traj[labels.keep,]
-obs.missing = obs[labels.keep,]
-exp.missing = exp[labels.keep,]
-col.missing = col[labels.keep]
+#make unit circle
+t = runif(500,min=0,max=2*pi)
+u1 = cos(t)
+u2 = sin(t)
+traj = cbind(u1,u2)
 
-plot(obs.missing[,1:2], col=col.missing, pch=16, main = "simulated cycle", xlab = "X", ylab = "Y")
-points(obs.missing[c(1,100,200,300),], pch = 4, col = "black")
-text(obs.missing[c(1,100,200,300),1:2]-0.1, labels.keep[c(1,100,200,300)])
+#OBSERVED
+#add noise and uncorrelated dimension
+u1 = jitter(u1, amount = 0.25)
+u2 = jitter(u2, amount = 0.25)
+u3 = rnorm(500)
+obs = cbind(u1,u2,u3)
 
-## plot observed and expected 
-plot(obs.missing[,1:2],col=col.missing, pch=16, 
-       main = "simulated observed \nand projected", xlab = "X", ylab = "Y")
-points(exp.missing[,1:2],col=col.missing)
-arrows(obs.missing[,1:2][,1],obs.missing[,1:2][,2],exp.missing[,1:2][,1],exp.missing[,1:2][,2])
+#order by pseduotime 
+traj = traj[order(t),]
+obs = obs[order(t),]
+
+#color by pseudotime
+col = colorRampPalette(c(rainbow(10)))(nrow(obs))
+labels <- paste0('cell', 1:nrow(obs))
+rownames(traj) = labels
+rownames(obs) = labels
+names(col) = labels
+
+#PROJECTED
+#rotate by angle a
+a = 0.1*pi
+exp.u1 = cos(a)*obs[,1] - sin(a)*obs[,2]
+exp.u2 = sin(a)*obs[,1] + cos(a)*obs[,2]
+set.seed(1)
+exp.u3 = rnorm(500)
+exp = cbind(exp.u1,exp.u2,exp.u3)
+rownames(exp) = labels
+
+#remove cells 
+cells.keep <- setdiff(labels, paste0('cell', 1:100))
+# cells.keep
+
+labels <- labels[which(labels %in% cells.keep)]
+obs.missing <- obs[cells.keep,]
+exp.missing = exp[cells.keep,]
+traj.missing = traj[cells.keep,]
+col = col[cells.keep]
+
+par(mfrow = c(2,2))
+plot(traj.missing, col = col, main = "trajectory", pch = 16)
+plot(obs.missing[,1:2], col = col,main = "observed", pch = 16)
+plot(exp.missing[,1:2],col = col, main = "expected")
+plot(obs.missing[,1:2],col=col, pch=16)
+points(exp.missing[,1:2],col=col)
+arrows(obs.missing[,1],obs.missing[,2],exp.missing[,1],exp.missing[,2])
+
+# cells.before = ((traj[1,]>0.5)&(traj[2,]<0))
+# cells.after = ((traj[1,]>0.5)&(traj[2,]>0))
+
+cells.before = labels %in% paste0('cell', 470:500)
+cells.after = labels %in% paste0('cell', 101:130)
+
+# par(mfrow = c(1,1))
+# plot(obs.missing[,1:2],col=col, pch=16)
+# points(obs.missing[cells.before,], pch = 4,col = "dark red",cex = 1.5)
+# points(obs.missing[cells.after,],pch = 4,col = "dark red",cex = 1.5)
+
 
 ```
+
 
 ```{r non velocity embeddings incomplete cycle, fig.height = 7, fig.width=6 }
 pca = RSpectra::svds(A = obs.missing, k=3, 
@@ -138,7 +184,7 @@ pca = RSpectra::svds(A = obs.missing, k=3,
                                  maxitr = 2000, tol = 1e-10))
 var = pca$d
 pcs = pca$u
-rownames(pcs) = labels.keep
+rownames(pcs) = labels
 
 par(mfrow = c(2,2))
 #PCA
@@ -307,5 +353,3 @@ for (similarity.threshold in sts){
 }
 
 ```
-
-

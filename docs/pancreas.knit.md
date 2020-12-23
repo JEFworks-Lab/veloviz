@@ -4,12 +4,7 @@ output:
   html_document: default
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, results = 'hide', message = FALSE, warning = FALSE)
-library(veloviz)
-library(reticulate)
-library(velocyto.R)
-```
+
 
 # Visualization using VeloViz  
 In this example, we will compare the velocity-informed 2D embedding created by VeloViz to other commonly used embeddings. We will go through the standard workflow needed to generate the VeloViz visualization using the pancreas endocrinogenesis dataset as an example.  
@@ -19,7 +14,8 @@ Inputs to VeloViz are the scores in PCA space of the current and projected trans
 To get current and projected PC scores from raw counts, we first follow standard filtering, normalization, and dimensional reduction steps and then calculate velocity. (Steps 1-4 can be skipped by loading the example dataset in the VeloViz package - see 4*).    
 
 0) Get Data:  
-```{r get data}
+
+```r
 #getting pancreas data from scVelo
 use_condaenv("cellrank", required = TRUE)
 scv = import("scvelo")
@@ -46,13 +42,13 @@ clusters <- clusters[good.cells]
 
 dim(spliced)
 dim(unspliced)
-
 ```
 
 \newpage
 
 1) Filter good genes  
-```{r filter}
+
+```r
 #keep genes with >10 total counts
 good.genes = genes[rowSums(spliced) > 10 & rowSums(unspliced) > 10]
 spliced = spliced[good.genes,]
@@ -65,19 +61,20 @@ dim(unspliced)
 
 
 2) Normalize  
-```{r normalize}
+
+```r
 counts = spliced + unspliced # use combined spliced and unspliced counts
 cpm = normalizeDepth(counts) # normalize to counts per million 
 varnorm = normalizeVariance(cpm) # variance stabilize, find overdispersed genes
 lognorm = log10(varnorm + 1) # log normalize
-
 ```
 
 
 
 3) Reduce Dimensions  
 After filtering and normalizing, we reduce dimensions, and calculate cell-cell distance in PC space. This distance will be used to compute velocity.  
-```{r pca dist}
+
+```r
 #PCA on centered and scaled expression of overdispersed genes
 pcs = reduceDimensions(lognorm, center = TRUE, scale = TRUE, nPCs = 50)
 
@@ -89,7 +86,8 @@ cell.dist = as.dist(1-cor(t(pcs))) # cell distance in PC space
 ## Velocity  
 4) Calculate velocity  
 Next, we compute velocity from spliced and unspliced counts and cell-cell distances using velocyto. This will give us the current and projected transcriptional states.  
-```{r velocity}
+
+```r
 vel = gene.relative.velocity.estimates(spliced,
                                        unspliced,
                                        kCells = 30,
@@ -99,7 +97,8 @@ vel = gene.relative.velocity.estimates(spliced,
 
 4*) Load example from VeloViz  
 This example dataset is available with the veloviz package.  
-```{r load from veloviz}
+
+```r
 clusters = pancreas$clusters # cell type annotations
 pcs = pancreas$pcs # PCs used to make other embeddings (UMAP,tSNE..)
 vel = pancreas$vel # velocity
@@ -107,13 +106,13 @@ vel = pancreas$vel # velocity
 #choose colors based on clusters for plotting later
 cell.cols = rainbow(8)[as.numeric(clusters)]
 names(cell.cols) = names(clusters)
-
 ```
 
 
 5) Normalize current and projected  
 Now that we have the current and projected expression, we want to go through a similar normalization process as we did with the raw counts and then reduce dimensions in PCA. Steps 5-7 can be done together using the `buildVeloviz` function (see 7*).  
-```{r normalize current and projected}
+
+```r
 curr = vel$current
 proj = vel$projected
 
@@ -137,13 +136,13 @@ rsd = sqrt((sumxx - 2 * sumx * rmean + ncol(m) * rmean ^ 2) / (ncol(m)-1)) #row 
 
 proj.varnorm = proj.norm / rsd * scale.factor[names(rsd)]
 proj.varnorm = proj.norm[rownames(curr.varnorm),]
-
 ```
 
 
 
 6) Project current and projected into PC space  
-```{r pca current and projected}
+
+```r
 #log normalize 
 curr.pca = log10(curr.varnorm + 1)
 proj.pca = log10(proj.varnorm + 1)
@@ -176,7 +175,6 @@ pca = RSpectra::svds(A = Matrix::t(curr.pca), k=20,
 #scores of current and projected
 curr.scores = Matrix::t(curr.pca) %*% pca$v[,1:10]
 proj.scores = Matrix::t(proj.pca) %*% pca$v[,1:10]
-
 ```
 
 
@@ -192,7 +190,8 @@ Now we can use the PC projections of the current and projected transcriptional s
 **`weighted`**: whether to use composite distance to determine graph edge weights (`TRUE`) or to assign all edges equal weights (`FALSE`)    
 
 
-```{r veloviz}
+
+```r
 #VeloViz graph parameters 
 k = 5
 similarity.threshold = 0.25
@@ -214,14 +213,20 @@ veloviz = graphViz(t(curr.scores), t(proj.scores), k,
 
 emb.veloviz = veloviz$fdg_coords
 plotEmbedding(emb.veloviz, groups=clusters[rownames(emb.veloviz)], main='veloviz')
-
-par(mfrow=c(1,1), mar=rep(1,4))
-g = plotVeloviz(veloviz, clusters=clusters[rownames(emb.veloviz)], seed=0, verbose=TRUE)
-
 ```
 
+![](pancreas_files/figure-markdown_strict/veloviz-1.png)
+
+```r
+par(mfrow=c(1,1), mar=rep(1,4))
+g = plotVeloviz(veloviz, clusters=clusters[rownames(emb.veloviz)], seed=0, verbose=TRUE)
+```
+
+![](pancreas_files/figure-markdown_strict/veloviz-2.png)
+
 7*) Build VeloViz graph from current and projected using `buildVeloviz`  
-```{r buildVeloviz}
+
+```r
 curr = vel$current
 proj = vel$projected
 
@@ -245,17 +250,23 @@ veloviz = buildVeloviz(
 
 emb.veloviz = veloviz$fdg_coords
 plotEmbedding(emb.veloviz, groups=clusters[rownames(emb.veloviz)], main='veloviz')
+```
 
+![](pancreas_files/figure-markdown_strict/buildVeloviz-1.png)
+
+```r
 par(mfrow=c(1,1), mar=rep(1,4))
 g = plotVeloviz(veloviz, clusters=clusters[rownames(emb.veloviz)], seed=0, verbose=TRUE)
-
 ```
+
+![](pancreas_files/figure-markdown_strict/buildVeloviz-2.png)
 
 
 
 \newpage 
 ## Compare to other embeddings
-```{r other embeddings, fig.height = 7, fig.width=8}
+
+```r
 par(mfrow = c(2,2))
 
 #PCA
@@ -279,14 +290,15 @@ plotEmbedding(emb.umap, colors = cell.cols, main='UMAP',
 
 #veloviz
 plotEmbedding(emb.veloviz, colors = cell.cols[rownames(emb.veloviz)], main='veloviz')
-
-
 ```
+
+![](pancreas_files/figure-markdown_strict/other embeddings-1.png)
 
 \newpage
 
 Now let's project velocity inferred from `velocyto.R` onto these embeddings.  
-```{r velocity on other embeddings, fig.height = 7, fig.width=8}
+
+```r
 par(mfrow = c(2,2))
 
 show.velocity.on.embedding.cor(scale(emb.pca), vel, 
@@ -315,12 +327,15 @@ show.velocity.on.embedding.cor(scale(emb.veloviz), vel,
                                cell.colors=cell.cols, main='VeloViz')
 ```
 
+![](pancreas_files/figure-markdown_strict/velocity on other embeddings-1.png)
+
 
 \newpage
 
 # Visualization with missing intermediates using VeloViz  
 Load data: this is the same dataset as above but missing a proportion of Ngn3 high EP cells  
-```{r get data missing}
+
+```r
 clusters = pancreasWithGap$clusters # cell type annotations
 pcs = pancreasWithGap$pcs # PCs used to make other embeddings (UMAP,tSNE..)
 vel = pancreasWithGap$vel # velocity
@@ -331,7 +346,8 @@ names(cell.cols) = names(clusters)
 ```
 
 Create VeloViz embedding  
-```{r veloviz missing}
+
+```r
 curr = vel$current
 proj = vel$projected
 
@@ -355,13 +371,20 @@ veloviz = buildVeloviz(
 
 emb.veloviz = veloviz$fdg_coords
 plotEmbedding(emb.veloviz, groups=clusters[rownames(emb.veloviz)], main='veloviz')
+```
 
+![](pancreas_files/figure-markdown_strict/veloviz missing-1.png)
+
+```r
 par(mfrow=c(1,1), mar=rep(1,4))
 g = plotVeloviz(veloviz, clusters=clusters[rownames(emb.veloviz)], seed=0, verbose=TRUE)
 ```
 
+![](pancreas_files/figure-markdown_strict/veloviz missing-2.png)
+
 Compare to other embeddings  
-```{r, fig.height = 7, fig.width=8}
+
+```r
 par(mfrow = c(2,2))
 
 #PCA
@@ -384,14 +407,15 @@ plotEmbedding(emb.umap, colors = cell.cols, main='UMAP',
 
 #veloviz
 plotEmbedding(emb.veloviz, colors = cell.cols[rownames(emb.veloviz)], main='veloviz')
-
-
 ```
+
+![](pancreas_files/figure-markdown_strict/unnamed-chunk-2-1.png)
 
 \newpage
 
 Now let's project velocity inferred from `velocyto.R` onto these embeddings.  
-```{r velocity on other embeddings missing, fig.height = 7, fig.width=8}
+
+```r
 par(mfrow = c(2,2))
 
 show.velocity.on.embedding.cor(scale(emb.pca), vel, 
@@ -420,215 +444,23 @@ show.velocity.on.embedding.cor(scale(emb.veloviz), vel,
                                cell.colors=cell.cols, main='VeloViz')
 ```
 
+![](pancreas_files/figure-markdown_strict/velocity on other embeddings missing-1.png)
+
 
 \newpage 
 
 
 
-```{r getdata, eval=FALSE, include = FALSE}
-use_condaenv("cellrank", required = TRUE)
-scv <- import("scvelo")
-adata <- scv$datasets$pancreas()
-
-## spliced and unspliced expression matrices
-spliced <- as.matrix(t(adata$layers['spliced']))
-unspliced <- as.matrix(t(adata$layers['unspliced']))
-cells <- adata$obs_names$values
-genes <- adata$var_names$values
-colnames(spliced) <- colnames(unspliced) <- cells
-rownames(spliced) <- rownames(unspliced) <- genes
-## extract clusters
-clusters <- adata$obs$clusters 
-names(clusters) <- adata$obs_names$values
-## old embedding
-emb.original <- adata$obsm['X_umap'] #extract umap embedding
-rownames(emb.original) <- names(clusters)
-## plot
-par(mfrow <- c(1,1))
-plotEmbedding(emb.original, groups = clusters, 
-              xlab = "UMAP X", ylab = "UMAP Y", 
-              mark.clusters = TRUE)
-
-## subsample to create smaller dataset
-## that can be included with package
-set.seed(0)
-good.cells <- sample(rownames(emb.original), nrow(emb.original)/5)
-spliced <- spliced[,good.cells]
-unspliced <- unspliced[,good.cells]
-clusters <- clusters[good.cells]
-emb.original <- emb.original[good.cells,]
-## plot
-par(mfrow = c(1,1))
-plotEmbedding(emb.original, groups = clusters, 
-              xlab = "UMAP X", ylab = "UMAP Y", 
-              mark.clusters=TRUE)
-
-## filter to well detected genes
-vi <- rowSums(spliced) > 10 & rowSums(unspliced) > 10
-spliced <- spliced[vi,]
-unspliced <- unspliced[vi,]
-
-## analyze
-counts <- spliced + unspliced # use combined spliced and unspliced counts
-cpm <- normalizeDepth(counts) # cpm normalize
-matnorm <- normalizeVariance(cpm)
-matnorm <- log10(matnorm + 1)
-pcs <- reduceDimensions(matnorm, center = TRUE, scale = TRUE, nPCs = 50)
-
-## velocity model
-library(velocyto.R)
-cell.dist <- as.dist(1-cor(t(pcs))) # cell distance in PC space
-vel <- gene.relative.velocity.estimates(spliced,
-                                       unspliced,
-                                       kCells = 30,
-                                       cell.dist = cell.dist,
-                                       fit.quantile = 0.1)
-
-## save
-pancreas <- list(
-  spliced = spliced,
-  unspliced = unspliced,
-  clusters = clusters,
-  pcs = pcs,
-  cell.dist = cell.dist,
-  vel = vel
-)
-usethis::use_data(pancreas, overwrite=TRUE)
-```
 
 
 
-```{r fulleval, eval = FALSE, include = FALSE}
-#Compare visualizations
-## load data
-library(veloviz)
-data("pancreas")
-
-par(mfrow=c(2,2), mar=rep(1,4))
-
-## 2D embedding by PCA
-emb.pcs = pancreas$pcs[,1:2]
-plotEmbedding(emb.pcs, groups=pancreas$clusters, main='PCA')
-
-## 2D embedding by tSNE
-set.seed(0)
-emb.tsne = Rtsne::Rtsne(pancreas$pcs[,1:10], perplexity=30)$Y
-rownames(emb.tsne) <- rownames(pancreas$pcs)
-plotEmbedding(emb.tsne, groups=pancreas$clusters, main='tSNE')
-
-## 2D embedding by UMAP
-set.seed(0)
-emb.umap = uwot::umap(pancreas$pcs[,1:10], min_dist = 0.5)
-rownames(emb.umap) <- rownames(pancreas$pcs)
-plotEmbedding(emb.umap, groups=pancreas$clusters, main='UMAP')
-
-## 2D embedding by veloviz
-vig = buildVeloviz(
-  curr = pancreas$vel$curr,
-  proj = pancreas$vel$proj,
-  normalize.depth = FALSE,
-  use.ods.genes = TRUE,
-  alpha = 0.05,
-  pca = TRUE,
-  nPCs = 10,
-  center = TRUE,
-  scale = TRUE,
-  k = 5,
-  seed = 0,
-  verbose = TRUE
-)
-emb.veloviz = vig$fdg_coords
-plotEmbedding(emb.veloviz, groups=pancreas$clusters, main='veloviz')
-
-par(mfrow=c(1,1), mar=rep(1,4))
-g = plotVeloviz(vig, clusters=pancreas$clusters, seed=0, verbose=TRUE)
-```
 
 
 
-```{r removecells, eval=FALSE, include = FALSE}
-#Now we remove cells
-## remove EP cells along original trajectory
-x = emb.original[,1]
-vi = x > -5 & x < 0
-good.cells = rownames(emb.original)[!vi]
-plotEmbedding(emb.original[good.cells,], groups=clusters, 
-              xlab = "UMAP X", ylab = "UMAP Y", mark.clusters=TRUE)
-spliced = spliced[,good.cells]
-unspliced = unspliced[,good.cells]
-clusters = clusters[good.cells]
-
-## analyze
-counts <- spliced + unspliced # use combined spliced and unspliced counts
-cpm <- normalizeDepth(counts) # cpm normalize
-matnorm <- normalizeVariance(cpm)
-matnorm <- log10(matnorm + 1)
-pcs <- reduceDimensions(matnorm, center = TRUE, scale = TRUE, nPCs = 50)
-
-## velocity model
-library(velocyto.R)
-cell.dist <- as.dist(1-cor(t(pcs))) # cell distance in PC space
-vel <- gene.relative.velocity.estimates(spliced,
-                                       unspliced,
-                                       kCells = 30,
-                                       cell.dist = cell.dist,
-                                       fit.quantile = 0.1)
-
-pancreasWithGap <- list(
-  spliced = spliced,
-  unspliced = unspliced,
-  clusters = clusters,
-  pcs = pcs,
-  cell.dist = cell.dist,
-  vel = vel
-)
-usethis::use_data(pancreasWithGap, overwrite=TRUE)
-```
 
 
-```{r subeval, eval = FALSE, include = FALSE}
-#Compare
-## load data
-library(veloviz)
-data("pancreasWithGap")
 
-par(mfrow=c(2,2), mar=rep(1,4))
 
-## 2D embedding by PCA
-emb.pcs = pancreasWithGap$pcs[,1:2]
-plotEmbedding(emb.pcs, groups=pancreasWithGap$clusters, main='PCA')
 
-## 2D embedding by tSNE
-set.seed(0)
-emb.tsne = Rtsne::Rtsne(pancreasWithGap$pcs[,1:10], perplexity=30)$Y
-rownames(emb.tsne) <- rownames(pancreasWithGap$pcs)
-plotEmbedding(emb.tsne, groups=pancreasWithGap$clusters, main='tSNE')
 
-## 2D embedding by UMAP
-set.seed(0)
-emb.umap = uwot::umap(pancreasWithGap$pcs[,1:10], min_dist = 0.5)
-rownames(emb.umap) <- rownames(pancreasWithGap$pcs)
-plotEmbedding(emb.umap, groups=pancreasWithGap$clusters, main='UMAP')
-
-## 2D embedding by veloviz
-vig = buildVeloviz(
-  curr = pancreasWithGap$vel$curr,
-  proj = pancreasWithGap$vel$proj,
-  normalize.depth = FALSE,
-  use.ods.genes = TRUE,
-  alpha = 0.05,
-  pca = TRUE,
-  nPCs = 10,
-  center = TRUE,
-  scale = TRUE,
-  k = 5,
-  seed = 0,
-  verbose = FALSE
-)
-emb.veloviz = vig$fdg_coords
-plotEmbedding(emb.veloviz, groups=pancreasWithGap$clusters, main='veloviz')
-
-par(mfrow=c(1,1), mar=rep(1,4))
-g = plotVeloviz(vig, clusters = pancreasWithGap$clusters, seed = 0)
-```
 

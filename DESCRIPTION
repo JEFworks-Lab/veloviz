@@ -1,24 +1,31 @@
-Package: veloviz
-Title: What the Package Does (One Line, Title Case)
+Package: VeloViz
+Title: VeloViz: RNA-velocity informed 2D embeddings for visualizing cell state trajectories
 Version: 0.0.0.9000
-Authors@R: 
-    person(given = "First",
-           family = "Last",
+Authors@R:
+    c(person(given = "Lyla",
+           family = "Atta",
            role = c("aut", "cre"),
-           email = "first.last@example.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+           email = "lylaatta@jhmi.edu",
+           comment = c(ORCID = "0000-0002-6113-0082")),
+           person(given = "Jean",
+                  family = "Fan",
+                  role = c("aut"),
+                  email = "jeanfan@jhu.edu",
+                  comment = c(ORCID = "0000-0002-0212-5451")))
+Author: Lyla Atta [aut, cre], Jean Fan [aut]
+Maintainer: Lyla Atta <lylaatta@jhmi.edu>
+Description: VeloViz uses each cell’s current observed and predicted future transcriptional states inferred from RNA velocity analysis to build a nearest neighbor graph between cells in the population. Edges are then pruned based on a cosine correlation threshold and/or a distance threshold and the resulting graph is visualized using a force-directed graph layout algorithm. VeloViz can help ensure that relationships between cell states are reflected in the 2D embedding, allowing for more reliable representation of underlying cellular trajectories.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
-Imports: 
+Imports:
     Rcpp,
     Matrix,
     igraph,
     RSpectra
-LinkingTo: 
+LinkingTo:
     Rcpp
-Depends: 
+Depends:
     R (>= 2.10)

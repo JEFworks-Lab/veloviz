@@ -53,7 +53,7 @@ Create simulated cell cycle
     points(exp[,1:2],col=col)
     arrows(obs[,1],obs[,2],exp[,1],exp[,2])
 
-![](simulation_files/figure-markdown_strict/simulate%20full%20cycle-1.png)
+![](/Users/lylaatta/Documents/GitHub2/veloviz/docs/simulation_files/figure-markdown_strict/simulate%20full%20cycle-1.png)
 
 Non-velocity based embedding on current expression
 --------------------------------------------------
@@ -88,7 +88,7 @@ Non-velocity based embedding on current expression
     emb.diffmap = destiny::eigenvectors(diffmap)[,1:2]
     plot(emb.diffmap,pch=16, main = "Diffusion Map", xlab = 'DC1', ylab = 'DC2',col=col)
 
-![](simulation_files/figure-markdown_strict/non%20velocity%20embeddings%20cycle-1.png)
+![](/Users/lylaatta/Documents/GitHub2/veloviz/docs/simulation_files/figure-markdown_strict/non%20velocity%20embeddings%20cycle-1.png)
 
 VeloViz Embedding
 -----------------
@@ -104,7 +104,7 @@ VeloViz Embedding
     emb.veloviz = g$fdg_coords
     plot(emb.veloviz, pch = 16, main = "VeloViz", xlab = '', ylab = '',col=col)
 
-![](simulation_files/figure-markdown_strict/cycle%20veloviz-1.png)
+![](/Users/lylaatta/Documents/GitHub2/veloviz/docs/simulation_files/figure-markdown_strict/cycle%20veloviz-1.png)
 
 Incomplete Cycle
 ----------------
@@ -163,7 +163,7 @@ Incomplete Cycle
     points(exp.missing[,1:2],col=col)
     arrows(obs.missing[,1],obs.missing[,2],exp.missing[,1],exp.missing[,2])
 
-![](simulation_files/figure-markdown_strict/simulate%20incomplete%20cycle-1.png)
+![](/Users/lylaatta/Documents/GitHub2/veloviz/docs/simulation_files/figure-markdown_strict/simulate%20incomplete%20cycle-1.png)
 
     # cells.before = ((traj[1,]>0.5)&(traj[2,]<0))
     # cells.after = ((traj[1,]>0.5)&(traj[2,]>0))
@@ -171,12 +171,10 @@ Incomplete Cycle
     cells.before = labels %in% paste0('cell', 470:500)
     cells.after = labels %in% paste0('cell', 101:130)
 
-    par(mfrow = c(1,1))
-    plot(obs.missing[,1:2],col=col, pch=16)
-    points(obs.missing[cells.before,], pch = 4,col = "dark red",cex = 1.5)
-    points(obs.missing[cells.after,],pch = 4,col = "dark red",cex = 1.5)
-
-![](simulation_files/figure-markdown_strict/simulate%20incomplete%20cycle-2.png)
+    # par(mfrow = c(1,1))
+    # plot(obs.missing[,1:2],col=col, pch=16)
+    # points(obs.missing[cells.before,], pch = 4,col = "dark red",cex = 1.5)
+    # points(obs.missing[cells.after,],pch = 4,col = "dark red",cex = 1.5)
 
     pca = RSpectra::svds(A = obs.missing, k=3, 
                          opts = list(center = TRUE, scale = TRUE, 
@@ -208,7 +206,7 @@ Incomplete Cycle
     emb.diffmap = destiny::eigenvectors(diffmap)[,1:2]
     plot(emb.diffmap,pch=16, main = "Diffusion Map", xlab = 'DC1', ylab = 'DC2',col=col)
 
-![](simulation_files/figure-markdown_strict/non%20velocity%20embeddings%20incomplete%20cycle-1.png)
+![](/Users/lylaatta/Documents/GitHub2/veloviz/docs/simulation_files/figure-markdown_strict/non%20velocity%20embeddings%20incomplete%20cycle-1.png)
 
     k = 30
     distance.weight = 1
@@ -227,7 +225,7 @@ Incomplete Cycle
     emb.veloviz = g$fdg_coords
     plot(emb.veloviz, pch = 16, main = "VeloViz", xlab = '', ylab = '',col=col)
 
-![](simulation_files/figure-markdown_strict/incomplete%20cycle%20veloviz-1.png)
+![](/Users/lylaatta/Documents/GitHub2/veloviz/docs/simulation_files/figure-markdown_strict/incomplete%20cycle%20veloviz-1.png)
 
 Changing VeloViz Parameters
 ---------------------------
@@ -298,7 +296,7 @@ embedding, starting with `k`:
       
     }
 
-![](simulation_files/figure-markdown_strict/changing%20k-1.png)
+![](/Users/lylaatta/Documents/GitHub2/veloviz/docs/simulation_files/figure-markdown_strict/changing%20k-1.png)
 
 ### Distance weight:
 
@@ -324,7 +322,7 @@ embedding, starting with `k`:
       
     }
 
-![](simulation_files/figure-markdown_strict/changing%20distance%20weight-1.png)
+![](/Users/lylaatta/Documents/GitHub2/veloviz/docs/simulation_files/figure-markdown_strict/changing%20distance%20weight-1.png)
 
 ### Distance threshold:
 
@@ -350,7 +348,7 @@ embedding, starting with `k`:
       
     }
 
-![](simulation_files/figure-markdown_strict/changing%20distance%20threshold-1.png)
+![](/Users/lylaatta/Documents/GitHub2/veloviz/docs/simulation_files/figure-markdown_strict/changing%20distance%20threshold-1.png)
 
 ### Similarity threshold:
 
@@ -376,4 +374,4 @@ embedding, starting with `k`:
       
     }
 
-![](simulation_files/figure-markdown_strict/changing%20similarity%20threshold-1.png)
+![](/Users/lylaatta/Documents/GitHub2/veloviz/docs/simulation_files/figure-markdown_strict/changing%20similarity%20threshold-1.png)

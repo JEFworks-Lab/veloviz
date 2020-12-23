@@ -17,7 +17,7 @@ standard filtering, normalization, and dimensional reduction steps and
 then calculate velocity. (Steps 1-4 can be skipped by loading the
 example dataset in the VeloViz package - see 4\*).
 
-{:start=“0”} 0) Get Data:
+0.) Get Data:
 
     #getting pancreas data from scVelo
     use_condaenv("cellrank", required = TRUE)
@@ -46,7 +46,7 @@ example dataset in the VeloViz package - see 4\*).
     dim(spliced)
     dim(unspliced)
 
-{:start=“1”} 1) Filter good genes
+1.) Filter good genes
 
     #keep genes with >10 total counts
     good.genes = genes[rowSums(spliced) > 10 & rowSums(unspliced) > 10]
@@ -56,14 +56,14 @@ example dataset in the VeloViz package - see 4\*).
     dim(spliced)
     dim(unspliced)
 
-{:start=“2”} 2) Normalize
+2.) Normalize
 
     counts = spliced + unspliced # use combined spliced and unspliced counts
     cpm = normalizeDepth(counts) # normalize to counts per million 
     varnorm = normalizeVariance(cpm) # variance stabilize, find overdispersed genes
     lognorm = log10(varnorm + 1) # log normalize
 
-{:start=“3”} 3) Reduce Dimensions  
+3.) Reduce Dimensions  
 After filtering and normalizing, we reduce dimensions, and calculate
 cell-cell distance in PC space. This distance will be used to compute
 velocity.
@@ -77,7 +77,7 @@ velocity.
 Velocity
 --------
 
-{:start=“4”} 4) Calculate velocity  
+4.) Calculate velocity  
 Next, we compute velocity from spliced and unspliced counts and
 cell-cell distances using velocyto. This will give us the current and
 projected transcriptional states.
@@ -99,7 +99,7 @@ This example dataset is available with the veloviz package.
     cell.cols = rainbow(8)[as.numeric(clusters)]
     names(cell.cols) = names(clusters)
 
-{:start=“5”} 5) Normalize current and projected  
+5.) Normalize current and projected  
 Now that we have the current and projected expression, we want to go
 through a similar normalization process as we did with the raw counts
 and then reduce dimensions in PCA. Steps 5-7 can be done together using
@@ -129,7 +129,7 @@ the `buildVeloviz` function (see 7\*).
     proj.varnorm = proj.norm / rsd * scale.factor[names(rsd)]
     proj.varnorm = proj.norm[rownames(curr.varnorm),]
 
-{:start=“6”} 6) Project current and projected into PC space
+6.) Project current and projected into PC space
 
     #log normalize 
     curr.pca = log10(curr.varnorm + 1)
@@ -167,7 +167,7 @@ the `buildVeloviz` function (see 7\*).
 VeloViz
 -------
 
-{:start=“7”} 7) Build graph using VeloViz  
+7.) Build graph using VeloViz  
 Now we can use the PC projections of the current and projected
 transcriptional states to build the VeloViz graph. To build the graph,
 we have to specify multiple parameters that control the features of the

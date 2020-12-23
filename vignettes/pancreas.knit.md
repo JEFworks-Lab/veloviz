@@ -13,6 +13,7 @@ In this example, we will compare the velocity-informed 2D embedding created by V
 Inputs to VeloViz are the scores in PCA space of the current and projected transcriptional states, which we get here by calculating RNA velocity using velocyto.  
 To get current and projected PC scores from raw counts, we first follow standard filtering, normalization, and dimensional reduction steps and then calculate velocity. (Steps 1-4 can be skipped by loading the example dataset in the VeloViz package - see 4*).    
 
+{:start="0"}
 0) Get Data:  
 
 ```r
@@ -46,6 +47,7 @@ dim(unspliced)
 
 \newpage
 
+{:start="1"}
 1) Filter good genes  
 
 ```r
@@ -59,7 +61,7 @@ dim(unspliced)
 ```
 
 
-
+{:start="2"}
 2) Normalize  
 
 ```r
@@ -70,7 +72,7 @@ lognorm = log10(varnorm + 1) # log normalize
 ```
 
 
-
+{:start="3"}
 3) Reduce Dimensions  
 After filtering and normalizing, we reduce dimensions, and calculate cell-cell distance in PC space. This distance will be used to compute velocity.  
 
@@ -84,6 +86,7 @@ cell.dist = as.dist(1-cor(t(pcs))) # cell distance in PC space
 
 \newpage
 ## Velocity  
+{:start="4"}
 4) Calculate velocity  
 Next, we compute velocity from spliced and unspliced counts and cell-cell distances using velocyto. This will give us the current and projected transcriptional states.  
 
@@ -109,6 +112,7 @@ names(cell.cols) = names(clusters)
 ```
 
 
+{:start="5"}
 5) Normalize current and projected  
 Now that we have the current and projected expression, we want to go through a similar normalization process as we did with the raw counts and then reduce dimensions in PCA. Steps 5-7 can be done together using the `buildVeloviz` function (see 7*).  
 
@@ -139,7 +143,7 @@ proj.varnorm = proj.norm[rownames(curr.varnorm),]
 ```
 
 
-
+{:start="6"}
 6) Project current and projected into PC space  
 
 ```r
@@ -181,6 +185,7 @@ proj.scores = Matrix::t(proj.pca) %*% pca$v[,1:10]
 
 \newpage
 ## VeloViz
+{:start="7"}
 7) Build graph using VeloViz  
 Now we can use the PC projections of the current and projected transcriptional states to build the VeloViz graph. To build the graph, we have to specify multiple parameters that control the features of the graph:  
 **`k`**: how many out-edges each cell can have  
@@ -409,7 +414,7 @@ plotEmbedding(emb.umap, colors = cell.cols, main='UMAP',
 plotEmbedding(emb.veloviz, colors = cell.cols[rownames(emb.veloviz)], main='veloviz')
 ```
 
-![](pancreas_files/figure-markdown_strict/unnamed-chunk-2-1.png)
+![](pancreas_files/figure-markdown_strict/unnamed-chunk-1-1.png)
 
 \newpage
 

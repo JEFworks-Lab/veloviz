@@ -17,9 +17,7 @@ standard filtering, normalization, and dimensional reduction steps and
 then calculate velocity. (Steps 1-4 can be skipped by loading the
 example dataset in the VeloViz package - see 4\*).
 
-1.  Get Data:
-
-<!-- -->
+{:start=“0”} 0) Get Data:
 
     #getting pancreas data from scVelo
     use_condaenv("cellrank", required = TRUE)
@@ -48,9 +46,7 @@ example dataset in the VeloViz package - see 4\*).
     dim(spliced)
     dim(unspliced)
 
-1.  Filter good genes
-
-<!-- -->
+{:start=“1”} 1) Filter good genes
 
     #keep genes with >10 total counts
     good.genes = genes[rowSums(spliced) > 10 & rowSums(unspliced) > 10]
@@ -60,21 +56,17 @@ example dataset in the VeloViz package - see 4\*).
     dim(spliced)
     dim(unspliced)
 
-1.  Normalize
-
-<!-- -->
+{:start=“2”} 2) Normalize
 
     counts = spliced + unspliced # use combined spliced and unspliced counts
     cpm = normalizeDepth(counts) # normalize to counts per million 
     varnorm = normalizeVariance(cpm) # variance stabilize, find overdispersed genes
     lognorm = log10(varnorm + 1) # log normalize
 
-1.  Reduce Dimensions  
-    After filtering and normalizing, we reduce dimensions, and calculate
-    cell-cell distance in PC space. This distance will be used to
-    compute velocity.
-
-<!-- -->
+{:start=“3”} 3) Reduce Dimensions  
+After filtering and normalizing, we reduce dimensions, and calculate
+cell-cell distance in PC space. This distance will be used to compute
+velocity.
 
     #PCA on centered and scaled expression of overdispersed genes
     pcs = reduceDimensions(lognorm, center = TRUE, scale = TRUE, nPCs = 50)
@@ -85,12 +77,10 @@ example dataset in the VeloViz package - see 4\*).
 Velocity
 --------
 
-1.  Calculate velocity  
-    Next, we compute velocity from spliced and unspliced counts and
-    cell-cell distances using velocyto. This will give us the current
-    and projected transcriptional states.
-
-<!-- -->
+{:start=“4”} 4) Calculate velocity  
+Next, we compute velocity from spliced and unspliced counts and
+cell-cell distances using velocyto. This will give us the current and
+projected transcriptional states.
 
     vel = gene.relative.velocity.estimates(spliced,
                                            unspliced,
@@ -109,13 +99,11 @@ This example dataset is available with the veloviz package.
     cell.cols = rainbow(8)[as.numeric(clusters)]
     names(cell.cols) = names(clusters)
 
-1.  Normalize current and projected  
-    Now that we have the current and projected expression, we want to go
-    through a similar normalization process as we did with the raw
-    counts and then reduce dimensions in PCA. Steps 5-7 can be done
-    together using the `buildVeloviz` function (see 7\*).
-
-<!-- -->
+{:start=“5”} 5) Normalize current and projected  
+Now that we have the current and projected expression, we want to go
+through a similar normalization process as we did with the raw counts
+and then reduce dimensions in PCA. Steps 5-7 can be done together using
+the `buildVeloviz` function (see 7\*).
 
     curr = vel$current
     proj = vel$projected
@@ -141,9 +129,7 @@ This example dataset is available with the veloviz package.
     proj.varnorm = proj.norm / rsd * scale.factor[names(rsd)]
     proj.varnorm = proj.norm[rownames(curr.varnorm),]
 
-1.  Project current and projected into PC space
-
-<!-- -->
+{:start=“6”} 6) Project current and projected into PC space
 
     #log normalize 
     curr.pca = log10(curr.varnorm + 1)
@@ -181,29 +167,27 @@ This example dataset is available with the veloviz package.
 VeloViz
 -------
 
-1.  Build graph using VeloViz  
-    Now we can use the PC projections of the current and projected
-    transcriptional states to build the VeloViz graph. To build the
-    graph, we have to specify multiple parameters that control the
-    features of the graph:  
-    **`k`**: how many out-edges each cell can have  
-    **`similarity_threshold`**: cosine similarity threshold specifying
-    how similar the velocity and cell transition vectors have to be for
-    an out-edge to be included  
-    **`distance_weight`**: weight for distance component of composite
-    distance - with large weights, graph will prioritize linking cells
-    where projected states and neighbors are close in PC space; with
-    small weights, graph will prioritize linking cells where velocity
-    and cell transition vectors are most similar  
-    **`distance_threshold`**: quantile threshold specifying minimum
-    distance in PC space between projected state and neighbor for
-    out-edge to be included - e.g. a distance threshold of 0.2 means
-    that any edges where the distance component is not in the smallest
-    20% of distances in PC space will be removed from the graph  
-    **`weighted`**: whether to use composite distance to determine graph
-    edge weights (`TRUE`) or to assign all edges equal weights (`FALSE`)
-
-<!-- -->
+{:start=“7”} 7) Build graph using VeloViz  
+Now we can use the PC projections of the current and projected
+transcriptional states to build the VeloViz graph. To build the graph,
+we have to specify multiple parameters that control the features of the
+graph:  
+**`k`**: how many out-edges each cell can have  
+**`similarity_threshold`**: cosine similarity threshold specifying how
+similar the velocity and cell transition vectors have to be for an
+out-edge to be included  
+**`distance_weight`**: weight for distance component of composite
+distance - with large weights, graph will prioritize linking cells where
+projected states and neighbors are close in PC space; with small
+weights, graph will prioritize linking cells where velocity and cell
+transition vectors are most similar  
+**`distance_threshold`**: quantile threshold specifying minimum distance
+in PC space between projected state and neighbor for out-edge to be
+included - e.g. a distance threshold of 0.2 means that any edges where
+the distance component is not in the smallest 20% of distances in PC
+space will be removed from the graph  
+**`weighted`**: whether to use composite distance to determine graph
+edge weights (`TRUE`) or to assign all edges equal weights (`FALSE`)
 
     #VeloViz graph parameters 
     k = 5
@@ -400,7 +384,7 @@ Compare to other embeddings
     #veloviz
     plotEmbedding(emb.veloviz, colors = cell.cols[rownames(emb.veloviz)], main='veloviz')
 
-![](pancreas_files/figure-markdown_strict/unnamed-chunk-2-1.png)
+![](pancreas_files/figure-markdown_strict/unnamed-chunk-1-1.png)
 
 Now let’s project velocity inferred from `velocyto.R` onto these
 embeddings.

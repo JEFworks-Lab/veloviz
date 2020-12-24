@@ -189,7 +189,19 @@ bh.adjust <- function(x, log = FALSE) {
   ox
 }
 
-#' PCA
+#' Reduce dimension using Principal Components Analysis via `svds` from `RSpectra`
+#'
+#' @param matnorm
+#' @param center logical to mean center gene expression before PCA, default = TRUE
+#' @param scale logical to scale gene expression variance before PCA, default = TRUE
+#' @param max.ods.genes number of most highly expressed overdispersed genes to include, default = 2000
+#' @param nPCs number of principal components to reduce to return, default = 50
+#' @param verbose logical for verbosity setting, default = TRUE
+#' @param plot plot singular values vs number of components
+#' @param details logical to return pca object, default = FALSE
+#' 
+#' @return matrix of cell scores in nPCs components 
+#'
 #'
 #' @export
 reduceDimensions <- function(matnorm,

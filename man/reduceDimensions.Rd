@@ -2,7 +2,7 @@
 % Please edit documentation in R/normalize.R
 \name{reduceDimensions}
 \alias{reduceDimensions}
-\title{PCA}
+\title{Reduce dimension using Principal Components Analysis via \code{svds} from \code{RSpectra}}
 \usage{
 reduceDimensions(
   matnorm,
@@ -15,6 +15,24 @@ reduceDimensions(
   details = FALSE
 )
 }
+\arguments{
+\item{center}{logical to mean center gene expression before PCA, default = TRUE}
+
+\item{scale}{logical to scale gene expression variance before PCA, default = TRUE}
+
+\item{max.ods.genes}{number of most highly expressed overdispersed genes to include, default = 2000}
+
+\item{nPCs}{number of principal components to reduce to return, default = 50}
+
+\item{verbose}{logical for verbosity setting, default = TRUE}
+
+\item{plot}{plot singular values vs number of components}
+
+\item{details}{logical to return pca object, default = FALSE}
+}
+\value{
+matrix of cell scores in nPCs components
+}
 \description{
-PCA
+Reduce dimension using Principal Components Analysis via \code{svds} from \code{RSpectra}
 }

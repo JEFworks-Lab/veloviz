@@ -2,10 +2,22 @@
 % Please edit documentation in R/projectedNeighbors.R
 \name{consistency}
 \alias{consistency}
-\title{Consistency score calculation}
+\title{Velocity consistency score calculation}
 \usage{
 consistency(fdg.coords, delta.exp, nNeighbors, plot.hist = FALSE)
 }
+\arguments{
+\item{fdg.coords}{cell coordinates (cells = rows) in 2D embedding for which to compute velocity consistency score}
+
+\item{delta.exp}{gene (rows) x cell (columns) matrix of gene velocities}
+
+\item{nNeighbors}{number of neighbors to average when calculating velocity correlation}
+
+\item{plot.hist}{logical to plot histogram of cell velocity consistence scores, default = FALSE}
+}
+\value{
+vector of length equal to number of cells of cell velocity consistency scores
+}
 \description{
-Consistency score calculation
+Velocity consistency score calculation
 }

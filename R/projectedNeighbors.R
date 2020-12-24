@@ -1,7 +1,7 @@
 #' Computes composite distances between all cell pairs and returns k-nearest neighbors and edge weights needed to build VeloViz graph.
 #' 
 #' @param observed PCs (rows) x cells (columns) matrix of observed transcriptional state projected into PC space
-#' @param projected PCs (rows) x cells (columns) matrix of projected transcriptional states. Cell should be in same order as in `observed`
+#' @param projected PCs (rows) x cells (columns) matrix of projected transcriptional states. Cells should be in same order as in `observed`
 #' @param k Number of nearest neighbors to assign each cell
 #' @param distance_metric Method to compute distance component of composite distance. "L1" or "L2", default = "L2"
 #' @param similarity_metric Method to compute similarity between velocity and cell transition matrices. "cosine" or "pearson", default = "cosine"
@@ -213,7 +213,14 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
   
 }
 
-#' Consistency score calculation
+#' Velocity consistency score calculation
+#' 
+#' @param fdg.coords cell coordinates (cells = rows) in 2D embedding for which to compute velocity consistency score
+#' @param delta.exp gene (rows) x cell (columns) matrix of gene velocities 
+#' @param nNeighbors number of neighbors to average when calculating velocity correlation
+#' @param plot.hist logical to plot histogram of cell velocity consistence scores, default = FALSE
+#' 
+#' @return vector of length equal to number of cells of cell velocity consistency scores
 #'
 #' @export
 #'

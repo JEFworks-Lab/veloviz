@@ -20,8 +20,26 @@ pcs = MERFISH$pcs
 vel = MERFISH$vel
 ```
 
-Build VeloViz graph  
-```{r veloviz, fig.height = 11, fig.width = 7}
+Load cell cycle genes - keep merfish genes that are cell cycle genes  
+```{r}
+cycle.genes = read.csv("/Users/lylaatta/Desktop/geneset_278.csv",header = FALSE)
+# cycle.genes = cycle.genes$Gene
+cycle.genes = cycle.genes$V1
+
+curr = vel$current
+proj = vel$projected
+
+merfish.genes = rownames(curr)
+merfish.cycle.genes = merfish.genes[which(merfish.genes %in% cycle.genes)]
+
+curr.cycle = curr[merfish.cycle.genes,]
+proj.cycle = proj[merfish.cycle.genes,]
+
+```
+
+Build VeloViz graph on all genes  
+```{r veloviz}
+# , fig.height = 11, fig.width = 7
 curr = vel$current
 proj = vel$projected
 
@@ -43,15 +61,14 @@ veloviz = buildVeloviz(
   verbose = FALSE
 )
 
-par(mfrow=c(3,2))
+# par(mfrow=c(3,2))
 emb.veloviz = veloviz$fdg_coords
 plotEmbedding(emb.veloviz, groups=col[rownames(emb.veloviz)], main='veloviz')
-g = plotVeloviz(veloviz, clusters=col[rownames(emb.veloviz)], seed=0, verbose=TRUE)
+# g = plotVeloviz(veloviz, clusters=col[rownames(emb.veloviz)], seed=0, verbose=TRUE)
 sapply(c('MCM6', 'CDC6', 'KIF2C', 'CCNF'), function(g) {
   gexp <- scale(curr[g,])[,1]
   plotEmbedding(emb.veloviz, col=gexp, main=g)
 })
-
 ```
 
 Compare to other embeddings  
@@ -313,3 +330,44 @@ show.velocity.on.embedding.cor(scale(g$fdg_coords), vel,
                                n = 100, show.grid.flow = TRUE, grid.n = 20,
                                cell.colors = col, arrow.scale = 1)
 ```
+
+
+#####
+
+Build VeloViz graph on cell cycle genes  
+```{r}
+veloviz.cycle = buildVeloviz(
+  curr = curr.cycle, 
+  proj = proj.cycle,
+  normalize.depth = TRUE, 
+  use.ods.genes = FALSE,
+  pca = TRUE,
+  nPCs = 4,
+  center = TRUE,
+  scale = TRUE, 
+  k = 100,
+  similarity.threshold = 0.25,
+  distance.weight = 0.5,
+  distance.threshold = 1,
+  weighted = TRUE,
+  seed = 0,
+  verbose = FALSE
+)
+par(mfrow = c(1,2))
+emb.veloviz.cycle = veloviz.cycle$fdg_coords
+plotEmbedding(emb.veloviz.cycle, groups=col[rownames(emb.veloviz.cycle)], main='veloviz')
+g = plotVeloviz(veloviz.cycle, clusters=col[rownames(emb.veloviz.cycle)], seed=0, verbose=TRUE)
+
+sapply(c('MCM6', 'CDC6', 'KIF2C', 'CCNF'), function(g) {
+  gexp <- scale(curr[g,])[,1]
+  plotEmbedding(emb.veloviz.cycle, col=gexp, main=g)
+})
+
+```
+
+
+
+
+
+
+

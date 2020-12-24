@@ -1,4 +1,30 @@
-#' Main function
+#' Creates VeloViz graph and FDG layout from PC scores of current and projected transcriptional states.  
+#'
+#' @param curr Genes (rows) x cells (columns) matrix of observed current transcriptional state 
+#' @param proj Genes (rows) x cells (columns) matrix of predicted future transcriptional state 
+#' @param normalize.depth logical to normalize raw counts to counts per million, default = TRUE
+#' @param depth Depth scaling, default = 1e6 for counts per million (CPM)
+#' @param use.ods.genes Use only overdispersed genes to create VeloViz graph, default = TRUE
+#' @param max.ods.genes number of most highly expressed overdispersed genes to use to create VeloViz graph, default = 2000
+#' @param alpha Significance threshold for overdispersed genes, default = 0.05
+#' @param pca logical to use PC scores to create VeloViz graph, default = TRUE. FALSE = use gene expression to create VeloViz graph
+#' @param center logical to mean center gene expression before PCA, default = TRUE
+#' @param scale logical to scale gene expression variance before PCA, default = TRUE
+#' @param nPCs number of principal components to use to create VeloViz graph, default = 10
+#' @param k Number of nearest neighbors to assign each cell
+#' @param similarity.threshold similarity threshold below which to remove edges, default = -1 i.e. no edges removed
+#' @param distance.weight Weight of distance component of composite distance, default = 1
+#' @param distance.threshold quantile threshold for distance component above which to remove edges, default = 1 i.e. no edges removed
+#' @param weighted logical indicating whether to compute VeloViz edges based on composite distance, default = TRUE. FALSE = all edges are of equal weight
+#' @param verbose logical for verbosity setting, default = FALSE
+#' @param details logical to return detailed data frame or names of genes, default = FALSE
+#' @param seed seed to supply FDG function for reproducible layout
+#' 
+#' @return `graph` igraph object of VeloViz graph
+#' @return `fdg_coords` cells (rows) x 2 coordinates of force-directed layout of VeloViz graph
+#' @return `projectedNeighbors` output of `projectedNeighbors`
+#' 
+#' @seealso \code{\link{projectedNeighbors}}
 #'
 #' @export
 #'
@@ -16,7 +42,7 @@ buildVeloviz <- function(curr, proj,
                          similarity.threshold = 0,
                          distance.weight = 1,
                          distance.threshold = 1,
-                         weighted = FALSE,
+                         weighted = TRUE,
                          verbose = FALSE,
                          details = FALSE,
                          seed = 0

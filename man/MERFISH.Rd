@@ -10,7 +10,7 @@ list of 6 objects:
 \item{nuc}{matrix, 9050 genes x 645 cells of nuclear counts}
 \item{cyto}{matrix, 9050 genes x 645 cells of cytoplasmic counts}
 \item{col}{factor of cell colors corresponding to position in cell cycle}
-\item{pcs}{matrix, 645 x 50 cell scores in 60 PCs}
+\item{pcs}{matrix, 645 x 50 cell scores in 50 PCs}
 \item{cell.dist}{dist, pairwise cell distances in PC space used to compute velocity}
 \item{vel}{list, output from running velocyto using spliced, unspliced, and cell.dist}
 }

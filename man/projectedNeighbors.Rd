@@ -18,7 +18,7 @@ projectedNeighbors(
 \arguments{
 \item{observed}{PCs (rows) x cells (columns) matrix of observed transcriptional state projected into PC space}
 
-\item{projected}{PCs (rows) x cells (columns) matrix of projected transcriptional states. Cell should be in same order as in \code{observed}}
+\item{projected}{PCs (rows) x cells (columns) matrix of projected transcriptional states. Cells should be in same order as in \code{observed}}
 
 \item{k}{Number of nearest neighbors to assign each cell}
 

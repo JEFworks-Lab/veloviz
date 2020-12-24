@@ -2,7 +2,7 @@
 % Please edit documentation in R/main.R
 \name{buildVeloviz}
 \alias{buildVeloviz}
-\title{Main function}
+\title{Creates VeloViz graph and FDG layout from PC scores of current and projected transcriptional states.}
 \usage{
 buildVeloviz(
   curr,
@@ -20,12 +20,61 @@ buildVeloviz(
   similarity.threshold = 0,
   distance.weight = 1,
   distance.threshold = 1,
-  weighted = FALSE,
+  weighted = TRUE,
   verbose = FALSE,
   details = FALSE,
   seed = 0
 )
 }
+\arguments{
+\item{curr}{Genes (rows) x cells (columns) matrix of observed current transcriptional state}
+
+\item{proj}{Genes (rows) x cells (columns) matrix of predicted future transcriptional state}
+
+\item{normalize.depth}{logical to normalize raw counts to counts per million, default = TRUE}
+
+\item{depth}{Depth scaling, default = 1e6 for counts per million (CPM)}
+
+\item{use.ods.genes}{Use only overdispersed genes to create VeloViz graph, default = TRUE}
+
+\item{max.ods.genes}{number of most highly expressed overdispersed genes to use to create VeloViz graph, default = 2000}
+
+\item{alpha}{Significance threshold for overdispersed genes, default = 0.05}
+
+\item{pca}{logical to use PC scores to create VeloViz graph, default = TRUE. FALSE = use gene expression to create VeloViz graph}
+
+\item{center}{logical to mean center gene expression before PCA, default = TRUE}
+
+\item{scale}{logical to scale gene expression variance before PCA, default = TRUE}
+
+\item{nPCs}{number of principal components to use to create VeloViz graph, default = 10}
+
+\item{k}{Number of nearest neighbors to assign each cell}
+
+\item{similarity.threshold}{similarity threshold below which to remove edges, default = -1 i.e. no edges removed}
+
+\item{distance.weight}{Weight of distance component of composite distance, default = 1}
+
+\item{distance.threshold}{quantile threshold for distance component above which to remove edges, default = 1 i.e. no edges removed}
+
+\item{weighted}{logical indicating whether to compute VeloViz edges based on composite distance, default = TRUE. FALSE = all edges are of equal weight}
+
+\item{verbose}{logical for verbosity setting, default = FALSE}
+
+\item{details}{logical to return detailed data frame or names of genes, default = FALSE}
+
+\item{seed}{seed to supply FDG function for reproducible layout}
+}
+\value{
+\code{graph} igraph object of VeloViz graph
+
+\code{fdg_coords} cells (rows) x 2 coordinates of force-directed layout of VeloViz graph
+
+\code{projectedNeighbors} output of \code{projectedNeighbors}
+}
 \description{
-Main function
+Creates VeloViz graph and FDG layout from PC scores of current and projected transcriptional states.
+}
+\seealso{
+\code{\link{projectedNeighbors}}
 }

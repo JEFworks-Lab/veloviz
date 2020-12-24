@@ -355,7 +355,7 @@ veloviz.cycle = buildVeloviz(
 )
 par(mfrow = c(1,2))
 emb.veloviz.cycle = veloviz.cycle$fdg_coords
-plotEmbedding(emb.veloviz.cycle, groups=col[rownames(emb.veloviz.cycle)], main='veloviz')
+plotEmbedding(emb.veloviz.cycle, colors = col[rownames(emb.veloviz.cycle)], main='veloviz')
 g = plotVeloviz(veloviz.cycle, clusters=col[rownames(emb.veloviz.cycle)], seed=0, verbose=TRUE)
 
 sapply(c('MCM6', 'CDC6', 'KIF2C', 'CCNF'), function(g) {
@@ -363,6 +363,13 @@ sapply(c('MCM6', 'CDC6', 'KIF2C', 'CCNF'), function(g) {
   plotEmbedding(emb.veloviz.cycle, col=gexp, main=g)
 })
 
+par(mfrow = c(1,1))  
+velocyto.R::show.velocity.on.embedding.cor(scale(emb.veloviz.cycle), vel, 
+                               n = 50,
+                               scale='sqrt',
+                               cex=1, arrow.scale=1, show.grid.flow=TRUE,
+                               min.grid.cell.mass=10, grid.n=50, arrow.lwd=1,
+                               cell.colors=col[rownames(emb.veloviz.cycle)], main='VeloViz')
 ```
 
 

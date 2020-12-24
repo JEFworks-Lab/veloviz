@@ -82,5 +82,4 @@ plotEmbedding(emb.veloviz, groups=clusters[rownames(emb.veloviz)], main='veloviz
 ![](https://github.com/JEFworks/veloviz/blob/package/docs/img/readme_example.png)
 
 ## Tutorials
-In depth tutorials and examples using other data sets are available in our vignettes.  
-[add link]
+[scRNA-seq data preprocessing and visualization using VeloViz](https://github.com/JEFworks/veloviz/blob/package/docs/pancreas.md)

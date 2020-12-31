@@ -22,7 +22,7 @@ vel = MERFISH$vel
 
 Load cell cycle genes - keep merfish genes that are cell cycle genes  
 ```{r}
-cycle.genes = read.csv("/Users/lylaatta/Desktop/geneset_278.csv",header = FALSE)
+cycle.genes = read.csv("/Users/lylaatta/OneDrive - Johns Hopkins/Johns Hopkins/Lab/pnas cell cycle/geneset_278.csv",header = FALSE) #GO:0000278
 # cycle.genes = cycle.genes$Gene
 cycle.genes = cycle.genes$V1
 

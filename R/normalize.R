@@ -259,7 +259,7 @@ reduceDimensions <- function(matnorm,
   }
 
   pcs <- t(m) %*% pca$v[,1:nPCs]
-  rownames(pcs) <- colnames(cpm)
+  rownames(pcs) <- colnames(matnorm)
   colnames(pcs) <- paste0('PC', 1:nPCs)
 
   if(details) {

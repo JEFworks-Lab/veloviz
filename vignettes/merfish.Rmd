@@ -5,7 +5,7 @@ output:
 ---
 
 # Visualizing MERFISH data using VeloViz
-In this example, we will use VeloViz to create a 2D embedding to visualize MERFISH data collected from U-2 OS cells in culture. Since this data comes from a cell line in culture, we expect the main temporal signal to be cell-cycle. We will compare the VeloViz embedding to other commonly used embeddings. We will also compare the results we get when we restrict the input genes. 
+In this example, we will use VeloViz to create a 2D embedding to visualize MERFISH data collected from U-2 OS cells in culture. Since this data comes from a cell line in culture, we expect the main temporal signal to be progression throught the cell-cycle. We will compare the VeloViz embedding to other commonly used embeddings. We will also compare the results we get when we restrict the input genes. 
 
 
 ```{r setup, include=FALSE}
@@ -25,7 +25,7 @@ proj = vel$projected
 ```
 
 ## Load cell cycle genes  
-We will compare the VeloViz embeddings constructed with all genes to embeddings created using cell-cycle genes in the GO mitotic cell-cycle geneset and to embeddings created using genes that were found to have cell-cycle dependednt expression in Xia et. al., *PNAS*, 2019.  
+We will compare the VeloViz embeddings constructed with all genes to embeddings created using cell-cycle genes in the GO mitotic cell-cycle gene set and to embeddings created using genes that were found to have cell-cycle dependent expression in Xia et. al., *PNAS*, 2019.  
 ```{r cell cycle genes}
 merfish.genes = rownames(curr)
 
@@ -247,20 +247,20 @@ plotEmbedding(emb.pnas.vv, colors = col[rownames(emb.pnas.vv)],
 
 #PCA
 emb.pnas.pca = curr.pnas.pca[,1:2]
-plotEmbedding(emb.pnas.pca, colors = col, main = 'GO cell cycle genes - pca')
+plotEmbedding(emb.pnas.pca, colors = col, main = 'Xia et al cell cycle genes - pca')
 
 #tSNE
 set.seed(0)
 emb.pnas.tsne = Rtsne::Rtsne(curr.pnas.pca[,1:5], perplexity = 100)$Y
 rownames(emb.pnas.tsne) = rownames(curr.pnas.pca)
-plotEmbedding(emb.pnas.tsne, colors = col, main = 'GO cell cycle genes - t-SNE', 
+plotEmbedding(emb.pnas.tsne, colors = col, main = 'Xia et al cell cycle genes - t-SNE', 
               xlab = "t-SNE X", ylab = "t-SNE y")
 
 #UMAP
 set.seed(0)
 emb.pnas.umap = umap::umap(curr.pnas.pca[,1:5], min_dist = 0.3)$layout
 rownames(emb.pnas.umap) = rownames(curr.pnas.pca)
-plotEmbedding(emb.pnas.umap, colors = col, main = 'GO cell cycle genes - UMAP', 
+plotEmbedding(emb.pnas.umap, colors = col, main = 'Xia et al cell cycle genes - UMAP', 
               xlab = "UMAP X", ylab = "UMAP Y")
 
 

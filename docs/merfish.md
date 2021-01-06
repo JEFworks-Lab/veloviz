@@ -4,9 +4,9 @@ Visualizing MERFISH data using VeloViz
 In this example, we will use VeloViz to create a 2D embedding to
 visualize MERFISH data collected from U-2 OS cells in culture. Since
 this data comes from a cell line in culture, we expect the main temporal
-signal to be cell-cycle. We will compare the VeloViz embedding to other
-commonly used embeddings. We will also compare the results we get when
-we restrict the input genes.
+signal to be progression throught the cell-cycle. We will compare the
+VeloViz embedding to other commonly used embeddings. We will also
+compare the results we get when we restrict the input genes.
 
 Load preprocessed data
 ----------------------
@@ -26,8 +26,8 @@ Load cell cycle genes
 
 We will compare the VeloViz embeddings constructed with all genes to
 embeddings created using cell-cycle genes in the GO mitotic cell-cycle
-geneset and to embeddings created using genes that were found to have
-cell-cycle dependednt expression in Xia et. al., *PNAS*, 2019.
+gene set and to embeddings created using genes that were found to have
+cell-cycle dependent expression in Xia et. al., *PNAS*, 2019.
 
     merfish.genes = rownames(curr)
 
@@ -55,14 +55,14 @@ Build VeloViz embedding using all genes
     par(mfrow = c(2,2))
 
     veloviz.all = buildVeloviz(
-      curr = curr,
+      curr = curr, 
       proj = proj,
-      normalize.depth = TRUE,
+      normalize.depth = TRUE, 
       use.ods.genes = FALSE,
       pca = TRUE,
       nPCs = 3,
       center = TRUE,
-      scale = TRUE,
+      scale = TRUE, 
       k = 100,
       similarity.threshold = 0,
       distance.weight = 1,
@@ -87,14 +87,14 @@ Build VeloViz embedding using all genes
     set.seed(0)
     emb.all.tsne = Rtsne::Rtsne(pcs[,1:5], perplexity = 100)$Y
     rownames(emb.all.tsne) = rownames(pcs)
-    plotEmbedding(emb.all.tsne, colors = col, main = 'all genes - t-SNE',
+    plotEmbedding(emb.all.tsne, colors = col, main = 'all genes - t-SNE', 
                   xlab = "t-SNE X", ylab = "t-SNE y")
 
     #UMAP
     set.seed(0)
     emb.all.umap = umap::umap(pcs[,1:5], min_dist = 0.3)$layout
     rownames(emb.all.umap) = rownames(pcs)
-    plotEmbedding(emb.all.umap, colors = col, main = 'all genes - UMAP',
+    plotEmbedding(emb.all.umap, colors = col, main = 'all genes - UMAP', 
                   xlab = "UMAP X", ylab = "UMAP Y")
 
 ![](merfish_files/figure-markdown_strict/all%20genes-1.png)
@@ -120,8 +120,8 @@ First, reduce dimensions.
     ##     adjusted p-value threshold alpha = 0.05
 
     curr.go.norm = log10(curr.go.norm$matnorm + 1)
-    curr.go.pca = RSpectra::svds(A = t(as.matrix(curr.go.norm)), k = 50,
-                                 opts = list(center = TRUE, scale = FALSE,
+    curr.go.pca = RSpectra::svds(A = t(as.matrix(curr.go.norm)), k = 50, 
+                                 opts = list(center = TRUE, scale = FALSE, 
                                              maxitr = 2000, tol = 1e-10))
     curr.go.pca = curr.go.pca$u
     rownames(curr.go.pca) = rownames(pcs)
@@ -131,14 +131,14 @@ Now, build embeddings.
     par(mfrow = c(2,2))
 
     veloviz.go = buildVeloviz(
-      curr = curr.go,
+      curr = curr.go, 
       proj = proj.go,
-      normalize.depth = TRUE,
+      normalize.depth = TRUE, 
       use.ods.genes = FALSE,
       pca = TRUE,
       nPCs = 3,
       center = TRUE,
-      scale = TRUE,
+      scale = TRUE, 
       k = 20,
       similarity.threshold = 0,
       distance.weight = 0.1,
@@ -153,7 +153,7 @@ Now, build embeddings.
     ## Warning in if (!class(proj) %in% c("dgCMatrix", "dgTMatrix")) {: the condition has length > 1 and only the first element will be used
 
     emb.go.vv = veloviz.go$fdg_coords
-    plotEmbedding(emb.go.vv, colors = col[rownames(emb.go.vv)],
+    plotEmbedding(emb.go.vv, colors = col[rownames(emb.go.vv)], 
                   main = 'GO cell cycle genes - veloviz')
 
     #PCA
@@ -164,14 +164,14 @@ Now, build embeddings.
     set.seed(0)
     emb.go.tsne = Rtsne::Rtsne(curr.go.pca[,1:5], perplexity = 100)$Y
     rownames(emb.go.tsne) = rownames(curr.go.pca)
-    plotEmbedding(emb.go.tsne, colors = col, main = 'GO cell cycle genes - t-SNE',
+    plotEmbedding(emb.go.tsne, colors = col, main = 'GO cell cycle genes - t-SNE', 
                   xlab = "t-SNE X", ylab = "t-SNE y")
 
     #UMAP
     set.seed(0)
     emb.go.umap = umap::umap(curr.go.pca[,1:5], min_dist = 0.3)$layout
     rownames(emb.go.umap) = rownames(curr.go.pca)
-    plotEmbedding(emb.go.umap, colors = col, main = 'GO cell cycle genes - UMAP',
+    plotEmbedding(emb.go.umap, colors = col, main = 'GO cell cycle genes - UMAP', 
                   xlab = "UMAP X", ylab = "UMAP Y")
 
 ![](merfish_files/figure-markdown_strict/go%20cell%20cycle%20embeddings-1.png)
@@ -197,8 +197,8 @@ First, reduce dimensions.
     ##     adjusted p-value threshold alpha = 0.05
 
     curr.pnas.norm = log10(curr.pnas.norm$matnorm + 1)
-    curr.pnas.pca = RSpectra::svds(A = t(as.matrix(curr.pnas.norm)), k = 50,
-                                   opts = list(center = TRUE, scale = FALSE,
+    curr.pnas.pca = RSpectra::svds(A = t(as.matrix(curr.pnas.norm)), k = 50, 
+                                   opts = list(center = TRUE, scale = FALSE, 
                                                maxitr = 2000, tol = 1e-10))
     curr.pnas.pca = curr.pnas.pca$u
     rownames(curr.pnas.pca) = rownames(pcs)
@@ -208,14 +208,14 @@ Now, build embeddings.
     par(mfrow = c(2,2))
 
     veloviz.pnas = buildVeloviz(
-      curr = curr.pnas,
+      curr = curr.pnas, 
       proj = proj.pnas,
-      normalize.depth = TRUE,
+      normalize.depth = TRUE, 
       use.ods.genes = FALSE,
       pca = TRUE,
       nPCs = 3,
       center = TRUE,
-      scale = TRUE,
+      scale = TRUE, 
       k = 50,
       similarity.threshold = 0.5,
       distance.weight = 0.01,
@@ -230,25 +230,25 @@ Now, build embeddings.
     ## Warning in if (!class(proj) %in% c("dgCMatrix", "dgTMatrix")) {: the condition has length > 1 and only the first element will be used
 
     emb.pnas.vv = veloviz.pnas$fdg_coords
-    plotEmbedding(emb.pnas.vv, colors = col[rownames(emb.pnas.vv)],
+    plotEmbedding(emb.pnas.vv, colors = col[rownames(emb.pnas.vv)], 
                   main = 'Xia et al cell cycle genes - veloviz')
 
     #PCA
     emb.pnas.pca = curr.pnas.pca[,1:2]
-    plotEmbedding(emb.pnas.pca, colors = col, main = 'GO cell cycle genes - pca')
+    plotEmbedding(emb.pnas.pca, colors = col, main = 'Xia et al cell cycle genes - pca')
 
     #tSNE
     set.seed(0)
     emb.pnas.tsne = Rtsne::Rtsne(curr.pnas.pca[,1:5], perplexity = 100)$Y
     rownames(emb.pnas.tsne) = rownames(curr.pnas.pca)
-    plotEmbedding(emb.pnas.tsne, colors = col, main = 'GO cell cycle genes - t-SNE',
+    plotEmbedding(emb.pnas.tsne, colors = col, main = 'Xia et al cell cycle genes - t-SNE', 
                   xlab = "t-SNE X", ylab = "t-SNE y")
 
     #UMAP
     set.seed(0)
     emb.pnas.umap = umap::umap(curr.pnas.pca[,1:5], min_dist = 0.3)$layout
     rownames(emb.pnas.umap) = rownames(curr.pnas.pca)
-    plotEmbedding(emb.pnas.umap, colors = col, main = 'GO cell cycle genes - UMAP',
+    plotEmbedding(emb.pnas.umap, colors = col, main = 'Xia et al cell cycle genes - UMAP', 
                   xlab = "UMAP X", ylab = "UMAP Y")
 
 ![](merfish_files/figure-markdown_strict/pnas%20cell%20cycle-1.png)
@@ -258,13 +258,13 @@ Comparing VeloViz embeddings
 
     par(mfrow = c(1,3))
 
-    plotEmbedding(emb.all.vv, colors = col[rownames(emb.pnas.vv)],
+    plotEmbedding(emb.all.vv, colors = col[rownames(emb.pnas.vv)], 
                   main = 'all genes - veloviz')
 
-    plotEmbedding(emb.go.vv, colors = col[rownames(emb.pnas.vv)],
+    plotEmbedding(emb.go.vv, colors = col[rownames(emb.pnas.vv)], 
                   main = 'GO cell cycle genes - veloviz')
 
-    plotEmbedding(emb.pnas.vv, colors = col[rownames(emb.pnas.vv)],
+    plotEmbedding(emb.pnas.vv, colors = col[rownames(emb.pnas.vv)], 
                   main = 'Xia et al cell cycle genes - veloviz')
 
 ![](merfish_files/figure-markdown_strict/compare%20veloviz-1.png)

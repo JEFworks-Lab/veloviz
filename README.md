@@ -16,7 +16,7 @@ To install `VeloViz`, we recommend using `devtools`:
 
 ``` r
 require(devtools)
-devtools::install_github('JEFworks/veloviz')
+devtools::install_github('JEFworks-Lab/veloviz')
 ```
 
 ## Example

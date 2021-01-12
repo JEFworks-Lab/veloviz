@@ -82,6 +82,6 @@ plotEmbedding(emb.veloviz, groups=clusters[rownames(emb.veloviz)], main='veloviz
 ![](https://github.com/JEFworks/veloviz/blob/package/docs/img/readme_example.png)
 
 ## Tutorials
-[scRNA-seq data preprocessing and visualization using VeloViz](https://github.com/JEFworks/veloviz/blob/package/docs/pancreas.md)  
-[MERFISH cell cycle visualization using VeloViz](https://github.com/JEFworks/veloviz/blob/package/docs/merfish.md)  
-[Understanding VeloViz parameters](https://github.com/JEFworks/veloviz/blob/package/docs/simulation.md)
+[scRNA-seq data preprocessing and visualization using VeloViz](pancreas)  
+[MERFISH cell cycle visualization using VeloViz](merfish)  
+[Understanding VeloViz parameters](simulation)

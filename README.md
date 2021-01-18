@@ -1,5 +1,5 @@
 
-# VeloViz
+# [![VeloViz](https://github.com/JEFworks/veloviz/blob/package/docs/img/logo_final.png)(http://jef.works/veloviz)
 
 <!-- badges: start -->
 <!-- badges: end -->

@@ -1,5 +1,5 @@
 
-# ![VeloViz](https://github.com/JEFworks/veloviz/blob/package/docs/img/logo_final.png =200x200)
+![](https://github.com/JEFworks/veloviz/blob/package/docs/img/logo_final.png =200x200)
 
 <!-- badges: start -->
 <!-- badges: end -->

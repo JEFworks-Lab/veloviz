@@ -2,8 +2,9 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-<img src="https://github.com/JEFworks/veloviz/blob/package/docs/img/logo_final.png" width="200"/>
-# VeloViz
+<a href="https://jef.works/veloviz/"><img src="https://github.com/JEFworks/veloviz/blob/package/docs/img/logo_final.png" width="200"/></a>
+
+## VeloViz
 
 `VeloViz` creates an RNA-velocity-informed 2D embedding for single cell transcriptomics data.
 

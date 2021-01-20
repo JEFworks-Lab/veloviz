@@ -1,1 +1,4 @@
 theme: jekyll-theme-minimal
+title: VeloViz
+description: Creating RNA-velocity informed 2D embeddings for single cell transcriptomics
+logo: https://github.com/JEFworks-Lab/veloviz/blob/package/docs/img/logo_final.png?raw=true

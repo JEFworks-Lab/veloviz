@@ -8,7 +8,7 @@
 
 `VeloViz` creates an RNA-velocity-informed 2D embedding for single cell transcriptomics data.
 
-<img src="https://github.com/JEFworks-Lab/veloviz/blob/package/docs/img/readme_schematic.png?raw=true"/>
+<img src="https://github.com/JEFworks-Lab/veloviz/blob/package/docs/img/schematic_for_website.png?raw=true"/>
 
 
 The overall approach is detailed in the following publication: [add link]

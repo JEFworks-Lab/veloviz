@@ -6,7 +6,7 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-`VeloViz` creates an RNA-velocity-informed 2D embedding for single cell transcriptomics data.
+`VeloViz` creates RNA-velocity-informed 2D embeddings for single cell transcriptomics data.
 
 <img src="https://github.com/JEFworks-Lab/veloviz/blob/package/docs/img/schematic_for_website.png?raw=true"/>
 

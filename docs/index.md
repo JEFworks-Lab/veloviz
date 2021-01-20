@@ -1,6 +1,3 @@
-
-<a href="https://jef.works/veloviz/"><img src="https://github.com/JEFworks-Lab/veloviz/blob/package/docs/img/logo_final.png?raw=true" width="150"/></a>
-
 # VeloViz
 
 <!-- badges: start -->

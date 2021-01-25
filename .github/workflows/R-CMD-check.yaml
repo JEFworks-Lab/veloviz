@@ -3,12 +3,10 @@
 on:
   push:
     branches:
-      - main
-      - master
+      - package
   pull_request:
     branches:
-      - main
-      - master
+      - package
 
 name: R-CMD-check
 

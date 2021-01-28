@@ -1,6 +1,8 @@
 Visualization using VeloViz
 ===========================
 
+![](img/panc_arrows.gif)
+
 In this example, we will compare the velocity-informed 2D embedding
 created by VeloViz to other commonly used embeddings. We will go through
 the standard workflow needed to generate the VeloViz visualization using
@@ -33,10 +35,10 @@ example dataset in the VeloViz package - see 4\*).
     rownames(spliced) <- rownames(unspliced) <- genes
 
     #clusters
-    clusters <- adata$obs$clusters 
+    clusters <- adata$obs$clusters
     names(clusters) <- adata$obs_names$values
 
-    #subsample to make things faster 
+    #subsample to make things faster
     set.seed(0)
     good.cells <- sample(cells, length(cells)/5)
     spliced <- spliced[,good.cells]
@@ -59,7 +61,7 @@ example dataset in the VeloViz package - see 4\*).
 2.) Normalize
 
     counts = spliced + unspliced # use combined spliced and unspliced counts
-    cpm = normalizeDepth(counts) # normalize to counts per million 
+    cpm = normalizeDepth(counts) # normalize to counts per million
     varnorm = normalizeVariance(cpm) # variance stabilize, find overdispersed genes
     lognorm = log10(varnorm + 1) # log normalize
 
@@ -113,11 +115,11 @@ the `buildVeloviz` function (see 7\*).
     proj.norm = normalizeDepth(proj)
 
     #variance stabilize current
-    curr.varnorm.info = normalizeVariance(curr.norm, details = TRUE) 
+    curr.varnorm.info = normalizeVariance(curr.norm, details = TRUE)
     curr.varnorm = curr.varnorm.info$matnorm
 
     #use same model for projected
-    scale.factor = curr.varnorm.info$df$scale_factor #gene scale factors 
+    scale.factor = curr.varnorm.info$df$scale_factor #gene scale factors
     names(scale.factor) = rownames(curr.varnorm.info$df)
 
     m = proj.norm
@@ -131,7 +133,7 @@ the `buildVeloviz` function (see 7\*).
 
 6.) Project current and projected into PC space
 
-    #log normalize 
+    #log normalize
     curr.pca = log10(curr.varnorm + 1)
     proj.pca = log10(proj.varnorm + 1)
 
@@ -159,7 +161,7 @@ the `buildVeloviz` function (see 7\*).
                            scale = FALSE, ## already done
                            maxitr = 2000,
                            tol = 1e-10))
-      
+
     #scores of current and projected
     curr.scores = Matrix::t(curr.pca) %*% pca$v[,1:10]
     proj.scores = Matrix::t(proj.pca) %*% pca$v[,1:10]
@@ -189,7 +191,7 @@ space will be removed from the graph
 **`weighted`**: whether to use composite distance to determine graph
 edge weights (`TRUE`) or to assign all edges equal weights (`FALSE`)
 
-    #VeloViz graph parameters 
+    #VeloViz graph parameters
     k = 5
     similarity.threshold = 0.25
     distance.weight = 1
@@ -225,13 +227,13 @@ edge weights (`TRUE`) or to assign all edges equal weights (`FALSE`)
 
     veloviz = buildVeloviz(
       curr = curr, proj = proj,
-      normalize.depth = TRUE, 
+      normalize.depth = TRUE,
       use.ods.genes = TRUE,
       alpha = 0.05,
       pca = TRUE,
       nPCs = 20,
       center = TRUE,
-      scale = TRUE, 
+      scale = TRUE,
       k = 5,
       similarity.threshold = 0.25,
       distance.weight = 1,
@@ -265,7 +267,7 @@ Compare to other embeddings
     set.seed(0)
     emb.tsne = Rtsne::Rtsne(pcs, perplexity=30)$Y
     rownames(emb.tsne) = rownames(pcs)
-    plotEmbedding(emb.tsne, colors = cell.cols, main='tSNE', 
+    plotEmbedding(emb.tsne, colors = cell.cols, main='tSNE',
                   xlab = "t-SNE X", ylab = "t-SNE Y")
 
     ##UMAP
@@ -285,25 +287,25 @@ embeddings.
 
     par(mfrow = c(2,2))
 
-    show.velocity.on.embedding.cor(scale(emb.pca), vel, 
+    show.velocity.on.embedding.cor(scale(emb.pca), vel,
                                    n = 50,
                                    scale='sqrt',
                                    cex=1, arrow.scale=1, show.grid.flow=TRUE,
                                    min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, do.par = F,
                                    cell.colors=cell.cols, main='PCA')
-    show.velocity.on.embedding.cor(scale(emb.tsne), vel, 
+    show.velocity.on.embedding.cor(scale(emb.tsne), vel,
                                    n = 50,
                                    scale='sqrt',
                                    cex=1, arrow.scale=1, show.grid.flow=TRUE,
                                    min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = F,
                                    cell.colors=cell.cols, main='tSNE')
-    show.velocity.on.embedding.cor(scale(emb.umap), vel, 
+    show.velocity.on.embedding.cor(scale(emb.umap), vel,
                                    n = 50,
                                    scale='sqrt',
                                    cex=1, arrow.scale=1, show.grid.flow=TRUE,
                                    min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = F,
                                    cell.colors=cell.cols, main='UMAP')
-    show.velocity.on.embedding.cor(scale(emb.veloviz), vel, 
+    show.velocity.on.embedding.cor(scale(emb.veloviz), vel,
                                    n = 50,
                                    scale='sqrt',
                                    cex=1, arrow.scale=1, show.grid.flow=TRUE,
@@ -333,13 +335,13 @@ Create VeloViz embedding
 
     veloviz = buildVeloviz(
       curr = curr, proj = proj,
-      normalize.depth = TRUE, 
+      normalize.depth = TRUE,
       use.ods.genes = TRUE,
       alpha = 0.05,
       pca = TRUE,
       nPCs = 20,
       center = TRUE,
-      scale = TRUE, 
+      scale = TRUE,
       k = 5,
       similarity.threshold = 0.25,
       distance.weight = 1,
@@ -371,7 +373,7 @@ Compare to other embeddings
     set.seed(0)
     emb.tsne = Rtsne::Rtsne(pcs, perplexity=30)$Y
     rownames(emb.tsne) = rownames(pcs)
-    plotEmbedding(emb.tsne, colors = cell.cols, main='tSNE', 
+    plotEmbedding(emb.tsne, colors = cell.cols, main='tSNE',
                   xlab = "t-SNE X", ylab = "t-SNE Y")
 
     ##UMAP
@@ -391,25 +393,25 @@ embeddings.
 
     par(mfrow = c(2,2))
 
-    show.velocity.on.embedding.cor(scale(emb.pca), vel, 
+    show.velocity.on.embedding.cor(scale(emb.pca), vel,
                                    n = 50,
                                    scale='sqrt',
                                    cex=1, arrow.scale=1, show.grid.flow=TRUE,
                                    min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, do.par = F,
                                    cell.colors=cell.cols, main='PCA')
-    show.velocity.on.embedding.cor(scale(emb.tsne), vel, 
+    show.velocity.on.embedding.cor(scale(emb.tsne), vel,
                                    n = 50,
                                    scale='sqrt',
                                    cex=1, arrow.scale=1, show.grid.flow=TRUE,
                                    min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = F,
                                    cell.colors=cell.cols, main='tSNE')
-    show.velocity.on.embedding.cor(scale(emb.umap), vel, 
+    show.velocity.on.embedding.cor(scale(emb.umap), vel,
                                    n = 50,
                                    scale='sqrt',
                                    cex=1, arrow.scale=1, show.grid.flow=TRUE,
                                    min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = F,
                                    cell.colors=cell.cols, main='UMAP')
-    show.velocity.on.embedding.cor(scale(emb.veloviz), vel, 
+    show.velocity.on.embedding.cor(scale(emb.veloviz), vel,
                                    n = 50,
                                    scale='sqrt',
                                    cex=1, arrow.scale=1, show.grid.flow=TRUE,

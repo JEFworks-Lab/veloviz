@@ -1,0 +1,16 @@
+citHeader("To cite veloviz in publications use:")
+
+citEntry(
+  entry    = "Article",
+  title    = "VeloViz: RNA-velocity informed 2D embeddings for visualizing cellular trajectories",
+  author   = personList(as.person("Lyla Atta"), as.person("Jean Fan")),
+  journal  = "bioRxiv",
+  year     = "2021",
+  volume   = ,
+  number   = ,
+  pages    = ,
+  url      = "https://www.biorxiv.org/content/10.1101/2021.01.28.425293v1",
+  textVersion = paste(
+
+  )
+)

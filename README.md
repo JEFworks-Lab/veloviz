@@ -10,7 +10,7 @@
 
 ![](https://github.com/JEFworks/veloviz/blob/package/docs/img/readme_schematic.png)
 
-The overall approach is detailed in the following publication: [add link]
+The overall approach is detailed in the [preprint](https://www.biorxiv.org/content/10.1101/2021.01.28.425293v1).
 
 ## Installation
 

@@ -66,7 +66,8 @@ plotEmbedding(emb.pca, groups=pancreas$clusters, main='PCA')
 
 #tSNE
 set.seed(0)
-emb.tsne = Rtsne::Rtsne(pcs, perplexity=30)$Y rownames(emb.tsne) = rownames(pcs)
+emb.tsne = Rtsne::Rtsne(pcs, perplexity=30)$Y 
+rownames(emb.tsne) = rownames(pcs)
 plotEmbedding(emb.tsne, groups=pancreas$clusters, main='tSNE',
 xlab = "t-SNE X", ylab = "t-SNE Y")
 

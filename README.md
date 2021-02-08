@@ -37,21 +37,21 @@ proj = vel$projected # projected transcriptional state
 
 # build VeloViz graph
 veloviz = buildVeloviz(
-curr = curr, proj = proj,
-normalize.depth = TRUE,
-use.ods.genes = TRUE,
-alpha = 0.05,
-pca = TRUE,
-nPCs = 20,
-center = TRUE,
-scale = TRUE,
-k = 5,
-similarity.threshold = 0.25,
-distance.weight = 1,
-distance.threshold = 0.5,
-weighted = TRUE,
-seed = 0,
-verbose = FALSE
+  curr = curr, proj = proj,
+  normalize.depth = TRUE,
+  use.ods.genes = TRUE,
+  alpha = 0.05,
+  pca = TRUE,
+  nPCs = 20,
+  center = TRUE,
+  scale = TRUE,
+  k = 5,
+  similarity.threshold = 0.25,
+  distance.weight = 1,
+  distance.threshold = 0.5,
+  weighted = TRUE,
+  seed = 0,
+  verbose = FALSE
 )
 
 # extract VeloViz embedding
@@ -66,16 +66,17 @@ plotEmbedding(emb.pca, groups=pancreas$clusters, main='PCA')
 
 #tSNE
 set.seed(0)
-emb.tsne = Rtsne::Rtsne(pcs, perplexity=30)$Y rownames(emb.tsne) = rownames(pcs)
+emb.tsne = Rtsne::Rtsne(pcs, perplexity=30)$Y 
+rownames(emb.tsne) = rownames(pcs)
 plotEmbedding(emb.tsne, groups=pancreas$clusters, main='tSNE',
-xlab = "t-SNE X", ylab = "t-SNE Y")
+              xlab = "t-SNE X", ylab = "t-SNE Y")
 
 #UMAP
 set.seed(0)
 emb.umap = uwot::umap(pcs, min_dist = 0.5)
 rownames(emb.umap) <- rownames(pcs)
 plotEmbedding(emb.umap, groups=pancreas$clusters, main='UMAP',
-xlab = "UMAP X", ylab = "UMAP Y")
+              xlab = "UMAP X", ylab = "UMAP Y")
 
 #VeloViz
 plotEmbedding(emb.veloviz, groups=clusters[rownames(emb.veloviz)], main='veloviz')

@@ -16,6 +16,7 @@
 #' @param distance.weight Weight of distance component of composite distance, default = 1
 #' @param distance.threshold quantile threshold for distance component above which to remove edges, default = 1 i.e. no edges removed
 #' @param weighted logical indicating whether to compute VeloViz edges based on composite distance, default = TRUE. FALSE = all edges are of equal weight
+#' @param remove.unconnected logical indicating whether to remove cells with no edges in the VeloViz graph from the output embedding, default = TRUE (removed)
 #' @param verbose logical for verbosity setting, default = FALSE
 #' @param details logical to return detailed data frame or names of genes, default = FALSE
 #' @param seed seed to supply FDG function for reproducible layout
@@ -43,6 +44,7 @@ buildVeloviz <- function(curr, proj,
                          distance.weight = 1,
                          distance.threshold = 1,
                          weighted = TRUE,
+                         remove.unconnected = TRUE,
                          verbose = FALSE,
                          details = FALSE,
                          seed = 0
@@ -103,6 +105,16 @@ buildVeloviz <- function(curr, proj,
     if(verbose) {
       message('Performing dimensionality reduction by PCA...')
     }
+    
+    ## check if curr or proj have negative values 
+    if(sum(curr<0)>0){
+      stop('curr contains negative values, cannot log normalize for PCA')
+    }
+    
+    if(sum(proj<0)>0){
+      stop('proj contains negative values, cannot log normalize for PCA')
+    }
+    
     ## establish PCs from overdispersed genes
     m <- log10(curr+1)
     ## mean
@@ -165,8 +177,8 @@ buildVeloviz <- function(curr, proj,
 
     colnames(pca.curr) <- colnames(pca.proj) <- paste0('PC', 1:ncol(pca.curr))
   } else {
-    pca.curr = curr
-    pca.proj = proj
+    pca.curr = t(curr)
+    pca.proj = t(proj)
   }
 
   if(verbose) {
@@ -185,6 +197,7 @@ buildVeloviz <- function(curr, proj,
                       distance_weight = distance.weight,
                       distance_threshold = distance.threshold,
                       weighted = weighted,
+                      remove_unconnected = remove.unconnected,
                       plot = FALSE,
                       return_graph = TRUE)
 

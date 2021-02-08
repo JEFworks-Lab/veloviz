@@ -21,6 +21,7 @@ buildVeloviz(
   distance.weight = 1,
   distance.threshold = 1,
   weighted = TRUE,
+  remove.unconnected = TRUE,
   verbose = FALSE,
   details = FALSE,
   seed = 0
@@ -58,6 +59,8 @@ buildVeloviz(
 \item{distance.threshold}{quantile threshold for distance component above which to remove edges, default = 1 i.e. no edges removed}
 
 \item{weighted}{logical indicating whether to compute VeloViz edges based on composite distance, default = TRUE. FALSE = all edges are of equal weight}
+
+\item{remove.unconnected}{logical indicating whether to remove cells with no edges in the VeloViz graph from the output embedding, default = TRUE (removed)}
 
 \item{verbose}{logical for verbosity setting, default = FALSE}
 

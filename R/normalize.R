@@ -191,7 +191,7 @@ bh.adjust <- function(x, log = FALSE) {
 
 #' Reduce dimension using Principal Components Analysis via `svds` from `RSpectra`
 #'
-#' @param matnorm
+#' @param matnorm matrix on which to perform PCA
 #' @param center logical to mean center gene expression before PCA, default = TRUE
 #' @param scale logical to scale gene expression variance before PCA, default = TRUE
 #' @param max.ods.genes number of most highly expressed overdispersed genes to include, default = 2000

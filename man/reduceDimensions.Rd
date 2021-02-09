@@ -16,6 +16,8 @@ reduceDimensions(
 )
 }
 \arguments{
+\item{matnorm}{matrix on which to perform PCA}
+
 \item{center}{logical to mean center gene expression before PCA, default = TRUE}
 
 \item{scale}{logical to scale gene expression variance before PCA, default = TRUE}

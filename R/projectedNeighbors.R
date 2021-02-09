@@ -51,7 +51,7 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
     all_negVectSim[i,-i] = nn_negVectSim_i
     
     #find index of minimum distance between cell_i and other cells - those will become k nearest neighbots knn_i 
-    min_dist_idx = which(nn_dists_i==min(nn_dists_i))
+    min_dist_idx = which(nn_dists_i==min(nn_dists_i), na.rm = TRUE)
     #find indices of k nearest neighbors 
     k_min_dists_idx = order(nn_dists_i)[1:k]
     #exclude neighbor if similarity below threshold 

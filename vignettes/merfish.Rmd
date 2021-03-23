@@ -98,7 +98,7 @@ rownames(curr.go.pca) = rownames(pcs)
 ```
 
 Now, build VeloViz embedding.
-```{r go cell cycle veloviz, fig.height=7}
+```{r go cell cycle veloviz, fig.height=7, eval = FALSE}
 veloviz.go = buildVeloviz(
   curr = curr.go,
   proj = proj.go,
@@ -143,7 +143,7 @@ rownames(curr.pnas.pca) = rownames(pcs)
 ```
 
 Now, build VeloViz embedding.  
-```{r pnas cell cycle veloviz, fig.height=7}
+```{r pnas cell cycle veloviz, fig.height=7, eval = FALSE}
 veloviz.pnas = buildVeloviz(
   curr = curr.pnas,
   proj = proj.pnas,
@@ -173,7 +173,7 @@ plotEmbedding(emb.pnas.vv, colors = col[rownames(emb.pnas.vv)],
 
 \newpage
 # Comparing VeloViz embeddings
-```{r compare veloviz, fig.width=10}
+```{r compare veloviz, fig.width=10, eval = FALSE}
 par(mfrow = c(1,3))
 
 plotEmbedding(emb.all.vv, colors = col[rownames(emb.pnas.vv)],

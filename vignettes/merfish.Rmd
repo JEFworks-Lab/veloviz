@@ -85,7 +85,7 @@ plotEmbedding(emb.all.vv, colors = col[rownames(emb.all.vv)], main = 'all genes 
 
 # Build VeloViz embedding using GO cell cycle genes
 First, reduce dimensions.   
-```{r pca go cell cycle genes}
+```{r pca go cell cycle genes, eval = FALSE}
 curr.go.norm = normalizeDepth(curr.go)
 curr.go.norm = normalizeVariance(curr.go.norm, details = TRUE)
 curr.go.norm = log10(curr.go.norm$matnorm + 1)
@@ -119,8 +119,8 @@ veloviz.go = buildVeloviz(
 
 emb.go.vv = veloviz.go$fdg_coords
 par(mfrow = c(1,2))
-plotEmbedding(curr.go.pca[,1:2], colors = col,
-              main = 'GO cell cycle genes - PCA')
+# plotEmbedding(curr.go.pca[,1:2], colors = col,
+#               main = 'GO cell cycle genes - PCA')
 plotEmbedding(emb.go.vv, colors = col[rownames(emb.go.vv)],
               main = 'GO cell cycle genes - veloviz')
 
@@ -130,7 +130,7 @@ plotEmbedding(emb.go.vv, colors = col[rownames(emb.go.vv)],
 
 # Build VeloViz embedding with cell-cycle dependent genes  
 First, reduce dimensions.  
-```{r pca pnas cell cycle genes}
+```{r pca pnas cell cycle genes, eval = FALSE}
 curr.pnas.norm = normalizeDepth(curr.pnas)
 curr.pnas.norm = normalizeVariance(curr.pnas.norm, details = TRUE)
 curr.pnas.norm = log10(curr.pnas.norm$matnorm + 1)
@@ -164,8 +164,8 @@ veloviz.pnas = buildVeloviz(
 
 emb.pnas.vv = veloviz.pnas$fdg_coords
 par(mfrow = c(1,2))
-plotEmbedding(curr.pnas.pca[,1:2], colors = col,
-              main = 'Xia et al cell cycle genes - PCA')
+# plotEmbedding(curr.pnas.pca[,1:2], colors = col,
+#               main = 'Xia et al cell cycle genes - PCA')
 plotEmbedding(emb.pnas.vv, colors = col[rownames(emb.pnas.vv)],
               main = 'Xia et al cell cycle genes - veloviz')
 ```

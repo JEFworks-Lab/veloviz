@@ -56,7 +56,7 @@ buildVeloviz <- function(curr, proj,
     }
     curr <- Matrix::Matrix(curr, sparse = TRUE)
   }
-  if (!class(proj) %in% c("dgCMatrix", "dgTMatrix")) {
+  if (!class(proj)[1] %in% c("dgCMatrix", "dgTMatrix")) {
     if (verbose) {
       message("Converting to sparse matrix ...")
     }

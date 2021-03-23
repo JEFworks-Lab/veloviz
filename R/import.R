@@ -21,9 +21,23 @@
 #' @param unclassified.cell.color cells not included in groups will be labeled in this color
 #' @param group.level.colors set group level colors. Default uses rainbow.
 #' @param ... Additional parameters to pass to BASE::plot
+#' 
+#' @return embedding plot   
+#' 
+#' @examples 
+#' vel <- pancreas$vel
+#' curr <- vel$current
+#' proj <- vel$projected
+#' 
+#' vv <- buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE, 
+#' use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE, 
+#' scale = TRUE, k = 5, similarity.threshold = 0.25, distance.weight = 1,
+#' distance.threshold = 0.5, weighted = TRUE, seed = 0, verbose = FALSE)
+#' 
+#' plotEmbedding(vv$fdg_coords)
 #'
 #' @export
-plotEmbedding <- function(emb, groups=NULL, colors=NULL, cex=0.6, alpha=0.4, gradientPalette=NULL, zlim=NULL, s=1, v=0.8, min.group.size=1, show.legend=FALSE, mark.clusters=FALSE, mark.cluster.cex=2, shuffle.colors=F, legend.x='topright', gradient.range.quantile=0.95, verbose=TRUE, unclassified.cell.color='gray70', group.level.colors=NULL, ...) {
+plotEmbedding <- function(emb, groups=NULL, colors=NULL, cex=0.6, alpha=0.4, gradientPalette=NULL, zlim=NULL, s=1, v=0.8, min.group.size=1, show.legend=FALSE, mark.clusters=FALSE, mark.cluster.cex=2, shuffle.colors=FALSE, legend.x='topright', gradient.range.quantile=0.95, verbose=TRUE, unclassified.cell.color='gray70', group.level.colors=NULL, ...) {
 
   if(!is.null(colors)) {
     ## use clusters information
@@ -73,7 +87,7 @@ plotEmbedding <- function(emb, groups=NULL, colors=NULL, cex=0.6, alpha=0.4, gra
       if(verbose) cat("using provided groups as a factor\n")
       factor.mapping=TRUE;
       ## set up a rainbow color on the factor
-      factor.colors <- fac2col(groups,s=s,v=v,shuffle=shuffle.colors,min.group.size=min.group.size,unclassified.cell.color=unclassified.cell.color,level.colors=group.level.colors,return.details=T)
+      factor.colors <- fac2col(groups,s=s,v=v,shuffle=shuffle.colors,min.group.size=min.group.size,unclassified.cell.color=unclassified.cell.color,level.colors=group.level.colors,return.details=TRUE)
       cols <- factor.colors$colors;
       names(cols) <- rownames(emb)
     } else {
@@ -82,10 +96,10 @@ plotEmbedding <- function(emb, groups=NULL, colors=NULL, cex=0.6, alpha=0.4, gra
     }
   }
 
-  plot(emb,col=adjustcolor(cols,alpha.f=alpha),cex=cex,pch=19,axes=F, ...); box();
+  plot(emb,col=adjustcolor(cols,alpha.f=alpha),cex=cex,pch=19,axes=FALSE, ...); box();
   if(mark.clusters) {
     if(!is.null(groups)) {
-      cent.pos <- do.call(rbind,tapply(1:nrow(emb),groups,function(ii) apply(emb[ii,,drop=F],2,median)))
+      cent.pos <- do.call(rbind,tapply(1:nrow(emb),groups,function(ii) apply(emb[ii,,drop=FALSE],2,median)))
       cent.pos <- na.omit(cent.pos);
       text(cent.pos[,1],cent.pos[,2],labels=rownames(cent.pos),cex=mark.cluster.cex)
     }
@@ -98,7 +112,7 @@ plotEmbedding <- function(emb, groups=NULL, colors=NULL, cex=0.6, alpha=0.4, gra
 }
 
 ## a utility function to translate factor into colors
-fac2col <- function(x,s=1,v=1,shuffle=FALSE,min.group.size=1,return.details=F,unclassified.cell.color='gray50',level.colors=NULL) {
+fac2col <- function(x,s=1,v=1,shuffle=FALSE,min.group.size=1,return.details=FALSE,unclassified.cell.color='gray50',level.colors=NULL) {
   x <- as.factor(x);
   if(min.group.size>1) {
     x <- factor(x,exclude=levels(x)[unlist(tapply(rep(1,length(x)),x,length))<min.group.size])

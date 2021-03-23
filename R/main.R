@@ -25,6 +25,16 @@
 #' @return `fdg_coords` cells (rows) x 2 coordinates of force-directed layout of VeloViz graph
 #' @return `projectedNeighbors` output of `projectedNeighbors`
 #' 
+#' @examples 
+#' vel <- pancreas$vel
+#' curr <- vel$current
+#' proj <- vel$projected
+#' 
+#' buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE, 
+#' use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE, 
+#' scale = TRUE, k = 5, similarity.threshold = 0.25, distance.weight = 1,
+#' distance.threshold = 0.5, weighted = TRUE, seed = 0, verbose = FALSE)
+#' 
 #' @seealso \code{\link{projectedNeighbors}}
 #'
 #' @export
@@ -213,6 +223,28 @@ buildVeloviz <- function(curr, proj,
 }
 
 #' Plot function
+#' @param vig output of buildVeloviz
+#' @param layout.method igraph method to use for generating 2D graph representation, default = igraph::layout_with_fr
+#' @param clusters cluster annotations for cells in data 
+#' @param cluster.method igraph method to use for clustering if clusters are not provided, default = igraph::cluster_louvain
+#' @param col colors to use for plotting
+#' @param alpha transparency for plotting graph nodes
+#' @param verbose logical for verbosity setting, default = FALSE
+#' @param seed seed to supply FDG function for reproducible layout
+#'
+#' @return cells (rows) x 2 coordinates of force-directed layout of VeloViz graph
+#'
+#' @examples 
+#' vel <- pancreas$vel
+#' curr <- vel$current
+#' proj <- vel$projected
+#' 
+#' vv <- buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE, 
+#' use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE, 
+#' scale = TRUE, k = 5, similarity.threshold = 0.25, distance.weight = 1,
+#' distance.threshold = 0.5, weighted = TRUE, seed = 0, verbose = FALSE)
+#' 
+#' plotVeloviz(vv)
 #'
 #' @export
 #'

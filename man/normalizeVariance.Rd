@@ -46,3 +46,10 @@ Normalizes gene expression magnitudes to with respect to its ratio to the
 transcriptome-wide expectation as determined by local regression on
 expression magnitude
 }
+\examples{
+vel <- pancreas$vel
+curr <- vel$current
+
+normalizeDepth(curr)
+
+}

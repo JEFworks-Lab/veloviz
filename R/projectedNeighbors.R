@@ -14,6 +14,12 @@
 #' @return `all_dists` cells x cells matrix of all pairwise composite distances
 #' @return `dist_comp` components of composite distance: `invDist` distance component, `negSim` similarity component 
 #' 
+#' @examples 
+#' curr <- pancreas$vel$current
+#' proj <- pancreas$vel$projected
+#' 
+#' projectedNeighbors(curr, proj, 15)
+#' 
 #' @seealso \code{\link{graphViz}}
 #' 
 #' @export
@@ -120,6 +126,24 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
 #' @return `fdg_coords` cells (rows) x 2 coordinates of force-directed layout of VeloViz graph
 #' @return `projectedNeighbors` output of `projectedNeighbors`
 #' 
+#' @examples 
+#' vel = pancreas$vel
+#' curr = vel$current
+#' proj = vel$projected
+#' 
+#' m <- log10(curr+1)
+#' pca <- RSpectra::svds(A = Matrix::t(m), k=50,
+#' opts = list(center = FALSE, scale = FALSE, maxitr = 2000, tol = 1e-10))
+#' pca.curr <- Matrix::t(m) %*% pca$v[,1:20]
+#' 
+#' m <- log10(proj+1)
+#' pca.proj <- Matrix::t(m) %*% pca$v[,1:20]
+#' 
+#' graphViz(t(pca.curr), t(pca.proj), k=15,
+#' cell.colors=NA, similarity_threshold=0, distance_weight = 1, 
+#' distance_threshold = 1, weighted = TRUE, remove_unconnected = TRUE, 
+#' plot = FALSE, return_graph = TRUE)
+#' 
 #' @seealso \code{\link{projectedNeighbors}}
 #' 
 #' @export
@@ -221,6 +245,18 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
 #' @param plot.hist logical to plot histogram of cell velocity consistence scores, default = FALSE
 #' 
 #' @return vector of length equal to number of cells of cell velocity consistency scores
+#' 
+#' @examples
+#' vel <- pancreas$vel
+#' curr <- vel$current
+#' proj <- vel$projected
+#' 
+#' veloviz <- buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE, 
+#' use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE, 
+#' scale = TRUE, k = 5, similarity.threshold = 0.25, distance.weight = 1,
+#' distance.threshold = 0.5, weighted = TRUE, seed = 0, verbose = FALSE)
+#' 
+#' consistency(veloviz$fdg_coords, vel$delta.exp, 5)
 #'
 #' @export
 #'

@@ -14,7 +14,7 @@ library(veloviz)
 ```
 
 # Visualization using VeloViz  
-In this tutorial, we will create a velocity-informed 2D embedding of pancreas development scRNAseq using VeloViz. We will compare the embedding created from the full (subsampled) data to that created from data missing developmental intermediates to see if we can still see similar cellular trajectories. The data used for this example is available with the VeloViz package and was initially obtained from the scVelo package (Bergen et. al. Nature Biotech 2020, Bastidas-Ponce et. al. Development 2019). More details about the data, preprocessing, and normalization steps are available in the tutorials at jef.works/veloviz/pancreas. 
+In this vignette, we will create a velocity-informed 2D embedding of pancreas development scRNAseq using VeloViz. We will compare the embedding created from the full (subsampled) data to that created from data missing developmental intermediates to see if we can still see similar cellular trajectories. The data used for this example is available with the VeloViz package and was initially obtained from the scVelo package (Bergen et. al. *Nature Biotech*, 2020, Bastidas-Ponce et. al. *Development*, 2019). More details about the data, preprocessing, and normalization steps are available in the tutorials at jef.works/veloviz/pancreas. 
 
 1) Load example full data from VeloViz  
 ```{r load from veloviz}

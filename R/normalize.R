@@ -15,7 +15,7 @@ normalizeDepth <- function(
   depthScale     = 1e+06,
   verbose        = TRUE
 ){
-  if (!class(counts) %in% c("dgCMatrix", "dgTMatrix")) {
+  if (!class(counts)[1] %in% c("dgCMatrix", "dgTMatrix")) {
     if (verbose) {
       message("Converting to sparse matrix ...")
     }
@@ -67,7 +67,7 @@ normalizeVariance <- function(
   details               = FALSE
 ) {
 
-  if (!class(cpm) %in% c("dgCMatrix", "dgTMatrix")) {
+  if (!class(cpm)[1] %in% c("dgCMatrix", "dgTMatrix")) {
     if (verbose) {
       message("Converting to sparse matrix ...")
     }

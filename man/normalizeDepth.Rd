@@ -20,3 +20,10 @@ a normalized matrix
 \description{
 Normalizes raw counts to counts per million
 }
+\examples{
+vel <- pancreas$vel
+curr <- vel$current
+
+normalizeDepth(curr)
+
+}

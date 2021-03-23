@@ -15,6 +15,39 @@ plotVeloviz(
   seed = 0
 )
 }
+\arguments{
+\item{vig}{output of buildVeloviz}
+
+\item{layout.method}{igraph method to use for generating 2D graph representation, default = igraph::layout_with_fr}
+
+\item{clusters}{cluster annotations for cells in data}
+
+\item{cluster.method}{igraph method to use for clustering if clusters are not provided, default = igraph::cluster_louvain}
+
+\item{col}{colors to use for plotting}
+
+\item{alpha}{transparency for plotting graph nodes}
+
+\item{verbose}{logical for verbosity setting, default = FALSE}
+
+\item{seed}{seed to supply FDG function for reproducible layout}
+}
+\value{
+cells (rows) x 2 coordinates of force-directed layout of VeloViz graph
+}
 \description{
 Plot function
+}
+\examples{
+vel <- pancreas$vel
+curr <- vel$current
+proj <- vel$projected
+
+vv <- buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE, 
+use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE, 
+scale = TRUE, k = 5, similarity.threshold = 0.25, distance.weight = 1,
+distance.threshold = 0.5, weighted = TRUE, seed = 0, verbose = FALSE)
+
+plotVeloviz(vv)
+
 }

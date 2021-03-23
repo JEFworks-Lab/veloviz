@@ -19,7 +19,7 @@ plotEmbedding(
   show.legend = FALSE,
   mark.clusters = FALSE,
   mark.cluster.cex = 2,
-  shuffle.colors = F,
+  shuffle.colors = FALSE,
   legend.x = "topright",
   gradient.range.quantile = 0.95,
   verbose = TRUE,
@@ -69,7 +69,23 @@ plotEmbedding(
 
 \item{...}{Additional parameters to pass to BASE::plot}
 }
+\value{
+embedding plot
+}
 \description{
 Plot 2D embedding
 From scde/pagoda2/MUDAN
+}
+\examples{
+vel <- pancreas$vel
+curr <- vel$current
+proj <- vel$projected
+
+vv <- buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE, 
+use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE, 
+scale = TRUE, k = 5, similarity.threshold = 0.25, distance.weight = 1,
+distance.threshold = 0.5, weighted = TRUE, seed = 0, verbose = FALSE)
+
+plotEmbedding(vv$fdg_coords)
+
 }

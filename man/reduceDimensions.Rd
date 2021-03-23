@@ -38,3 +38,14 @@ matrix of cell scores in nPCs components
 \description{
 Reduce dimension using Principal Components Analysis via \code{svds} from \code{RSpectra}
 }
+\examples{
+vel <- pancreas$vel
+curr <- vel$current
+
+curr.norm <- normalizeDepth(curr)
+curr.norm <- normalizeVariance(curr)
+curr.norm <- log10(curr.norm+1)
+reduceDimensions(curr.norm)
+
+
+}

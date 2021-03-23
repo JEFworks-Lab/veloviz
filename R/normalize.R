@@ -8,6 +8,12 @@
 #' @param verbose Boolean for verbosity setting (default: TRUE)
 #'
 #' @return a normalized matrix
+#' 
+#' @examples 
+#' vel <- pancreas$vel
+#' curr <- vel$current
+#' 
+#' normalizeDepth(curr)
 #'
 #' @export
 normalizeDepth <- function(
@@ -54,6 +60,12 @@ normalizeDepth <- function(
 #' @return A list with two items: (1) an adjusted CPM matrix with the same
 #' dimensions as the input and (2) a dataframe with the summary statistics for
 #' each gene.
+#' 
+#' @examples 
+#' vel <- pancreas$vel
+#' curr <- vel$current
+#' 
+#' normalizeDepth(curr)
 #'
 #' @export
 normalizeVariance <- function(
@@ -201,6 +213,15 @@ bh.adjust <- function(x, log = FALSE) {
 #' @param details logical to return pca object, default = FALSE
 #' 
 #' @return matrix of cell scores in nPCs components 
+#' 
+#' @examples 
+#' vel <- pancreas$vel
+#' curr <- vel$current
+#' 
+#' curr.norm <- normalizeDepth(curr)
+#' curr.norm <- normalizeVariance(curr)
+#' curr.norm <- log10(curr.norm+1)
+#' reduceDimensions(curr.norm)
 #'
 #'
 #' @export

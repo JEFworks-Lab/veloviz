@@ -1,7 +1,11 @@
 ---
-output:
-  pdf_document: default
-  html_document: default
+title: "Visualizing pancreas development using VeloViz"
+author: "Lyla Atta, Jean Fan"
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{Visualizing pancreas development using VeloViz}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
 ---
 
 ```{r setup, include=FALSE}
@@ -34,10 +38,10 @@ colnames(spliced) <- colnames(unspliced) <- cells
 rownames(spliced) <- rownames(unspliced) <- genes
 
 #clusters
-clusters <- adata$obs$clusters 
+clusters <- adata$obs$clusters
 names(clusters) <- adata$obs_names$values
 
-#subsample to make things faster 
+#subsample to make things faster
 set.seed(0)
 good.cells <- sample(cells, length(cells)/5)
 spliced <- spliced[,good.cells]
@@ -66,7 +70,7 @@ dim(unspliced)
 2\.) Normalize  
 ```{r normalize}
 counts = spliced + unspliced # use combined spliced and unspliced counts
-cpm = normalizeDepth(counts) # normalize to counts per million 
+cpm = normalizeDepth(counts) # normalize to counts per million
 varnorm = normalizeVariance(cpm) # variance stabilize, find overdispersed genes
 lognorm = log10(varnorm + 1) # log normalize
 
@@ -122,11 +126,11 @@ curr.norm = normalizeDepth(curr)
 proj.norm = normalizeDepth(proj)
 
 #variance stabilize current
-curr.varnorm.info = normalizeVariance(curr.norm, details = TRUE) 
+curr.varnorm.info = normalizeVariance(curr.norm, details = TRUE)
 curr.varnorm = curr.varnorm.info$matnorm
 
 #use same model for projected
-scale.factor = curr.varnorm.info$df$scale_factor #gene scale factors 
+scale.factor = curr.varnorm.info$df$scale_factor #gene scale factors
 names(scale.factor) = rownames(curr.varnorm.info$df)
 
 m = proj.norm
@@ -144,7 +148,7 @@ proj.varnorm = proj.norm[rownames(curr.varnorm),]
 
 6\.) Project current and projected into PC space  
 ```{r pca current and projected}
-#log normalize 
+#log normalize
 curr.pca = log10(curr.varnorm + 1)
 proj.pca = log10(proj.varnorm + 1)
 
@@ -172,7 +176,7 @@ pca = RSpectra::svds(A = Matrix::t(curr.pca), k=20,
                        scale = FALSE, ## already done
                        maxitr = 2000,
                        tol = 1e-10))
-  
+
 #scores of current and projected
 curr.scores = Matrix::t(curr.pca) %*% pca$v[,1:10]
 proj.scores = Matrix::t(proj.pca) %*% pca$v[,1:10]
@@ -194,7 +198,7 @@ Now we can use the PC projections of the current and projected transcriptional s
 
 
 ```{r veloviz}
-#VeloViz graph parameters 
+#VeloViz graph parameters
 k = 5
 similarity.threshold = 0.25
 distance.weight = 1
@@ -228,13 +232,13 @@ proj = vel$projected
 
 veloviz = buildVeloviz(
   curr = curr, proj = proj,
-  normalize.depth = TRUE, 
+  normalize.depth = TRUE,
   use.ods.genes = TRUE,
   alpha = 0.05,
   pca = TRUE,
   nPCs = 20,
   center = TRUE,
-  scale = TRUE, 
+  scale = TRUE,
   k = 5,
   similarity.threshold = 0.25,
   distance.weight = 1,
@@ -254,7 +258,7 @@ g = plotVeloviz(veloviz, clusters=clusters[rownames(emb.veloviz)], seed=0, verbo
 
 
 
-\newpage 
+\newpage
 ## Compare to other embeddings
 ```{r other embeddings, fig.height = 7, fig.width=8}
 par(mfrow = c(2,2))
@@ -268,7 +272,7 @@ plotEmbedding(emb.pca, colors = cell.cols, main='PCA',
 set.seed(0)
 emb.tsne = Rtsne::Rtsne(pcs, perplexity=30)$Y
 rownames(emb.tsne) = rownames(pcs)
-plotEmbedding(emb.tsne, colors = cell.cols, main='tSNE', 
+plotEmbedding(emb.tsne, colors = cell.cols, main='tSNE',
               xlab = "t-SNE X", ylab = "t-SNE Y")
 
 ##UMAP
@@ -290,29 +294,29 @@ Now let's project velocity inferred from `velocyto.R` onto these embeddings.
 ```{r velocity on other embeddings, fig.height = 9, fig.width=10}
 par(mfrow = c(2,2))
 
-show.velocity.on.embedding.cor(scale(emb.pca), vel, 
+show.velocity.on.embedding.cor(scale(emb.pca), vel,
                                n = 50,
                                scale='sqrt',
                                cex=1, arrow.scale=1, show.grid.flow=TRUE,
-                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, do.par = F,
+                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, do.par = FALSE,
                                cell.colors=cell.cols, main='PCA')
-show.velocity.on.embedding.cor(scale(emb.tsne), vel, 
+show.velocity.on.embedding.cor(scale(emb.tsne), vel,
                                n = 50,
                                scale='sqrt',
                                cex=1, arrow.scale=1, show.grid.flow=TRUE,
-                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = F,
+                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = FALSE,
                                cell.colors=cell.cols, main='tSNE')
-show.velocity.on.embedding.cor(scale(emb.umap), vel, 
+show.velocity.on.embedding.cor(scale(emb.umap), vel,
                                n = 50,
                                scale='sqrt',
                                cex=1, arrow.scale=1, show.grid.flow=TRUE,
-                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = F,
+                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = FALSE,
                                cell.colors=cell.cols, main='UMAP')
-show.velocity.on.embedding.cor(scale(emb.veloviz), vel, 
+show.velocity.on.embedding.cor(scale(emb.veloviz), vel,
                                n = 50,
                                scale='sqrt',
                                cex=1, arrow.scale=1, show.grid.flow=TRUE,
-                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = F,
+                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = FALSE,
                                cell.colors=cell.cols, main='VeloViz')
 ```
 
@@ -338,13 +342,13 @@ proj = vel$projected
 
 veloviz = buildVeloviz(
   curr = curr, proj = proj,
-  normalize.depth = TRUE, 
+  normalize.depth = TRUE,
   use.ods.genes = TRUE,
   alpha = 0.05,
   pca = TRUE,
   nPCs = 20,
   center = TRUE,
-  scale = TRUE, 
+  scale = TRUE,
   k = 5,
   similarity.threshold = 0.25,
   distance.weight = 1,
@@ -373,7 +377,7 @@ plotEmbedding(emb.pca, colors = cell.cols, main='PCA')
 set.seed(0)
 emb.tsne = Rtsne::Rtsne(pcs, perplexity=30)$Y
 rownames(emb.tsne) = rownames(pcs)
-plotEmbedding(emb.tsne, colors = cell.cols, main='tSNE', 
+plotEmbedding(emb.tsne, colors = cell.cols, main='tSNE',
               xlab = "t-SNE X", ylab = "t-SNE Y")
 
 ##UMAP
@@ -395,34 +399,34 @@ Now let's project velocity inferred from `velocyto.R` onto these embeddings.
 ```{r velocity on other embeddings missing, fig.height = 9, fig.width=10}
 par(mfrow = c(2,2))
 
-show.velocity.on.embedding.cor(scale(emb.pca), vel, 
+show.velocity.on.embedding.cor(scale(emb.pca), vel,
                                n = 50,
                                scale='sqrt',
                                cex=1, arrow.scale=1, show.grid.flow=TRUE,
-                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, do.par = F,
+                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, do.par = FALSE,
                                cell.colors=cell.cols, main='PCA')
-show.velocity.on.embedding.cor(scale(emb.tsne), vel, 
+show.velocity.on.embedding.cor(scale(emb.tsne), vel,
                                n = 50,
                                scale='sqrt',
                                cex=1, arrow.scale=1, show.grid.flow=TRUE,
-                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = F,
+                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = FALSE,
                                cell.colors=cell.cols, main='tSNE')
-show.velocity.on.embedding.cor(scale(emb.umap), vel, 
+show.velocity.on.embedding.cor(scale(emb.umap), vel,
                                n = 50,
                                scale='sqrt',
                                cex=1, arrow.scale=1, show.grid.flow=TRUE,
-                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = F,
+                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = FALSE,
                                cell.colors=cell.cols, main='UMAP')
-show.velocity.on.embedding.cor(scale(emb.veloviz), vel, 
+show.velocity.on.embedding.cor(scale(emb.veloviz), vel,
                                n = 50,
                                scale='sqrt',
                                cex=1, arrow.scale=1, show.grid.flow=TRUE,
-                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = F,
+                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1,do.par = FALSE,
                                cell.colors=cell.cols, main='VeloViz')
 ```
 
 
-\newpage 
+\newpage
 
 
 
@@ -439,15 +443,15 @@ genes <- adata$var_names$values
 colnames(spliced) <- colnames(unspliced) <- cells
 rownames(spliced) <- rownames(unspliced) <- genes
 ## extract clusters
-clusters <- adata$obs$clusters 
+clusters <- adata$obs$clusters
 names(clusters) <- adata$obs_names$values
 ## old embedding
 emb.original <- adata$obsm['X_umap'] #extract umap embedding
 rownames(emb.original) <- names(clusters)
 ## plot
 par(mfrow <- c(1,1))
-plotEmbedding(emb.original, groups = clusters, 
-              xlab = "UMAP X", ylab = "UMAP Y", 
+plotEmbedding(emb.original, groups = clusters,
+              xlab = "UMAP X", ylab = "UMAP Y",
               mark.clusters = TRUE)
 
 ## subsample to create smaller dataset
@@ -460,8 +464,8 @@ clusters <- clusters[good.cells]
 emb.original <- emb.original[good.cells,]
 ## plot
 par(mfrow = c(1,1))
-plotEmbedding(emb.original, groups = clusters, 
-              xlab = "UMAP X", ylab = "UMAP Y", 
+plotEmbedding(emb.original, groups = clusters,
+              xlab = "UMAP X", ylab = "UMAP Y",
               mark.clusters=TRUE)
 
 ## filter to well detected genes
@@ -553,7 +557,7 @@ g = plotVeloviz(vig, clusters=pancreas$clusters, seed=0, verbose=TRUE)
 x = emb.original[,1]
 vi = x > -5 & x < 0
 good.cells = rownames(emb.original)[!vi]
-plotEmbedding(emb.original[good.cells,], groups=clusters, 
+plotEmbedding(emb.original[good.cells,], groups=clusters,
               xlab = "UMAP X", ylab = "UMAP Y", mark.clusters=TRUE)
 spliced = spliced[,good.cells]
 unspliced = unspliced[,good.cells]
@@ -632,4 +636,3 @@ plotEmbedding(emb.veloviz, groups=pancreasWithGap$clusters, main='veloviz')
 par(mfrow=c(1,1), mar=rep(1,4))
 g = plotVeloviz(vig, clusters = pancreasWithGap$clusters, seed = 0)
 ```
-

@@ -65,7 +65,7 @@ arrows(obs[,1],obs[,2],exp[,1],exp[,2])
 ```
 
 ## Non-velocity based embedding on current expression  
-```{r non velocity embeddings cycle, fig.height = 7, fig.width=6 }
+```{r non velocity embeddings cycle, fig.height = 7, fig.width=6, eval = FALSE}
 pca = RSpectra::svds(A = obs, k=3,
                      opts = list(center = TRUE, scale = TRUE,
                                  maxitr = 2000, tol = 1e-10))
@@ -184,7 +184,7 @@ cells.after = labels %in% paste0('cell', 101:130)
 ```
 
 
-```{r non velocity embeddings incomplete cycle, fig.height = 7, fig.width=6 }
+```{r non velocity embeddings incomplete cycle, fig.height = 7, fig.width=6 , eval = FALSE}
 pca = RSpectra::svds(A = obs.missing, k=3,
                      opts = list(center = TRUE, scale = TRUE,
                                  maxitr = 2000, tol = 1e-10))

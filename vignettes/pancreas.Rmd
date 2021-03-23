@@ -23,7 +23,7 @@ Inputs to VeloViz are the scores in PCA space of the current and projected trans
 To get current and projected PC scores from raw counts, we first follow standard filtering, normalization, and dimensional reduction steps and then calculate velocity. (Steps 1-4 can be skipped by loading the example dataset in the VeloViz package - see 4*).    
 
 0\.) Get Data:  
-```{r get data}
+```{r get data, eval=FALSE}
 #getting pancreas data from scVelo
 use_condaenv("cellrank", required = TRUE)
 scv = import("scvelo")
@@ -56,7 +56,7 @@ dim(unspliced)
 \newpage
 
 1\.) Filter good genes  
-```{r filter}
+```{r filter, eval=FALSE}
 #keep genes with >10 total counts
 good.genes = genes[rowSums(spliced) > 10 & rowSums(unspliced) > 10]
 spliced = spliced[good.genes,]
@@ -68,7 +68,7 @@ dim(unspliced)
 
 
 2\.) Normalize  
-```{r normalize}
+```{r normalize, eval=FALSE}
 counts = spliced + unspliced # use combined spliced and unspliced counts
 cpm = normalizeDepth(counts) # normalize to counts per million
 varnorm = normalizeVariance(cpm) # variance stabilize, find overdispersed genes
@@ -79,7 +79,7 @@ lognorm = log10(varnorm + 1) # log normalize
 
 3\.) Reduce Dimensions  
 After filtering and normalizing, we reduce dimensions, and calculate cell-cell distance in PC space. This distance will be used to compute velocity.  
-```{r pca dist}
+```{r pca dist, eval=FALSE}
 #PCA on centered and scaled expression of overdispersed genes
 pcs = reduceDimensions(lognorm, center = TRUE, scale = TRUE, nPCs = 50)
 
@@ -92,7 +92,7 @@ cell.dist = as.dist(1-cor(t(pcs))) # cell distance in PC space
 
 4\.) Calculate velocity  
 Next, we compute velocity from spliced and unspliced counts and cell-cell distances using velocyto. This will give us the current and projected transcriptional states.  
-```{r velocity}
+```{r velocity, eval=FALSE}
 vel = gene.relative.velocity.estimates(spliced,
                                        unspliced,
                                        kCells = 30,
@@ -260,7 +260,7 @@ g = plotVeloviz(veloviz, clusters=clusters[rownames(emb.veloviz)], seed=0, verbo
 
 \newpage
 ## Compare to other embeddings
-```{r other embeddings, fig.height = 7, fig.width=8}
+```{r other embeddings, fig.height = 7, fig.width=8, eval=FALSE}
 par(mfrow = c(2,2))
 
 #PCA
@@ -291,7 +291,7 @@ plotEmbedding(emb.veloviz, colors = cell.cols[rownames(emb.veloviz)], main='velo
 \newpage
 
 Now let's project velocity inferred from `velocyto.R` onto these embeddings.  
-```{r velocity on other embeddings, fig.height = 9, fig.width=10}
+```{r velocity on other embeddings, fig.height = 9, fig.width=10, eval=FALSE}
 par(mfrow = c(2,2))
 
 show.velocity.on.embedding.cor(scale(emb.pca), vel,
@@ -366,7 +366,7 @@ g = plotVeloviz(veloviz, clusters=clusters[rownames(emb.veloviz)], seed=0, verbo
 ```
 
 Compare to other embeddings  
-```{r, fig.height = 7, fig.width=8}
+```{r, fig.height = 7, fig.width=8, eval=FALSE}
 par(mfrow = c(2,2))
 
 #PCA
@@ -396,7 +396,7 @@ plotEmbedding(emb.veloviz, colors = cell.cols[rownames(emb.veloviz)], main='velo
 \newpage
 
 Now let's project velocity inferred from `velocyto.R` onto these embeddings.  
-```{r velocity on other embeddings missing, fig.height = 9, fig.width=10}
+```{r velocity on other embeddings missing, fig.height = 9, fig.width=10, eval=FALSE}
 par(mfrow = c(2,2))
 
 show.velocity.on.embedding.cor(scale(emb.pca), vel,

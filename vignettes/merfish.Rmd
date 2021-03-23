@@ -56,8 +56,6 @@ proj.pnas = proj[merfish.cycle.pnas,]
 \newpage
 # Build VeloViz embedding using all genes
 ```{r all genes, fig.height=7}
-par(mfrow = c(2,2))
-
 veloviz.all = buildVeloviz(
   curr = curr,
   proj = proj,
@@ -77,6 +75,15 @@ veloviz.all = buildVeloviz(
 )
 
 emb.all.vv = veloviz.all$fdg_coords
+
+par(mfrow = c(1,1))
+plotEmbedding(emb.all.vv, colors = col[rownames(emb.all.vv)], main = 'all genes - veloviz')
+
+```
+
+
+```{r all genes, fig.height=7, eval=FALSE}
+par(mfrow = c(2,2))
 plotEmbedding(emb.all.vv, colors = col[rownames(emb.all.vv)], main = 'all genes - veloviz')
 
 #PCA
@@ -163,8 +170,6 @@ rownames(curr.go.pca) = rownames(pcs)
 
 Now, build embeddings.  
 ```{r go cell cycle embeddings, fig.height=7}
-par(mfrow = c(2,2))
-
 veloviz.go = buildVeloviz(
   curr = curr.go,
   proj = proj.go,
@@ -184,6 +189,16 @@ veloviz.go = buildVeloviz(
 )
 
 emb.go.vv = veloviz.go$fdg_coords
+par(mfrow = c(1,1))
+plotEmbedding(emb.go.vv, colors = col[rownames(emb.go.vv)],
+              main = 'GO cell cycle genes - veloviz')
+
+
+```
+
+
+```{r go cell cycle embeddings, fig.height=7, eval = FALSE}
+par(mfrow = c(2,2))
 plotEmbedding(emb.go.vv, colors = col[rownames(emb.go.vv)],
               main = 'GO cell cycle genes - veloviz')
 
@@ -225,8 +240,6 @@ rownames(curr.pnas.pca) = rownames(pcs)
 
 Now, build embeddings.  
 ```{r pnas cell cycle, fig.height=7}
-par(mfrow = c(2,2))
-
 veloviz.pnas = buildVeloviz(
   curr = curr.pnas,
   proj = proj.pnas,
@@ -246,6 +259,14 @@ veloviz.pnas = buildVeloviz(
 )
 
 emb.pnas.vv = veloviz.pnas$fdg_coords
+par(mfrow = c(1,1))
+plotEmbedding(emb.pnas.vv, colors = col[rownames(emb.pnas.vv)],
+              main = 'Xia et al cell cycle genes - veloviz')
+```
+
+
+```{r pnas cell cycle, fig.height=7, eval = FALSE}
+par(mfrow = c(2,2))
 plotEmbedding(emb.pnas.vv, colors = col[rownames(emb.pnas.vv)],
               main = 'Xia et al cell cycle genes - veloviz')
 

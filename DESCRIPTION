@@ -1,6 +1,6 @@
 Package: veloviz
 Title: VeloViz: RNA-velocity informed 2D embeddings for visualizing cell state trajectories
-Version: 0.0.0.9000
+Version: 0.99.0
 Authors@R:
     c(person(given = "Lyla",
            family = "Atta",
@@ -12,9 +12,8 @@ Authors@R:
                   role = c("aut"),
                   email = "jeanfan@jhu.edu",
                   comment = c(ORCID = "0000-0002-0212-5451")))
-Author: Lyla Atta [aut, cre], Jean Fan [aut]
-Maintainer: Lyla Atta <lylaatta@jhmi.edu>
 Description: VeloViz uses each cell’s current observed and predicted future transcriptional states inferred from RNA velocity analysis to build a nearest neighbor graph between cells in the population. Edges are then pruned based on a cosine correlation threshold and/or a distance threshold and the resulting graph is visualized using a force-directed graph layout algorithm. VeloViz can help ensure that relationships between cell states are reflected in the 2D embedding, allowing for more reliable representation of underlying cellular trajectories.
+biocViews: Software
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
@@ -29,6 +28,6 @@ Imports:
 LinkingTo:
     Rcpp
 Depends:
-    R (>= 2.10)
+    R (>= 4.0)
 Suggests: 
     testthat

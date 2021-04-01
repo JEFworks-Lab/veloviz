@@ -194,27 +194,27 @@ Build VeloViz embedding with cell-cycle dependent genes
 First, reduce dimensions.
 
 ``` r
-    curr.pnas.norm = normalizeDepth(curr.pnas)
+curr.pnas.norm = normalizeDepth(curr.pnas)
 
-    ## Warning in if (!class(counts) %in% c("dgCMatrix", "dgTMatrix")) {: the condition has length > 1 and only the first element will be used
+## Warning in if (!class(counts) %in% c("dgCMatrix", "dgTMatrix")) {: the condition has length > 1 and only the first element will be used
 
-    ## Converting to sparse matrix ...
+## Converting to sparse matrix ...
 
-    ## Normalizing matrix with 645 cells and 1471 genes
+## Normalizing matrix with 645 cells and 1471 genes
 
-    curr.pnas.norm = normalizeVariance(curr.pnas.norm, details = TRUE)
+curr.pnas.norm = normalizeVariance(curr.pnas.norm, details = TRUE)
 
-    ## Using general additive modeling with k = 5...
+## Using general additive modeling with k = 5...
 
-    ## Identifed 389 overdispersed genes using
-    ##     adjusted p-value threshold alpha = 0.05
+## Identifed 389 overdispersed genes using
+##     adjusted p-value threshold alpha = 0.05
 
-    curr.pnas.norm = log10(curr.pnas.norm$matnorm + 1)
-    curr.pnas.pca = RSpectra::svds(A = t(as.matrix(curr.pnas.norm)), k = 50,
-                                   opts = list(center = TRUE, scale = FALSE,
-                                               maxitr = 2000, tol = 1e-10))
-    curr.pnas.pca = curr.pnas.pca$u
-    rownames(curr.pnas.pca) = rownames(pcs)
+curr.pnas.norm = log10(curr.pnas.norm$matnorm + 1)
+curr.pnas.pca = RSpectra::svds(A = t(as.matrix(curr.pnas.norm)), k = 50,
+                                opts = list(center = TRUE, scale = FALSE,
+                                            maxitr = 2000, tol = 1e-10))
+curr.pnas.pca = curr.pnas.pca$u
+rownames(curr.pnas.pca) = rownames(pcs)
 ```
 
 Now, build embeddings.

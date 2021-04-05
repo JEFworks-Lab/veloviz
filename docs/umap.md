@@ -4,7 +4,7 @@ Inputting VeloViz nearest neighbors into UMAP
 In this example, we will use Veloviz to produce a velocity-informed 2D
 embedding and will then pass the computed nearest neighbor data into UMAP. 
 This is useful to users who want to use common algorithms such as t-SNE and
-UMAP, but with informed initialization. We will use the pancreas 
+UMAP to layout their embedding. We will use the pancreas 
 endocrinogenesis dataset in this example.
 
 First, load libraries:
@@ -121,7 +121,7 @@ veloviz = buildVeloviz(
   nPCs = 20,
   center = TRUE,
   scale = TRUE,
-  k = 5,
+  k = 20,
   similarity.threshold = 0.25,
   distance.weight = 1,
   distance.threshold = 0.5,
@@ -144,7 +144,7 @@ emb.umap = uwot::umap(pcs, min_dist = 0.5)
 rownames(emb.umap) <- rownames(pcs)
 ```
 
-UMAP initialized with VeloViz nearest neighbors
+UMAP with VeloViz nearest neighbors
 ---------------------------
 Now we want to input VeloViz-computed nearest neighbor data into UMAP. 
 VeloViz outputs an igraph graph, but the uwot::umap function expects
@@ -196,7 +196,7 @@ Now we can input the NN graph from VeloViz into UMAP.
 
 ```r
 # Convert veloviz$graph (igraph type) to an idx & dist representation
-nnGraph <- as_nn_graph(graph = veloviz$graph, k = 5)
+nnGraph <- as_nn_graph(graph = veloviz$graph, k = 20)
 
 # input nnGraph to UMAP and plot
 set.seed(0)
@@ -212,22 +212,23 @@ par(mfrow = c(1,3))
 
 # VeloViz
 plotEmbedding(emb.veloviz, 
-              groups=clusters[rownames(emb.veloviz)], 
-              main='VeloViz')
+              colors=cell.cols[rownames(emb.veloviz)],
+              frame.plot = TRUE, xaxt = 'n', yaxt = 'n',
+              main='VeloViz', xlab="VeloViz X", ylab = "VeloViz Y")
 
 # UMAP on PC data
-plotEmbedding(emb.umap, colors = cell.cols, 
-              main='UMAP',
+plotEmbedding(emb.umap, colors = cell.cols, main='UMAP',
+              frame.plot = TRUE, xaxt = 'n', yaxt = 'n',
               xlab = "UMAP X", ylab = "UMAP Y")
               
-# UMAP initialized with VeloViz nearest neighbors
+# UMAP with VeloViz nearest neighbors
 plotEmbedding(emb.umapVelo,
               colors = cell.cols[rownames(emb.umapVelo)],
-              main = 'UMAP (initialized with VeloViz)', 
-              xlab = "UMAP X", ylab = "UMAP Y")
+              frame.plot = TRUE, xaxt = 'n', yaxt = 'n',
+              main = 'UMAP with VeloViz', xlab = "UMAP X", ylab = "UMAP Y")
 ```
 
-Veloviz                    |  UMAP                     |  UMAP (initialized with VeloViz)
+Veloviz                    |  UMAP                     |  UMAP with VeloViz
 :-------------------------:|:-------------------------:|:-------------------------:
 ![](umap_files/figure-markdown_strict/pancreasVeloviz.png) | ![](umap_files/figure-markdown_strict/pancreasUMAP.png) | ![](umap_files/figure-markdown_strict/pancreasUMAPVelo.png) 
 
@@ -239,31 +240,33 @@ par(mfrow = c(1,3))
 
 # show velocities
 show.velocity.on.embedding.cor(scale(emb.veloviz), vel,
-                               n=50,
+                               n = 50,
                                scale='sqrt',
                                cex=1, arrow.scale=1, show.grid.flow=TRUE,
-                               min.grid.cell.mass=0.5, grid.n=30, 
-                               arrow.lwd=1, do.par=FF, 
-                               cell.colors=cell.cols, main='VeloViz')
+                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, do.par = F,
+                               cell.colors=cell.cols[rownames(emb.veloviz)],
+                               frame.plot = TRUE, xaxt = 'n', yaxt = 'n',
+                               main='VeloViz', xlab="VeloViz X", ylab='VeloViz Y')
 
 show.velocity.on.embedding.cor(scale(emb.umap), vel,
-                               n=50,
+                               n = 50,
                                scale='sqrt',
                                cex=1, arrow.scale=1, show.grid.flow=TRUE,
-                               min.grid.cell.mass=0.5, grid.n=30, 
-                               arrow.lwd=1, do.par=F,
-                               cell.colors=cell.cols, main='UMAP')
+                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, do.par = F,
+                               cell.colors=cell.cols,
+                               frame.plot = TRUE, xaxt = 'n', yaxt = 'n'
+                               main='UMAP', xlab="UMAP X", ylab='UMAP Y')
 
 show.velocity.on.embedding.cor(scale(emb.umapVelo), vel,
-                               n=50,
+                               n = 50,
                                scale='sqrt',
                                cex=1, arrow.scale=1, show.grid.flow=TRUE,
-                               min.grid.cell.mass=0.5, grid.n=30, 
-                               arrow.lwd=1, do.par=F,
-                               cell.colors=cell.cols[rownames(emb.umapVelo)],
-                               main='UMAP (initialized with VeloViz)')
+                               min.grid.cell.mass=0.5, grid.n=30, arrow.lwd=1, do.par = F,
+                               cell.colors = cell.cols[rownames(emb.umapVelo)],
+                               frame.plot = TRUE, xaxt = 'n', yaxt = 'n', 
+                               main='UMAP with VeloViz', xlab="UMAP X", ylab='UMAP Y')
 ```
 
-Veloviz                    |  UMAP                     |  UMAP (initialized with VeloViz)
+Veloviz                    |  UMAP                     |  UMAP with VeloViz
 :-------------------------:|:-------------------------:|:-------------------------:
 ![](umap_files/figure-markdown_strict/pancreasVeloviz_withArrows.png) | ![](umap_files/figure-markdown_strict/pancreasUMAP_withArrows.png) | ![](umap_files/figure-markdown_strict/pancreasUMAPVelo_withArrows.png) 

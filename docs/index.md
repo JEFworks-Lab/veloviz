@@ -87,4 +87,5 @@ plotEmbedding(emb.veloviz, groups=clusters[rownames(emb.veloviz)], main='veloviz
 [scRNA-seq data preprocessing and visualization using VeloViz](pancreas)  
 [MERFISH cell cycle visualization using VeloViz](merfish)  
 [Understanding VeloViz parameters](simulation) \
-[Visualizing the VeloViz graph using UMAP](umap)
+[Visualizing the VeloViz graph using UMAP](umap) \ 
+[VeloViz with dynamic velocity estimates from scVelo](scVeloVignette)

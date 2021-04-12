@@ -4,3 +4,6 @@
 \name{veloviz}
 \alias{veloviz}
 \title{veloviz}
+\description{
+Package for creating RNA velocity informed embeddings for single cell transcriptomics
+}

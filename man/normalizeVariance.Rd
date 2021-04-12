@@ -33,6 +33,8 @@ to prevent infinites (default: 1e3)}
 
 \item{verbose}{Boolean for verbosity setting (default: TRUE)}
 
+\item{plot}{Boolean to plot mean variance plots before and after correction}
+
 \item{details}{Boolean to return detailed data frame or names of genes
 (default: FALSE)}
 }

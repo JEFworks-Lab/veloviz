@@ -54,6 +54,7 @@ normalizeDepth <- function(
 #' @param min.adjusted.variance Floor on minimum variance after normalization
 #' (default: 1e-3)
 #' @param verbose Boolean for verbosity setting (default: TRUE)
+#' @param plot Boolean to plot mean variance plots before and after correction
 #' @param details Boolean to return detailed data frame or names of genes
 #' (default: FALSE)
 #'

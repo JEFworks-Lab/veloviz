@@ -1,3 +1,6 @@
+VeloViz with Dynamic Velocity Estimates
+=======================================
+
 In this vignette, we will create a velocity-informed 2D embedding of
 pancreas development scRNAseq using VeloViz. We will use dynamic
 velocity estimated using scVelo to construct the VeloViz embedding and
@@ -8,7 +11,7 @@ tutorial](https://jef.works/blog/2020/08/25/using-scvelo-in-R-using-reticulate/)
 for a quick primer).
 
 Get data and compute velocity
-=============================
+-----------------------------
 
 This data is available with the scVelo package (Bergen et. al. *Nature
 Biotech*, 2020, Bastidas-Ponce et. al. *Development*, 2019).  
@@ -42,7 +45,7 @@ Now, we compute velocity by dynamical modeling.  
     scv$tl$velocity_graph(adata)
 
 Get VeloViz inputs
-==================
+------------------
 
 To construct the VeloViz embedding we need the current observed
 expression and the predicted future expression. We can calculate the
@@ -70,7 +73,7 @@ velocity.  
     proj[proj<0] <- 0
 
 Build VeloViz embedding
-=======================
+-----------------------
 
     veloviz = buildVeloviz(
       curr = curr, proj = proj,
@@ -100,7 +103,7 @@ Build VeloViz embedding
 ![](scVeloVignette_files/figure-markdown_strict/unnamed-chunk-20-1.png)
 
 Plot velocity streams
-=====================
+---------------------
 
     a.plot <- adata
 

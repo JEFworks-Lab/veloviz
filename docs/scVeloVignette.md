@@ -1,3 +1,6 @@
+VeloViz with Dynamic Velocity Estimates
+=======================================
+
 In this vignette, we will create a velocity-informed 2D embedding of
 pancreas development scRNAseq using VeloViz. We will use dynamic
 velocity estimated using scVelo to construct the VeloViz embedding and

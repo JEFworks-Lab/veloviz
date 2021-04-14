@@ -237,3 +237,63 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
   
 }
 
+#' Function to produce idx and dist representation of a VeloViz graph
+#' @param vig output of `buildVeloviz`
+#'
+#' @return `idx` numVertices x numNeighbors matrix, where each row i contains indices of vertex i's neighbors
+#' @return `dist` numVertices x numNeighbors matrix, where each row i contains distances from vertex i to its neighbors
+#'
+#' @examples 
+#' vel <- pancreas$vel
+#' curr <- vel$current
+#' proj <- vel$projected
+#' 
+#' vv <- buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE, 
+#' use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE, 
+#' scale = TRUE, k = 5, similarity.threshold = 0.25, distance.weight = 1,
+#' distance.threshold = 0.5, weighted = TRUE, seed = 0, verbose = FALSE)
+#' 
+#' asNNGraph(vv)
+#'
+#' @export
+#'
+asNNGraph <- function(vig) {
+  graph <- vig$graph
+  edges <- igraph::get.edgelist(graph) 
+  numEdges <- igraph::gsize(graph)
+  numVertices <- igraph::gorder(graph)
+  
+  k <- max(igraph::degree(graph, mode="out")) # k is the max out-degree
+  allDists <- vig$projected_neighbors$all_dists # distances
+  
+  # each row i contains the indices of vertex i's NNs
+  # vertex i is a NN of itself so first value in row is i
+  idx <- matrix(nrow=numVertices, ncol=k+1) 
+  
+  # each row i contains distances from vertex i to its NNs
+  # vertex i is a NN of itself so first value in row is 0.0
+  dist <- matrix(0, nrow=numVertices, ncol=k+1)
+  
+  # replace NA values by saying a vertex X is a neighbor of itself 
+  for (i in 1:numVertices) {
+    idx[i,] <- i
+  }
+  
+  for (i in 1:numEdges) {
+    edge <- edges[i,] # edge = {source, target}
+    source <- edge[1]
+    target <- edge[2]
+    
+    # index of first "NA" value in row, after index 1
+    index <- min(which(idx[source,] == source)[-1])
+    
+    idx[source, index] <- target
+    dist[source, index] <- allDists[source, target]
+  }
+  
+  # return a list consisting of two elements: "idx" and "dist"
+  out <- list()
+  out[['idx']] <- idx
+  out[['dist']] <- dist  
+  return(out)
+}

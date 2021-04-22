@@ -13,11 +13,11 @@ The overall approach is detailed in the [preprint](https://www.biorxiv.org/conte
 
 ## Installation
 
-To install `VeloViz`, we recommend using `devtools`:
+To install `VeloViz`, we recommend using `remotes`:
 
 ``` r
-require(devtools)
-devtools::install_github('JEFworks-Lab/veloviz')
+require(remotes)
+remotes::install_github('JEFworks-Lab/veloviz')
 ```
 
 ## Example

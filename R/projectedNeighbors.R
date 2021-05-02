@@ -266,6 +266,9 @@ asNNGraph <- function(vig) {
   k <- max(igraph::degree(graph, mode="out")) # k is the max out-degree
   allDists <- vig$projected_neighbors$all_dists # distances
   
+  #converting to positive distances
+  allDists <- allDists - min(allDists, na.rm=TRUE)
+  
   # each row i contains the indices of vertex i's NNs
   # vertex i is a NN of itself so first value in row is i
   idx <- matrix(nrow=numVertices, ncol=k+1) 

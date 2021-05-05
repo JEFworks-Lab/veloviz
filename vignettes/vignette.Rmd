@@ -11,18 +11,14 @@ vignette: >
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, results = 'hide')
 library(veloviz)
-# load("./../MERFISH.rda")
-# load("./../example_vel.rda")
-# curr <- vel$current
-# proj <- vel$projected
 ```
 
 ```{r}
 data(example_vel)
 data(MERFISH)
 
-curr <- example_vel$current #observed current transcriptional state
-proj <- example_vel$projected #predicted future transcriptional state
+curr <- vel$current #observed current transcriptional state
+proj <- vel$projected #predicted future transcriptional state
 
 ```
 

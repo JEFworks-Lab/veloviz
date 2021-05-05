@@ -11,9 +11,8 @@
 #' \item{spliced}{matrix, 7192 genes x 739 cells of spliced counts}
 #' \item{unspliced}{matrix, 7192 genes x 739 cells of unspliced counts}
 #' \item{clusters}{factor of cell type annotations from scVelo}
-#' \item{pcs}{matrix, 739 x 50 cell scores in 60 PCs}
+#' \item{pcs}{matrix, 739 x 50 cell scores in 50 PCs}
 #' \item{cell.dist}{dist, pairwise cell distances in PC space used to compute velocity}
-#' \item{vel}{list, output from running velocyto using spliced, unspliced, and cell.dist}
 #' }
 #'
 #' @source \url{https://dev.biologists.org/content/146/12/dev173849.long}
@@ -30,9 +29,7 @@
 #' \item{spliced}{matrix, 7192 genes x 739 cells of spliced counts}
 #' \item{unspliced}{matrix, 7192 genes x 739 cells of unspliced counts}
 #' \item{clusters}{factor of cell type annotations from scVelo}
-#' \item{pcs}{matrix, 739 x 50 cell scores in 60 PCs}
-#' \item{cell.dist}{dist, pairwise cell distances in PC space used to compute velocity}
-#' \item{vel}{list, output from running velocyto using spliced, unspliced, and cell.dist}
+#' \item{pcs}{matrix, 739 x 50 cell scores in 50 PCs}
 #' }
 #'
 #' @source \url{https://dev.biologists.org/content/146/12/dev173849.long}
@@ -50,8 +47,6 @@
 #' \item{cyto}{matrix, 9050 genes x 645 cells of cytoplasmic counts}
 #' \item{col}{factor of cell colors corresponding to position in cell cycle}
 #' \item{pcs}{matrix, 645 x 50 cell scores in 50 PCs}
-#' \item{cell.dist}{dist, pairwise cell distances in PC space used to compute velocity}
-#' \item{vel}{list, output from running velocyto using spliced, unspliced, and cell.dist}
 #' }
 #'
 #' @source \url{https://www.pnas.org/content/116/39/19490}

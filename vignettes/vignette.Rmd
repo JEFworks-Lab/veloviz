@@ -1,0 +1,49 @@
+---
+title: "VeloViz Vignette"
+author: "Lyla Atta"
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{Visualizing cell cycle trajectory in MERFISH data using VeloViz}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, results = 'hide')
+library(veloviz)
+library(velocyto.R)
+library(Rtsne)
+library(uwot)
+# load("./../MERFISH.rda")
+# load("./../example_vel.rda")
+# curr <- vel$current
+# proj <- vel$projected
+```
+
+```{r, eval=FALSE}
+data(example_vel)
+data(MERFISH)
+
+curr <- example_vel$current #observed current transcriptional state
+proj <- example_vel$projected #predicted future transcriptional state
+
+```
+
+Build VeloViz graph 
+```{r}
+veloviz <-  buildVeloviz(curr = curr, proj = proj,
+                         normalize.depth = TRUE, 
+                         use.ods.genes = FALSE,  
+                         pca = TRUE, nPCs = 3, 
+                         center = TRUE, scale = TRUE,
+                         k = 10, similarity.threshold = -1, 
+                         distance.weight = 1, distance.threshold = 1,
+                         weighted = TRUE, seed = 0, verbose = FALSE)
+```
+
+Plot embedding 
+```{r}
+emb.veloviz <- veloviz$fdg_coords
+plot(emb.veloviz, col=col[rownames(emb.veloviz)])
+```
+

@@ -11,9 +11,6 @@ vignette: >
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, results = 'hide')
 library(veloviz)
-library(velocyto.R)
-library(Rtsne)
-library(uwot)
 # load("./../MERFISH.rda")
 # load("./../example_vel.rda")
 # curr <- vel$current

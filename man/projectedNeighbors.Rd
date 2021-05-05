@@ -45,10 +45,10 @@ projectedNeighbors(
 Computes composite distances between all cell pairs and returns k-nearest neighbors and edge weights needed to build VeloViz graph.
 }
 \examples{
-curr <- pancreas$vel$current
-proj <- pancreas$vel$projected
+curr <- vel$current
+proj <- vel$projected
 
-projectedNeighbors(curr, proj, 15)
+projectedNeighbors(curr, proj, 10)
 
 }
 \seealso{

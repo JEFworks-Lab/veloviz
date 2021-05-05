@@ -77,7 +77,6 @@ Plot 2D embedding
 From scde/pagoda2/MUDAN
 }
 \examples{
-vel <- pancreas$vel
 curr <- vel$current
 proj <- vel$projected
 

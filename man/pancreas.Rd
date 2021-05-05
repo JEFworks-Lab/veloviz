@@ -5,14 +5,13 @@
 \alias{pancreas}
 \title{Pancreas scRNA-seq data}
 \format{
-list of 6 objects:
+list of 4 objects:
 \describe{
 \item{spliced}{matrix, 7192 genes x 739 cells of spliced counts}
 \item{unspliced}{matrix, 7192 genes x 739 cells of unspliced counts}
+\item{pcs}{matrix, 739 x 50 cell scores in 50 PCs}
 \item{clusters}{factor of cell type annotations from scVelo}
-\item{pcs}{matrix, 739 x 50 cell scores in 60 PCs}
-\item{cell.dist}{dist, pairwise cell distances in PC space used to compute velocity}
-\item{vel}{list, output from running velocyto using spliced, unspliced, and cell.dist}
+
 }
 }
 \source{

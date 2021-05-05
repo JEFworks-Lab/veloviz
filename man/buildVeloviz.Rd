@@ -79,7 +79,6 @@ buildVeloviz(
 Creates VeloViz graph and FDG layout from PC scores of current and projected transcriptional states.
 }
 \examples{
-vel <- pancreas$vel
 curr <- vel$current
 proj <- vel$projected
 

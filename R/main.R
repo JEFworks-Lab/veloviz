@@ -26,7 +26,6 @@
 #' @return `projectedNeighbors` output of `projectedNeighbors`
 #' 
 #' @examples 
-#' vel <- pancreas$vel
 #' curr <- vel$current
 #' proj <- vel$projected
 #' 
@@ -235,7 +234,6 @@ buildVeloviz <- function(curr, proj,
 #' @return cells (rows) x 2 coordinates of force-directed layout of VeloViz graph
 #'
 #' @examples 
-#' vel <- pancreas$vel
 #' curr <- vel$current
 #' proj <- vel$projected
 #' 

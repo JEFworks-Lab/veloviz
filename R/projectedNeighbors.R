@@ -15,10 +15,10 @@
 #' @return `dist_comp` components of composite distance: `invDist` distance component, `negSim` similarity component 
 #' 
 #' @examples 
-#' curr <- pancreas$vel$current
-#' proj <- pancreas$vel$projected
+#' curr <- vel$current
+#' proj <- vel$projected
 #' 
-#' projectedNeighbors(curr, proj, 15)
+#' projectedNeighbors(curr, proj, 10)
 #' 
 #' @seealso \code{\link{graphViz}}
 #' 
@@ -127,20 +127,19 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
 #' @return `projectedNeighbors` output of `projectedNeighbors`
 #' 
 #' @examples 
-#' vel = pancreas$vel
 #' curr = vel$current
 #' proj = vel$projected
 #' 
 #' m <- log10(curr+1)
-#' pca <- RSpectra::svds(A = Matrix::t(m), k=50,
+#' pca <- RSpectra::svds(A = Matrix::t(m), k=3,
 #' opts = list(center = FALSE, scale = FALSE, maxitr = 2000, tol = 1e-10))
-#' pca.curr <- Matrix::t(m) %*% pca$v[,1:20]
+#' pca.curr <- Matrix::t(m) %*% pca$v[,1:3]
 #' 
 #' m <- log10(proj+1)
-#' pca.proj <- Matrix::t(m) %*% pca$v[,1:20]
+#' pca.proj <- Matrix::t(m) %*% pca$v[,1:3]
 #' 
-#' graphViz(t(pca.curr), t(pca.proj), k=15,
-#' cell.colors=NA, similarity_threshold=0, distance_weight = 1, 
+#' graphViz(t(pca.curr), t(pca.proj), k=10,
+#' cell.colors=NA, similarity_threshold=-1, distance_weight = 1, 
 #' distance_threshold = 1, weighted = TRUE, remove_unconnected = TRUE, 
 #' plot = FALSE, return_graph = TRUE)
 #' 
@@ -244,14 +243,13 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
 #' @return `dist` numVertices x numNeighbors matrix, where each row i contains distances from vertex i to its neighbors
 #'
 #' @examples 
-#' vel <- pancreas$vel
 #' curr <- vel$current
 #' proj <- vel$projected
 #' 
 #' vv <- buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE, 
-#' use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE, 
-#' scale = TRUE, k = 5, similarity.threshold = 0.25, distance.weight = 1,
-#' distance.threshold = 0.5, weighted = TRUE, seed = 0, verbose = FALSE)
+#' use.ods.genes = FALSE, alpha = 0.05, pca = TRUE, nPCs = 3, center = TRUE, 
+#' scale = TRUE, k = 10, similarity.threshold = -1, distance.weight = 1,
+#' distance.threshold = 1, weighted = TRUE, seed = 0, verbose = FALSE)
 #' 
 #' asNNGraph(vv)
 #'

@@ -5,14 +5,12 @@
 \alias{MERFISH}
 \title{MERFISH scRNA-seq data}
 \format{
-list of 6 objects:
+list of 4 objects:
 \describe{
-\item{nuc}{matrix, 9050 genes x 645 cells of nuclear counts}
-\item{cyto}{matrix, 9050 genes x 645 cells of cytoplasmic counts}
+\item{nuc}{matrix, 9050 genes x 225 cells of nuclear counts}
+\item{cyto}{matrix, 9050 genes x 225 cells of cytoplasmic counts}
+\item{pcs}{matrix, 225 x 50 cell scores in 50 PCs}
 \item{col}{factor of cell colors corresponding to position in cell cycle}
-\item{pcs}{matrix, 645 x 50 cell scores in 50 PCs}
-\item{cell.dist}{dist, pairwise cell distances in PC space used to compute velocity}
-\item{vel}{list, output from running velocyto using spliced, unspliced, and cell.dist}
 }
 }
 \source{
@@ -22,6 +20,6 @@ list of 6 objects:
 MERFISH
 }
 \description{
-MERFISH sequencing of U20S cells in culture, subsampled to 645 cells.
+MERFISH sequencing of U20S cells in culture, subsampled to 225 cells.
 }
 \keyword{datasets}

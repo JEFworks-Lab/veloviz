@@ -24,7 +24,7 @@ proj <- vel$projected #predicted future transcriptional state
 
 Build VeloViz graph 
 ```{r}
-veloviz <-  buildVeloviz(curr = curr, proj = proj,
+veloviz <-  veloviz::buildVeloviz(curr = curr, proj = proj,
                          normalize.depth = TRUE, 
                          use.ods.genes = FALSE,  
                          pca = TRUE, nPCs = 3, 
@@ -37,6 +37,6 @@ veloviz <-  buildVeloviz(curr = curr, proj = proj,
 Plot embedding 
 ```{r}
 emb.veloviz <- veloviz$fdg_coords
-plot(emb.veloviz, col=col[rownames(emb.veloviz)])
+plot(emb.veloviz, col=MERFISH$col[rownames(emb.veloviz)])
 ```
 

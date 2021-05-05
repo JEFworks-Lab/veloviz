@@ -1,17 +1,17 @@
 test_that("veloviz makes a graph", {
   expect_length(buildVeloviz(
-    curr = pancreas$vel$current, proj = pancreas$vel$projected,
+    curr = vel$current, proj = vel$projected,
     normalize.depth = TRUE,
-    use.ods.genes = TRUE,
+    use.ods.genes = FALSE,
     alpha = 0.05,
     pca = TRUE,
-    nPCs = 20,
+    nPCs = 3,
     center = TRUE,
     scale = TRUE,
-    k = 5,
-    similarity.threshold = 0.25,
+    k = 10,
+    similarity.threshold = -1,
     distance.weight = 1,
-    distance.threshold = 0.5,
+    distance.threshold = 1,
     weighted = TRUE,
     seed = 0,
     verbose = FALSE
@@ -19,18 +19,18 @@ test_that("veloviz makes a graph", {
   3)
   
   expect_equal(class(buildVeloviz(
-    curr = pancreas$vel$current, proj = pancreas$vel$projected,
+    curr = vel$current, proj = vel$projected,
     normalize.depth = TRUE,
-    use.ods.genes = TRUE,
+    use.ods.genes = FALSE,
     alpha = 0.05,
     pca = TRUE,
-    nPCs = 20,
+    nPCs = 3,
     center = TRUE,
     scale = TRUE,
-    k = 5,
-    similarity.threshold = 0.25,
+    k = 10,
+    similarity.threshold = -1,
     distance.weight = 1,
-    distance.threshold = 0.5,
+    distance.threshold = 1,
     weighted = TRUE,
     seed = 0,
     verbose = FALSE
@@ -38,18 +38,18 @@ test_that("veloviz makes a graph", {
   "igraph")
   
   expect_equal(ncol(buildVeloviz(
-    curr = pancreas$vel$current, proj = pancreas$vel$projected,
+    curr = vel$current, proj = vel$projected,
     normalize.depth = TRUE,
-    use.ods.genes = TRUE,
+    use.ods.genes = FALSE,
     alpha = 0.05,
     pca = TRUE,
-    nPCs = 20,
+    nPCs = 3,
     center = TRUE,
     scale = TRUE,
-    k = 5,
-    similarity.threshold = 0.25,
+    k = 10,
+    similarity.threshold = -1,
     distance.weight = 1,
-    distance.threshold = 0.5,
+    distance.threshold = 1,
     weighted = TRUE,
     seed = 0,
     verbose = FALSE

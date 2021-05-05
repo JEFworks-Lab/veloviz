@@ -25,7 +25,6 @@
 #' @return embedding plot   
 #' 
 #' @examples 
-#' vel <- pancreas$vel
 #' curr <- vel$current
 #' proj <- vel$projected
 #' 

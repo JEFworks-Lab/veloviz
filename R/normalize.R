@@ -10,7 +10,6 @@
 #' @return a normalized matrix
 #' 
 #' @examples 
-#' vel <- pancreas$vel
 #' curr <- vel$current
 #' 
 #' normalizeDepth(curr)
@@ -63,7 +62,6 @@ normalizeDepth <- function(
 #' each gene.
 #' 
 #' @examples 
-#' vel <- pancreas$vel
 #' curr <- vel$current
 #' 
 #' normalizeDepth(curr)
@@ -216,13 +214,11 @@ bh.adjust <- function(x, log = FALSE) {
 #' @return matrix of cell scores in nPCs components 
 #' 
 #' @examples 
-#' vel <- pancreas$vel
 #' curr <- vel$current
 #' 
 #' curr.norm <- normalizeDepth(curr)
-#' curr.norm <- normalizeVariance(curr)
 #' curr.norm <- log10(curr.norm+1)
-#' reduceDimensions(curr.norm)
+#' reduceDimensions(curr.norm, nPCs=3)
 #'
 #'
 #' @export

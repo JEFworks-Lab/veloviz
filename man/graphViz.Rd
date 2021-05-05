@@ -61,20 +61,19 @@ graphViz(
 Visualize as velocity informed force directed graph
 }
 \examples{
-vel = pancreas$vel
 curr = vel$current
 proj = vel$projected
 
 m <- log10(curr+1)
-pca <- RSpectra::svds(A = Matrix::t(m), k=50,
+pca <- RSpectra::svds(A = Matrix::t(m), k=3,
 opts = list(center = FALSE, scale = FALSE, maxitr = 2000, tol = 1e-10))
-pca.curr <- Matrix::t(m) \%*\% pca$v[,1:20]
+pca.curr <- Matrix::t(m) \%*\% pca$v[,1:3]
 
 m <- log10(proj+1)
-pca.proj <- Matrix::t(m) \%*\% pca$v[,1:20]
+pca.proj <- Matrix::t(m) \%*\% pca$v[,1:3]
 
-graphViz(t(pca.curr), t(pca.proj), k=15,
-cell.colors=NA, similarity_threshold=0, distance_weight = 1, 
+graphViz(t(pca.curr), t(pca.proj), k=10,
+cell.colors=NA, similarity_threshold=-1, distance_weight = 1, 
 distance_threshold = 1, weighted = TRUE, remove_unconnected = TRUE, 
 plot = FALSE, return_graph = TRUE)
 

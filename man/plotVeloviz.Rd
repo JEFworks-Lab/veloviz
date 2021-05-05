@@ -39,7 +39,6 @@ cells (rows) x 2 coordinates of force-directed layout of VeloViz graph
 Plot function
 }
 \examples{
-vel <- pancreas$vel
 curr <- vel$current
 proj <- vel$projected
 

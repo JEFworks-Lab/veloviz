@@ -6,13 +6,13 @@
 #' 
 #' 
 #' 
-#' @format list of 6 objects:
+#' @format list of 4 objects:
 #' \describe{
 #' \item{spliced}{matrix, 7192 genes x 739 cells of spliced counts}
 #' \item{unspliced}{matrix, 7192 genes x 739 cells of unspliced counts}
-#' \item{clusters}{factor of cell type annotations from scVelo}
 #' \item{pcs}{matrix, 739 x 50 cell scores in 50 PCs}
-#' \item{cell.dist}{dist, pairwise cell distances in PC space used to compute velocity}
+#' \item{clusters}{factor of cell type annotations from scVelo}
+#' 
 #' }
 #'
 #' @source \url{https://dev.biologists.org/content/146/12/dev173849.long}
@@ -24,12 +24,12 @@
 #' Development 2019 accessed via scVelo package with missing Ngn3 high EP cells
 #' and subsampled to 660 cells. 
 #'
-#' @format list of 6 objects:
+#' @format list of 4 objects:
 #' \describe{
-#' \item{spliced}{matrix, 7192 genes x 739 cells of spliced counts}
-#' \item{unspliced}{matrix, 7192 genes x 739 cells of unspliced counts}
+#' \item{spliced}{matrix, 7192 genes x 660 cells of spliced counts}
+#' \item{unspliced}{matrix, 7192 genes x 660 cells of unspliced counts}
+#' \item{pcs}{matrix, 660 x 50 cell scores in 50 PCs}
 #' \item{clusters}{factor of cell type annotations from scVelo}
-#' \item{pcs}{matrix, 739 x 50 cell scores in 50 PCs}
 #' }
 #'
 #' @source \url{https://dev.biologists.org/content/146/12/dev173849.long}
@@ -37,17 +37,31 @@
 
 #' MERFISH scRNA-seq data
 #' 
-#' MERFISH sequencing of U20S cells in culture, subsampled to 645 cells. 
+#' MERFISH sequencing of U20S cells in culture, subsampled to 225 cells. 
 #' 
 #' 
 #' 
-#' @format list of 6 objects:
+#' @format list of 4 objects:
 #' \describe{
-#' \item{nuc}{matrix, 9050 genes x 645 cells of nuclear counts}
-#' \item{cyto}{matrix, 9050 genes x 645 cells of cytoplasmic counts}
+#' \item{nuc}{matrix, 9050 genes x 225 cells of nuclear counts}
+#' \item{cyto}{matrix, 9050 genes x 225 cells of cytoplasmic counts}
+#' \item{pcs}{matrix, 225 x 50 cell scores in 50 PCs}
 #' \item{col}{factor of cell colors corresponding to position in cell cycle}
-#' \item{pcs}{matrix, 645 x 50 cell scores in 50 PCs}
 #' }
 #'
 #' @source \url{https://www.pnas.org/content/116/39/19490}
 "MERFISH"
+
+#' MERFISH velocity subset
+#' 
+#' output of velocyto.R::gene.relative.velocity.estimates for 40 cell subset of MERFISH data. Used to run examples
+#' 
+#' 
+#' 
+#' @format list of 1 object:
+#' \describe{
+#' \item{vel}{velocity output containing current observed ("current") and predicted future ("projected") estimates}
+#' }
+#'
+#' @source \url{https://www.pnas.org/content/116/39/19490}
+"vel"

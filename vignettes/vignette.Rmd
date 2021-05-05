@@ -17,7 +17,7 @@ library(veloviz)
 # proj <- vel$projected
 ```
 
-```{r, eval=FALSE}
+```{r}
 data(example_vel)
 data(MERFISH)
 

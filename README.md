@@ -27,13 +27,30 @@ Below is a short example showing how to create a VeloViz embedding on sc-RNAseq 
 
 ``` r
 library(veloviz)
-# load built in scRNA-seq data
+library(velocyto.R)
+# load built in pancreas scRNA-seq data
+data(pancreas)
+spliced = pancreas$spliced
+unspliced = pancreas$unspliced
 clusters = pancreas$clusters # cell type annotations
 pcs = pancreas$pcs # PCs used to make other embeddings (UMAP,tSNE..)
-vel = pancreas$vel # RNA velocity
 
-curr = vel$current # current transcriptional state
-proj = vel$projected # projected transcriptional state
+#choose colors based on clusters for plotting later
+cell.cols = rainbow(8)[as.numeric(clusters)]
+names(cell.cols) = names(clusters)
+
+# compute velocity using velocyto.R
+#cell distance in PC space
+cell.dist = as.dist(1-cor(t(pcs))) # cell distance in PC space
+
+vel = gene.relative.velocity.estimates(spliced,
+                                       unspliced,
+                                       kCells = 30,
+                                       cell.dist = cell.dist,
+                                       fit.quantile = 0.1)
+                                    
+curr = vel$current
+proj = vel$projected
 
 # build VeloViz graph
 veloviz = buildVeloviz(

@@ -1,3 +1,6 @@
+Visualizing the VeloViz graph using UMAP
+====================================
+
 In this example, we will use Veloviz to produce a velocity-informed 2D
 embedding and will then pass the computed nearest neighbor data into
 UMAP. This is useful to users who want to use common algorithms such as

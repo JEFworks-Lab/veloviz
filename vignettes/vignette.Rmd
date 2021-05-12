@@ -15,7 +15,6 @@ library(veloviz)
 
 ```{r}
 data(example_vel)
-data(MERFISH)
 
 curr <- vel$current #observed current transcriptional state
 proj <- vel$projected #predicted future transcriptional state
@@ -37,6 +36,6 @@ veloviz <-  veloviz::buildVeloviz(curr = curr, proj = proj,
 Plot embedding 
 ```{r}
 emb.veloviz <- veloviz$fdg_coords
-plot(emb.veloviz, col=MERFISH$col[rownames(emb.veloviz)])
+plot(emb.veloviz)
 ```
 

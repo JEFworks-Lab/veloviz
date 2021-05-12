@@ -54,8 +54,6 @@ points(exp[,1:2],col=col)
 arrows(obs[,1],obs[,2],exp[,1],exp[,2])
 ```
 
-![](simulation_files/figure-markdown_strict/simulate%20full%20cycle-1.png)
-
 Non-velocity based embedding on current expression
 --------------------------------------------------
 ``` r
@@ -166,8 +164,6 @@ plot(obs.missing[,1:2],col=col, pch=16)
 points(exp.missing[,1:2],col=col)
 arrows(obs.missing[,1],obs.missing[,2],exp.missing[,1],exp.missing[,2])
 ```
-
-![](simulation_files/figure-markdown_strict/simulate%20incomplete%20cycle-1.png)
 
 ``` r
 # cells.before = ((traj[1,]>0.5)&(traj[2,]<0))

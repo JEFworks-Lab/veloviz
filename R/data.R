@@ -18,40 +18,6 @@
 #' @source \url{https://dev.biologists.org/content/146/12/dev173849.long}
 "pancreas"
 
-#' Pancreas scRNA-seq data missing intermediates
-#' 
-#' Pancreatic endocrinogenesis scRNA-seq from Bastidas-Ponce et. al., 
-#' Development 2019 accessed via scVelo package with missing Ngn3 high EP cells
-#' and subsampled to 660 cells. 
-#'
-#' @format list of 4 objects:
-#' \describe{
-#' \item{spliced}{matrix, 7192 genes x 660 cells of spliced counts}
-#' \item{unspliced}{matrix, 7192 genes x 660 cells of unspliced counts}
-#' \item{pcs}{matrix, 660 x 50 cell scores in 50 PCs}
-#' \item{clusters}{factor of cell type annotations from scVelo}
-#' }
-#'
-#' @source \url{https://dev.biologists.org/content/146/12/dev173849.long}
-"pancreasWithGap"
-
-#' MERFISH scRNA-seq data
-#' 
-#' MERFISH sequencing of U20S cells in culture, subsampled to 225 cells. 
-#' 
-#' 
-#' 
-#' @format list of 4 objects:
-#' \describe{
-#' \item{nuc}{matrix, 9050 genes x 225 cells of nuclear counts}
-#' \item{cyto}{matrix, 9050 genes x 225 cells of cytoplasmic counts}
-#' \item{pcs}{matrix, 225 x 50 cell scores in 50 PCs}
-#' \item{col}{factor of cell colors corresponding to position in cell cycle}
-#' }
-#'
-#' @source \url{https://www.pnas.org/content/116/39/19490}
-"MERFISH"
-
 #' MERFISH velocity subset
 #' 
 #' output of velocyto.R::gene.relative.velocity.estimates for 40 cell subset of MERFISH data. Used to run examples

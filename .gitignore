@@ -1,7 +1,8 @@
 *~
 *.DS_Store
 *.Rproj
-*.Rapp.history
+**/*.Rapp.history
+*.dylib
 .Rproj.user
 .Rhistory
 .RData

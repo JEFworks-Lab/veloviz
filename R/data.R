@@ -24,7 +24,7 @@
 #' 
 #' 
 #' 
-#' @format list of 1 object:
+#' @format list of 1:
 #' \describe{
 #' \item{vel}{velocity output containing current observed ("current") and predicted future ("projected") estimates}
 #' }

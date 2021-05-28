@@ -11,8 +11,7 @@ plotVeloviz(
   cluster.method = igraph::cluster_louvain,
   col = NA,
   alpha = 0.05,
-  verbose = TRUE,
-  seed = 0
+  verbose = TRUE
 )
 }
 \arguments{
@@ -29,8 +28,6 @@ plotVeloviz(
 \item{alpha}{transparency for plotting graph nodes}
 
 \item{verbose}{logical for verbosity setting, default = FALSE}
-
-\item{seed}{seed to supply FDG function for reproducible layout}
 }
 \value{
 cells (rows) x 2 coordinates of force-directed layout of VeloViz graph

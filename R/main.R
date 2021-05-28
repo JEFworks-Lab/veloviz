@@ -19,7 +19,6 @@
 #' @param remove.unconnected logical indicating whether to remove cells with no edges in the VeloViz graph from the output embedding, default = TRUE (removed)
 #' @param verbose logical for verbosity setting, default = FALSE
 #' @param details logical to return detailed data frame or names of genes, default = FALSE
-#' @param seed seed to supply FDG function for reproducible layout
 #' 
 #' @return `graph` igraph object of VeloViz graph
 #' @return `fdg_coords` cells (rows) x 2 coordinates of force-directed layout of VeloViz graph
@@ -55,8 +54,7 @@ buildVeloviz <- function(curr, proj,
                          weighted = TRUE,
                          remove.unconnected = TRUE,
                          verbose = FALSE,
-                         details = FALSE,
-                         seed = 0
+                         details = FALSE
 ) {
 
   if (!class(curr)[1] %in% c("dgCMatrix", "dgTMatrix")) {
@@ -198,7 +196,7 @@ buildVeloviz <- function(curr, proj,
   pca.curr <- as.matrix(pca.curr)
   pca.proj <- as.matrix(pca.proj)
 
-  set.seed(seed)
+  #set.seed(seed)
   ## velocity informed graph
   vig <- graphViz(t(pca.curr), t(pca.proj), k,
                       cell.colors=NA,
@@ -229,7 +227,6 @@ buildVeloviz <- function(curr, proj,
 #' @param col colors to use for plotting
 #' @param alpha transparency for plotting graph nodes
 #' @param verbose logical for verbosity setting, default = FALSE
-#' @param seed seed to supply FDG function for reproducible layout
 #'
 #' @return cells (rows) x 2 coordinates of force-directed layout of VeloViz graph
 #'
@@ -253,8 +250,7 @@ plotVeloviz <- function(
   cluster.method = igraph::cluster_louvain,
   col = NA,
   alpha = 0.05,
-  verbose = TRUE,
-  seed = 0
+  verbose = TRUE
 ) {
 
   if(!is.na(clusters) & is.na(col)) {
@@ -285,7 +281,7 @@ plotVeloviz <- function(
     names(cell.cols) = names(com)
   }
 
-  set.seed(seed)
+  #set.seed(seed)
   g <- vig$graph
   igraph::V(g)$label = NA
   igraph::V(g)$size = 2

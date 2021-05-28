@@ -23,8 +23,7 @@ buildVeloviz(
   weighted = TRUE,
   remove.unconnected = TRUE,
   verbose = FALSE,
-  details = FALSE,
-  seed = 0
+  details = FALSE
 )
 }
 \arguments{
@@ -65,8 +64,6 @@ buildVeloviz(
 \item{verbose}{logical for verbosity setting, default = FALSE}
 
 \item{details}{logical to return detailed data frame or names of genes, default = FALSE}
-
-\item{seed}{seed to supply FDG function for reproducible layout}
 }
 \value{
 \code{graph} igraph object of VeloViz graph

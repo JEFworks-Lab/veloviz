@@ -42,7 +42,7 @@ proj <- vel$projected
 vv <- buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE, 
 use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE, 
 scale = TRUE, k = 5, similarity.threshold = 0.25, distance.weight = 1,
-distance.threshold = 0.5, weighted = TRUE, seed = 0, verbose = FALSE)
+distance.threshold = 0.5, weighted = TRUE, verbose = FALSE)
 
 plotVeloviz(vv)
 

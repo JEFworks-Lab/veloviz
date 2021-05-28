@@ -30,7 +30,7 @@ veloviz <-  veloviz::buildVeloviz(curr = curr, proj = proj,
                          center = TRUE, scale = TRUE,
                          k = 10, similarity.threshold = -1, 
                          distance.weight = 1, distance.threshold = 1,
-                         weighted = TRUE, seed = 0, verbose = FALSE)
+                         weighted = TRUE, verbose = FALSE)
 ```
 
 Plot embedding 

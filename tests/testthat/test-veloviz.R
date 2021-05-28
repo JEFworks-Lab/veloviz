@@ -13,7 +13,6 @@ test_that("veloviz makes a graph", {
     distance.weight = 1,
     distance.threshold = 1,
     weighted = TRUE,
-    seed = 0,
     verbose = FALSE
   ),
   3)
@@ -32,7 +31,6 @@ test_that("veloviz makes a graph", {
     distance.weight = 1,
     distance.threshold = 1,
     weighted = TRUE,
-    seed = 0,
     verbose = FALSE
   )[[1]]),
   "igraph")
@@ -51,7 +49,6 @@ test_that("veloviz makes a graph", {
     distance.weight = 1,
     distance.threshold = 1,
     weighted = TRUE,
-    seed = 0,
     verbose = FALSE
   )[[2]]),
   2)

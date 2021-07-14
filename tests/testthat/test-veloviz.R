@@ -16,7 +16,7 @@ test_that("veloviz makes a graph", {
     verbose = FALSE
   ),
   3)
-  
+
   expect_equal(class(buildVeloviz(
     curr = vel$current, proj = vel$projected,
     normalize.depth = TRUE,
@@ -34,7 +34,7 @@ test_that("veloviz makes a graph", {
     verbose = FALSE
   )[[1]]),
   "igraph")
-  
+
   expect_equal(ncol(buildVeloviz(
     curr = vel$current, proj = vel$projected,
     normalize.depth = TRUE,
@@ -52,5 +52,5 @@ test_that("veloviz makes a graph", {
     verbose = FALSE
   )[[2]]),
   2)
-  
+
 })

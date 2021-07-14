@@ -59,7 +59,7 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
     #find index of minimum distance between cell_i and other cells - those will become k nearest neighbots knn_i 
     min_dist_idx = which(nn_dists_i==min(nn_dists_i, na.rm = TRUE))
     #find indices of k nearest neighbors 
-    k_min_dists_idx = order(nn_dists_i)[1:k]
+    k_min_dists_idx = order(nn_dists_i)[seq_len(k)]
     #exclude neighbor if similarity below threshold 
     sim_nn_k = nn_negVectSim_i[k_min_dists_idx] #similarities of minimum distance neighbors 
     new_k_idx = k_min_dists_idx[sim_nn_k <= (-1*similarity_threshold)] #indices of minimum distance neighbors excluding those whose similarities are above threshold 
@@ -76,20 +76,21 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
     nn_idx[i] = min_dist_idx
     #knn_idx[i,] = k_min_dists_idx
     if (length(new_k_idx)>0){
-      knn_idx[i,c(1:length(new_k_idx))] = new_k_idx
+      # knn_idx[i,c(1:length(new_k_idx))] = new_k_idx **seq_llen
+      knn_idx[i,seq_len(length(new_k_idx))] = new_k_idx
     }
   }
   
   #threshold distances 
   n_keep = ceiling(distance_threshold*length(all_invDist)) # number of edges to keep based on prop in distance_threshold
   dist_cutoff = sort(all_invDist,decreasing = TRUE)[n_keep] # distance cutoff for edges to keep 
-  inv_dist_knn = t(sapply(c(1:n), function(x) all_invDist[x,knn_idx[x,]]))
+  inv_dist_knn = t(sapply(seq_len(n), function(x) all_invDist[x,knn_idx[x,]]))
   
   dist_comp = list()
   dist_comp[["invDist"]] = all_invDist
   dist_comp[["negVectSim"]] = all_negVectSim
   ## adding edge weights 
-  edge_weights = t(sapply(c(1:n), function(x) all_dists[x,knn_idx[x,]]))
+  edge_weights = t(sapply(seq_len(n), function(x) all_dists[x,knn_idx[x,]]))
   edge_weights_dt = edge_weights
   edge_weights_dt[inv_dist_knn<dist_cutoff] = NA
   knn_idx_dt = knn_idx
@@ -165,7 +166,7 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
   #make edge list 
   edgeList = matrix(nrow = 0, ncol = 2)
   edgeWeights = c()
-  for (n in seq(1:k)){
+  for (n in seq_len(k)){
     edgeList = rbind(edgeList, cbind(seq(1,ncells),nns$kNNs[,n]))
     edgeWeights = c(edgeWeights, nns$edge_weights[,n])
   }
@@ -276,11 +277,11 @@ asNNGraph <- function(vig) {
   dist <- matrix(0, nrow=numVertices, ncol=k+1)
   
   # replace NA values by saying a vertex X is a neighbor of itself 
-  for (i in 1:numVertices) {
+  for (i in seq_len(numVertices)) {
     idx[i,] <- i
   }
   
-  for (i in 1:numEdges) {
+  for (i in seq_len(numEdges)) {
     edge <- edges[i,] # edge = {source, target}
     source <- edge[1]
     target <- edge[2]

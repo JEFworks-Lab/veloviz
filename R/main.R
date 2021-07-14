@@ -99,10 +99,10 @@ buildVeloviz <- function(curr, proj,
 
     if(nrow(curr) > max.ods.genes) {
       if(verbose) {
-        message(paste0('Limiting to top ', max.ods.genes, ' highly expressed genes...'))
+        message('Limiting to top ', max.ods.genes, ' highly expressed genes...')
       }
       rmean <- Matrix::rowMeans(curr)
-      best.genes <- names(sort(rmean, decreasing=TRUE)[1:max.ods.genes])
+      best.genes <- names(sort(rmean, decreasing=TRUE)[seq_len(max.ods.genes)])
       curr = curr[best.genes,]
       proj = proj[best.genes,]
     }
@@ -162,7 +162,7 @@ buildVeloviz <- function(curr, proj,
     if(scale) {
       m <- m / rsd
     }
-    pca.curr <- Matrix::t(m) %*% pca$v[,1:nPCs]
+    pca.curr <- Matrix::t(m) %*% pca$v[,seq_len(nPCs)]
 
     ## project future onto PCs
     if(verbose) {
@@ -180,9 +180,9 @@ buildVeloviz <- function(curr, proj,
     if(scale) {
       m <- m / rsd
     }
-    pca.proj <- Matrix::t(m) %*% pca$v[,1:nPCs]
+    pca.proj <- Matrix::t(m) %*% pca$v[,seq_len(nPCs)]
 
-    colnames(pca.curr) <- colnames(pca.proj) <- paste0('PC', 1:ncol(pca.curr))
+    colnames(pca.curr) <- colnames(pca.proj) <- paste0('PC', seq_len(ncol(pca.curr)))
   } else {
     pca.curr = t(curr)
     pca.proj = t(proj)

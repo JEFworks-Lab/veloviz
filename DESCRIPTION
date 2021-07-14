@@ -29,11 +29,14 @@ Imports:
     Matrix,
     igraph,
     mgcv,
-    RSpectra
+    RSpectra,
+    grDevices,
+    graphics,
+    stats
 LinkingTo:
     Rcpp
 Depends:
-    R (>= 3.6)
+    R (>= 4.0)
 Suggests: 
     knitr,
     rmarkdown,

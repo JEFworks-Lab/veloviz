@@ -98,7 +98,7 @@ plotEmbedding <- function(emb, groups=NULL, colors=NULL, cex=0.6, alpha=0.4, gra
   plot(emb,col=adjustcolor(cols,alpha.f=alpha),cex=cex,pch=19,axes=FALSE, ...); box();
   if(mark.clusters) {
     if(!is.null(groups)) {
-      cent.pos <- do.call(rbind,tapply(1:nrow(emb),groups,function(ii) apply(emb[ii,,drop=FALSE],2,median)))
+      cent.pos <- do.call(rbind,tapply(seq_len(nrow(emb)),groups,function(ii) apply(emb[ii,,drop=FALSE],2,median)))
       cent.pos <- na.omit(cent.pos);
       text(cent.pos[,1],cent.pos[,2],labels=rownames(cent.pos),cex=mark.cluster.cex)
     }
@@ -120,7 +120,7 @@ fac2col <- function(x,s=1,v=1,shuffle=FALSE,min.group.size=1,return.details=FALS
   if(is.null(level.colors)) {
     col <- rainbow(length(levels(x)),s=s,v=v);
   } else {
-    col <- level.colors[1:length(levels(x))];
+    col <- level.colors[seq_len(length(levels(x)))];
   }
   names(col) <- levels(x);
 
@@ -139,7 +139,7 @@ fac2col <- function(x,s=1,v=1,shuffle=FALSE,min.group.size=1,return.details=FALS
 ## thanks, Josh O'Brien: http://stackoverflow.com/questions/13289009/check-if-character-string-is-a-valid-color-representation
 areColors <- function(x) {
   is.character(x) &
-    sapply(x, function(X) {
+    vapply(x, function(X) {
       tryCatch(is.matrix(col2rgb(X)), error = function(e) FALSE)
-    })
+    }, FUN.VALUE = logical(1))
 }

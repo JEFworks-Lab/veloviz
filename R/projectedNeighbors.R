@@ -84,13 +84,15 @@ projectedNeighbors = function(observed,projected,k,distance_metric="L2",similari
   #threshold distances 
   n_keep = ceiling(distance_threshold*length(all_invDist)) # number of edges to keep based on prop in distance_threshold
   dist_cutoff = sort(all_invDist,decreasing = TRUE)[n_keep] # distance cutoff for edges to keep 
-  inv_dist_knn = t(sapply(seq_len(n), function(x) all_invDist[x,knn_idx[x,]]))
+  #inv_dist_knn = t(sapply(seq_len(n), function(x) all_invDist[x,knn_idx[x,]])) ###vapply
+  inv_dist_knn = t(vapply(seq_len(n), function(x) all_invDist[x,knn_idx[x,]], numeric(ncol(knn_idx))))
   
   dist_comp = list()
   dist_comp[["invDist"]] = all_invDist
   dist_comp[["negVectSim"]] = all_negVectSim
   ## adding edge weights 
-  edge_weights = t(sapply(seq_len(n), function(x) all_dists[x,knn_idx[x,]]))
+  #edge_weights = t(sapply(seq_len(n), function(x) all_dists[x,knn_idx[x,]])) ###vapply
+  edge_weights = t(vapply(seq_len(n), function(x) all_dists[x,knn_idx[x,]], numeric(ncol(knn_idx))))
   edge_weights_dt = edge_weights
   edge_weights_dt[inv_dist_knn<dist_cutoff] = NA
   knn_idx_dt = knn_idx

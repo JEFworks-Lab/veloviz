@@ -1,5 +1,5 @@
 
-<a href="https://jef.works/veloviz/"><img src="https://github.com/JEFworks/veloviz/blob/package/docs/img/logo_final.png" width="200"/></a>
+<a href="https://jef.works/veloviz/"><img src="https://github.com/JEFworks-Lab/veloviz/blob/package_extras/docs/img/logo_final.png" width="200"/></a>
 
 <!-- badges: start -->
 [![R build status](https://github.com/JEFworks/veloviz/workflows/R-CMD-check/badge.svg)](https://github.com/JEFworks/veloviz/actions)
@@ -8,9 +8,9 @@
 
 `VeloViz` creates an RNA-velocity-informed 2D embedding for single cell transcriptomics data.
 
-![](https://github.com/JEFworks/veloviz/blob/package/docs/img/readme_schematic.png)
+![](https://github.com/JEFworks-Lab/veloviz/blob/package_extras/docs/img/readme_schematic.png)
 
-The overall approach is detailed in the [preprint](https://www.biorxiv.org/content/10.1101/2021.01.28.425293v1).
+The overall approach is detailed in the [preprint](https://www.biorxiv.org/content/10.1101/2021.01.28.425293v2).
 
 ## Installation
 
@@ -48,7 +48,7 @@ vel = gene.relative.velocity.estimates(spliced,
                                        kCells = 30,
                                        cell.dist = cell.dist,
                                        fit.quantile = 0.1)
-                                    
+
 curr = vel$current
 proj = vel$projected
 
@@ -83,7 +83,7 @@ plotEmbedding(emb.pca, groups=pancreas$clusters, main='PCA')
 
 #tSNE
 set.seed(0)
-emb.tsne = Rtsne::Rtsne(pcs, perplexity=30)$Y 
+emb.tsne = Rtsne::Rtsne(pcs, perplexity=30)$Y
 rownames(emb.tsne) = rownames(pcs)
 plotEmbedding(emb.tsne, groups=pancreas$clusters, main='tSNE',
               xlab = "t-SNE X", ylab = "t-SNE Y")
@@ -99,11 +99,11 @@ plotEmbedding(emb.umap, groups=pancreas$clusters, main='UMAP',
 plotEmbedding(emb.veloviz, groups=clusters[rownames(emb.veloviz)], main='veloviz')
 
 ```
-![](https://github.com/JEFworks/veloviz/blob/package/docs/img/readme_example.png)
+![](https://github.com/JEFworks-Lab/veloviz/blob/package_extras/docs/img/readme_example.png)
 
 ## Tutorials
-[scRNA-seq data preprocessing and visualization using VeloViz](https://github.com/JEFworks/veloviz/blob/package/docs/pancreas.md)  
-[MERFISH cell cycle visualization using VeloViz](https://github.com/JEFworks/veloviz/blob/package/docs/merfish.md)  
-[Understanding VeloViz parameters](https://github.com/JEFworks/veloviz/blob/package/docs/simulation.md) \
-[Visualizing the VeloViz graph using UMAP](https://github.com/JEFworks/veloviz/blob/package/docs/umap.md) \
-[VeloViz with dynamic velocity estimates from scVelo](https://github.com/JEFworks/veloviz/blob/package/docs/scVeloVignette.md)
+[scRNA-seq data preprocessing and visualization using VeloViz](https://github.com/JEFworks-Lab/veloviz/blob/package_extras/docs/pancreas.md)  
+[MERFISH cell cycle visualization using VeloViz](https://github.com/JEFworks-Lab/veloviz/blob/package_extras/docs/merfish.md)  
+[Understanding VeloViz parameters](https://github.com/JEFworks-Lab/veloviz/blob/package_extras/docs/simulation.md) \
+[Visualizing the VeloViz graph using UMAP](https://github.com/JEFworks-Lab/veloviz/blob/package_extras/docs/umap.md) \
+[VeloViz with dynamic velocity estimates from scVelo](https://github.com/JEFworks-Lab/veloviz/blob/package_extras/docs/scVeloVignette.md)

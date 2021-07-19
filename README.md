@@ -1,5 +1,5 @@
 
-<a href="https://jef.works/veloviz/"><img src="https://github.com/JEFworks/veloviz/blob/package/docs/img/logo_final.png" width="200"/></a>
+<a href="https://jef.works/veloviz/"><img src="https://github.com/JEFworks-Lab/veloviz/raw/package_extras/docs/img/logo_final.png" width="200"/></a>
 
 <!-- badges: start -->
 [![R build status](https://github.com/JEFworks/veloviz/workflows/R-CMD-check/badge.svg)](https://github.com/JEFworks/veloviz/actions)
@@ -8,9 +8,9 @@
 
 `VeloViz` creates an RNA-velocity-informed 2D embedding for single cell transcriptomics data.
 
-![](https://github.com/JEFworks/veloviz/blob/package/docs/img/readme_schematic.png)
+![](https://github.com/JEFworks-Lab/veloviz/raw/package_extras/docs/img/readme_schematic.png)
 
-The overall approach is detailed in the [preprint](https://www.biorxiv.org/content/10.1101/2021.01.28.425293v1).
+The overall approach is detailed in the [preprint](https://www.biorxiv.org/content/10.1101/2021.01.28.425293v2).
 
 ## Installation
 
@@ -99,7 +99,7 @@ plotEmbedding(emb.umap, groups=pancreas$clusters, main='UMAP',
 plotEmbedding(emb.veloviz, groups=clusters[rownames(emb.veloviz)], main='veloviz')
 
 ```
-![](https://github.com/JEFworks/veloviz/blob/package/docs/img/readme_example.png)
+![](https://github.com/JEFworks-Lab/veloviz/raw/package_extras/docs/img/readme_example.png)
 
 ## Tutorials
 [scRNA-seq data preprocessing and visualization using VeloViz](https://github.com/JEFworks/veloviz/blob/package/docs/pancreas.md)  

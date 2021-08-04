@@ -21,7 +21,7 @@ Description: VeloViz uses each cell’s current observed and predicted future tr
 biocViews: Transcriptomics, Visualization, GeneExpression, Sequencing, RNASeq, DimensionReduction
 License: GPL-3
 Encoding: UTF-8
-LazyData: true
+LazyData: false
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Imports:
@@ -36,7 +36,7 @@ Imports:
 LinkingTo:
     Rcpp
 Depends:
-    R (>= 4.0)
+    R (>= 4.1)
 Suggests: 
     knitr,
     rmarkdown,

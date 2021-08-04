@@ -39,6 +39,7 @@ matrix of cell scores in nPCs components
 Reduce dimension using Principal Components Analysis via \code{svds} from \code{RSpectra}
 }
 \examples{
+data(vel)
 curr <- vel$current
 
 curr.norm <- normalizeDepth(curr)

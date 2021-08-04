@@ -49,6 +49,7 @@ transcriptome-wide expectation as determined by local regression on
 expression magnitude
 }
 \examples{
+data(vel)
 curr <- vel$current
 
 normalizeDepth(curr)

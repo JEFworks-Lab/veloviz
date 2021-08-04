@@ -21,6 +21,7 @@ a normalized matrix
 Normalizes raw counts to counts per million
 }
 \examples{
+data(vel)
 curr <- vel$current
 
 normalizeDepth(curr)

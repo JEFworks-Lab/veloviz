@@ -1,7 +1,7 @@
-#' Creates VeloViz graph and FDG layout from PC scores of current and projected transcriptional states.  
+#' Creates VeloViz graph and FDG layout from PC scores of current and projected transcriptional states.
 #'
-#' @param curr Genes (rows) x cells (columns) matrix of observed current transcriptional state 
-#' @param proj Genes (rows) x cells (columns) matrix of predicted future transcriptional state 
+#' @param curr Genes (rows) x cells (columns) matrix of observed current transcriptional state
+#' @param proj Genes (rows) x cells (columns) matrix of predicted future transcriptional state
 #' @param normalize.depth logical to normalize raw counts to counts per million, default = TRUE
 #' @param depth Depth scaling, default = 1e6 for counts per million (CPM)
 #' @param use.ods.genes Use only overdispersed genes to create VeloViz graph, default = TRUE
@@ -19,20 +19,21 @@
 #' @param remove.unconnected logical indicating whether to remove cells with no edges in the VeloViz graph from the output embedding, default = TRUE (removed)
 #' @param verbose logical for verbosity setting, default = FALSE
 #' @param details logical to return detailed data frame or names of genes, default = FALSE
-#' 
+#'
 #' @return `graph` igraph object of VeloViz graph
 #' @return `fdg_coords` cells (rows) x 2 coordinates of force-directed layout of VeloViz graph
 #' @return `projectedNeighbors` output of `projectedNeighbors`
-#' 
-#' @examples 
+#'
+#' @examples
+#' data(vel)
 #' curr <- vel$current
 #' proj <- vel$projected
-#' 
-#' buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE, 
-#' use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE, 
+#'
+#' buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE,
+#' use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE,
 #' scale = TRUE, k = 5, similarity.threshold = 0.25, distance.weight = 1,
 #' distance.threshold = 0.5, weighted = TRUE, verbose = FALSE)
-#' 
+#'
 #' @seealso \code{\link{projectedNeighbors}}
 #'
 #' @export
@@ -112,16 +113,16 @@ buildVeloviz <- function(curr, proj,
     if(verbose) {
       message('Performing dimensionality reduction by PCA...')
     }
-    
-    ## check if curr or proj have negative values 
+
+    ## check if curr or proj have negative values
     if(sum(curr<0)>0){
       stop('curr contains negative values, cannot log normalize for PCA')
     }
-    
+
     if(sum(proj<0)>0){
       stop('proj contains negative values, cannot log normalize for PCA')
     }
-    
+
     ## establish PCs from overdispersed genes
     m <- log10(curr+1)
     ## mean
@@ -222,7 +223,7 @@ buildVeloviz <- function(curr, proj,
 #' Plot function
 #' @param vig output of buildVeloviz
 #' @param layout.method igraph method to use for generating 2D graph representation, default = igraph::layout_with_fr
-#' @param clusters cluster annotations for cells in data 
+#' @param clusters cluster annotations for cells in data
 #' @param cluster.method igraph method to use for clustering if clusters are not provided, default = igraph::cluster_louvain
 #' @param col colors to use for plotting
 #' @param alpha transparency for plotting graph nodes
@@ -230,15 +231,16 @@ buildVeloviz <- function(curr, proj,
 #'
 #' @return cells (rows) x 2 coordinates of force-directed layout of VeloViz graph
 #'
-#' @examples 
+#' @examples
+#' data(vel)
 #' curr <- vel$current
 #' proj <- vel$projected
-#' 
-#' vv <- buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE, 
-#' use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE, 
+#'
+#' vv <- buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE,
+#' use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE,
 #' scale = TRUE, k = 5, similarity.threshold = 0.25, distance.weight = 1,
 #' distance.threshold = 0.5, weighted = TRUE, verbose = FALSE)
-#' 
+#'
 #' plotVeloviz(vv)
 #'
 #' @export

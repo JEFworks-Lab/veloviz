@@ -61,6 +61,7 @@ graphViz(
 Visualize as velocity informed force directed graph
 }
 \examples{
+data(vel)
 curr = vel$current
 proj = vel$projected
 
@@ -73,8 +74,8 @@ m <- log10(proj+1)
 pca.proj <- Matrix::t(m) \%*\% pca$v[,1:3]
 
 graphViz(t(pca.curr), t(pca.proj), k=10,
-cell.colors=NA, similarity_threshold=-1, distance_weight = 1, 
-distance_threshold = 1, weighted = TRUE, remove_unconnected = TRUE, 
+cell.colors=NA, similarity_threshold=-1, distance_weight = 1,
+distance_threshold = 1, weighted = TRUE, remove_unconnected = TRUE,
 plot = FALSE, return_graph = TRUE)
 
 }

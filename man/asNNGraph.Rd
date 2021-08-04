@@ -18,11 +18,12 @@ asNNGraph(vig)
 Function to produce idx and dist representation of a VeloViz graph
 }
 \examples{
+data(vel)
 curr <- vel$current
 proj <- vel$projected
 
-vv <- buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE, 
-use.ods.genes = FALSE, alpha = 0.05, pca = TRUE, nPCs = 3, center = TRUE, 
+vv <- buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE,
+use.ods.genes = FALSE, alpha = 0.05, pca = TRUE, nPCs = 3, center = TRUE,
 scale = TRUE, k = 10, similarity.threshold = -1, distance.weight = 1,
 distance.threshold = 1, weighted = TRUE, verbose = FALSE)
 

@@ -21,18 +21,19 @@
 #' @param unclassified.cell.color cells not included in groups will be labeled in this color
 #' @param group.level.colors set group level colors. Default uses rainbow.
 #' @param ... Additional parameters to pass to BASE::plot
-#' 
-#' @return embedding plot   
-#' 
-#' @examples 
+#'
+#' @return embedding plot
+#'
+#' @examples
+#' data(vel)
 #' curr <- vel$current
 #' proj <- vel$projected
-#' 
-#' vv <- buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE, 
-#' use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE, 
+#'
+#' vv <- buildVeloviz(curr = curr, proj = proj, normalize.depth = TRUE,
+#' use.ods.genes = TRUE, alpha = 0.05, pca = TRUE, nPCs = 20, center = TRUE,
 #' scale = TRUE, k = 5, similarity.threshold = 0.25, distance.weight = 1,
 #' distance.threshold = 0.5, weighted = TRUE, verbose = FALSE)
-#' 
+#'
 #' plotEmbedding(vv$fdg_coords)
 #'
 #' @export

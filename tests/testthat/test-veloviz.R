@@ -1,4 +1,5 @@
 test_that("veloviz makes a graph", {
+  data(vel)
   expect_length(buildVeloviz(
     curr = vel$current, proj = vel$projected,
     normalize.depth = TRUE,

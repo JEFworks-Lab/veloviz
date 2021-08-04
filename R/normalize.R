@@ -8,10 +8,11 @@
 #' @param verbose Boolean for verbosity setting (default: TRUE)
 #'
 #' @return a normalized matrix
-#' 
-#' @examples 
+#'
+#' @examples
+#' data(vel)
 #' curr <- vel$current
-#' 
+#'
 #' normalizeDepth(curr)
 #'
 #' @export
@@ -60,10 +61,11 @@ normalizeDepth <- function(
 #' @return A list with two items: (1) an adjusted CPM matrix with the same
 #' dimensions as the input and (2) a dataframe with the summary statistics for
 #' each gene.
-#' 
-#' @examples 
+#'
+#' @examples
+#' data(vel)
 #' curr <- vel$current
-#' 
+#'
 #' normalizeDepth(curr)
 #'
 #' @export
@@ -210,12 +212,13 @@ bh.adjust <- function(x, log = FALSE) {
 #' @param verbose logical for verbosity setting, default = TRUE
 #' @param plot plot singular values vs number of components
 #' @param details logical to return pca object, default = FALSE
-#' 
-#' @return matrix of cell scores in nPCs components 
-#' 
-#' @examples 
+#'
+#' @return matrix of cell scores in nPCs components
+#'
+#' @examples
+#' data(vel)
 #' curr <- vel$current
-#' 
+#'
 #' curr.norm <- normalizeDepth(curr)
 #' curr.norm <- log10(curr.norm+1)
 #' reduceDimensions(curr.norm, nPCs=3)
@@ -286,4 +289,3 @@ reduceDimensions <- function(matnorm,
     return(as.matrix(pcs))
   }
 }
-

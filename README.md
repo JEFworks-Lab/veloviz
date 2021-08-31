@@ -21,9 +21,20 @@ require(remotes)
 remotes::install_github('JEFworks-Lab/veloviz')
 ```
 
+VeloViz is also available on [Bioconductor](https://bioconductor.org/packages/veloviz):
+
+``` r
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("veloviz")
+
+```
+
+
 ## Example
 
-Below is a short example showing how to create a VeloViz embedding on sc-RNAseq data.   
+Below is a short example showing how to create a VeloViz embedding on sc-RNAseq data. R objects containing the preprocessed data and velocity models used in this example can be downloaded from [Zenodo](https://doi.org/10.5281/zenodo.4632471).   
 
 ``` r
 library(veloviz)

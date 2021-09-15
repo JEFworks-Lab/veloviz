@@ -16,8 +16,7 @@ projected transcriptional states, which we get here by calculating RNA
 velocity using velocyto.  
 To get current and projected PC scores from raw counts, we first follow
 standard filtering, normalization, and dimensional reduction steps and
-then calculate velocity. (Steps 1-3 can be skipped by loading the
-example dataset in the VeloViz package - see 3\*).
+then calculate velocity. (Steps 1-3 can be skipped by downloading the preprocessed example data from [Zenodo](https://doi.org/10.5281/zenodo.4632471) - see 3\*).
 
     library(veloviz)
     library(reticulate)
@@ -78,10 +77,12 @@ velocity.
     #cell distance in PC space
     cell.dist = as.dist(1-cor(t(pcs))) # cell distance in PC space
 
-3\*) Load example from VeloViz  
-This example dataset is available with the veloviz package.
+3\*) Download preprocessed data from [Zenodo](https://doi.org/10.5281/zenodo.4632471).
 
-    data(pancreas)
+    # get pancreas scRNA-seq data
+    download.file("https://zenodo.org/record/4632471/files/pancreas.rda?download=1", destfile = "pancreas.rda", method = "curl")
+    load("pancreas.rda")
+
     spliced = pancreas$spliced
     unspliced = pancreas$unspliced
     clusters = pancreas$clusters
@@ -440,3 +441,10 @@ embeddings.
                                    cell.colors=cell.cols, main='VeloViz')
 
 ![](pancreas_files/figure-markdown_strict/velocity%20on%20other%20embeddings%20missing-1.png)
+
+## Other tutorials
+[Getting Started](index) \
+[MERFISH cell cycle visualization using VeloViz](merfish)  
+[Understanding VeloViz parameters](simulation) \
+[Visualizing the VeloViz graph using UMAP](umap) \
+[VeloViz with dynamic velocity estimates from scVelo](scVeloVignette)

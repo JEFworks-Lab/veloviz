@@ -245,3 +245,10 @@ Plot velocity streams
     plt$savefig("panc_dynamic_velocity_missing.png")
 
 ![](img/panc_dynamic_velocity_missing.png)
+
+## Other tutorials
+[Getting Started](index) \
+[scRNA-seq data preprocessing and visualization using VeloViz](pancreas) \
+[MERFISH cell cycle visualization using VeloViz](merfish)  
+[Understanding VeloViz parameters](simulation) \
+[Visualizing the VeloViz graph using UMAP](umap) \

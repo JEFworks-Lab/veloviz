@@ -24,7 +24,7 @@ u2 = jitter(u2, amount = 0.25)
 u3 = rnorm(500)
 obs = cbind(u1,u2,u3)
 
-#order by pseduotime 
+#order by pseduotime
 traj = traj[order(t),]
 obs = obs[order(t),]
 
@@ -57,8 +57,8 @@ arrows(obs[,1],obs[,2],exp[,1],exp[,2])
 Non-velocity based embedding on current expression
 --------------------------------------------------
 ``` r
-pca = RSpectra::svds(A = obs, k=3, 
-                     opts = list(center = TRUE, scale = TRUE, 
+pca = RSpectra::svds(A = obs, k=3,
+                     opts = list(center = TRUE, scale = TRUE,
                                  maxitr = 2000, tol = 1e-10))
 var = pca$d
 pcs = pca$u
@@ -76,8 +76,8 @@ plot(emb.umap,pch=16, main = "UMAP", xlab = 'UMAP X', ylab = 'UMAP Y',col = col)
 
 #tSNE
 set.seed(1)
-emb.tsne = Rtsne::Rtsne(pcs, 
-                        is_distance = FALSE, perplexity = 100, 
+emb.tsne = Rtsne::Rtsne(pcs,
+                        is_distance = FALSE, perplexity = 100,
                         pca = FALSE, num_threads =1, verbose = FALSE)$Y
 plot(emb.tsne,pch=16, main = "t-SNE", xlab = 't-SNE X', ylab = 't-SNE Y',col=col)
 
@@ -96,10 +96,10 @@ VeloViz Embedding
 #, fig.width=7,fig.height=7
 set.seed(1) # fig.width=6, fig.height=7
 g = graphViz(observed = t(obs), projected = t(exp),
-             k = 30, distance_metric = "L2", similarity_metric = "cosine", 
-             distance_weight = 1, distance_threshold = 1, similarity_threshold = 0.25, 
+             k = 30, distance_metric = "L2", similarity_metric = "cosine",
+             distance_weight = 1, distance_threshold = 1, similarity_threshold = 0.25,
              weighted = TRUE, remove_unconnected = TRUE,
-             cell.colors = col, title = "VeloViz", 
+             cell.colors = col, title = "VeloViz",
              plot = FALSE, return_graph = TRUE)
 emb.veloviz = g$fdg_coords
 plot(emb.veloviz, pch = 16, main = "VeloViz", xlab = '', ylab = '',col=col)
@@ -125,7 +125,7 @@ u2 = jitter(u2, amount = 0.25)
 u3 = rnorm(500)
 obs = cbind(u1,u2,u3)
 
-#order by pseduotime 
+#order by pseduotime
 traj = traj[order(t),]
 obs = obs[order(t),]
 
@@ -146,7 +146,7 @@ exp.u3 = rnorm(500)
 exp = cbind(exp.u1,exp.u2,exp.u3)
 rownames(exp) = labels
 
-#remove cells 
+#remove cells
 cells.keep <- setdiff(labels, paste0('cell', 1:100))
 # cells.keep
 
@@ -177,8 +177,8 @@ cells.after = labels %in% paste0('cell', 101:130)
 # points(obs.missing[cells.before,], pch = 4,col = "dark red",cex = 1.5)
 # points(obs.missing[cells.after,],pch = 4,col = "dark red",cex = 1.5)
 
-pca = RSpectra::svds(A = obs.missing, k=3, 
-                     opts = list(center = TRUE, scale = TRUE, 
+pca = RSpectra::svds(A = obs.missing, k=3,
+                     opts = list(center = TRUE, scale = TRUE,
                                  maxitr = 2000, tol = 1e-10))
 var = pca$d
 pcs = pca$u
@@ -196,8 +196,8 @@ plot(emb.umap,pch=16, main = "UMAP", xlab = 'UMAP X', ylab = 'UMAP Y',col = col)
 
 #tSNE
 set.seed(1)
-emb.tsne = Rtsne::Rtsne(pcs, 
-                        is_distance = FALSE, perplexity = 100, pca = FALSE, 
+emb.tsne = Rtsne::Rtsne(pcs,
+                        is_distance = FALSE, perplexity = 100, pca = FALSE,
                         num_threads =1, verbose = FALSE)$Y
 plot(emb.tsne,pch=16, main = "t-SNE", xlab = 't-SNE X', ylab = 't-SNE Y',col=col)
 
@@ -217,13 +217,13 @@ distance.threshold = 1
 similarity.threshold = 0
 
 
-set.seed(1) 
+set.seed(1)
 g = graphViz(observed = t(obs.missing), projected = t(exp.missing),
-             k = k, distance_metric = "L2", similarity_metric = "cosine", 
-             distance_weight = distance.weight, distance_threshold = distance.threshold, 
-             similarity_threshold = similarity.threshold, weighted = TRUE, 
+             k = k, distance_metric = "L2", similarity_metric = "cosine",
+             distance_weight = distance.weight, distance_threshold = distance.threshold,
+             similarity_threshold = similarity.threshold, weighted = TRUE,
              remove_unconnected = TRUE,
-             cell.colors = col, title = "VeloViz", 
+             cell.colors = col, title = "VeloViz",
              plot = FALSE, return_graph = TRUE)
 emb.veloviz = g$fdg_coords
 plot(emb.veloviz, pch = 16, main = "VeloViz", xlab = '', ylab = '',col=col)
@@ -288,17 +288,17 @@ similarity.threshold = 0
 
 for (k in ks) {
 
-  set.seed(1) 
+  set.seed(1)
   g = graphViz(observed = t(obs.missing), projected = t(exp.missing),
-               k = k, distance_metric = "L2", similarity_metric = "cosine", 
-               distance_weight = distance.weight, distance_threshold = distance.threshold, 
-               similarity_threshold = similarity.threshold, weighted = TRUE, 
+               k = k, distance_metric = "L2", similarity_metric = "cosine",
+               distance_weight = distance.weight, distance_threshold = distance.threshold,
+               similarity_threshold = similarity.threshold, weighted = TRUE,
                remove_unconnected = TRUE,
-               cell.colors = col, title = "VeloViz", 
+               cell.colors = col, title = "VeloViz",
                plot = FALSE, return_graph = TRUE)
   emb.veloviz = g$fdg_coords
   plot(emb.veloviz, pch = 16, main = paste("VeloViz: k = ",k), xlab = '', ylab = '',col=col)
-  
+
 }
 ```
 
@@ -314,18 +314,18 @@ distance.threshold = 1
 similarity.threshold = 0
 
 for (distance.weight in dws){
-  
-  set.seed(1) 
+
+  set.seed(1)
   g = graphViz(observed = t(obs.missing), projected = t(exp.missing),
-               k = k, distance_metric = "L2", similarity_metric = "cosine", 
-               distance_weight = distance.weight, distance_threshold = distance.threshold, 
-               similarity_threshold = similarity.threshold, weighted = TRUE, 
+               k = k, distance_metric = "L2", similarity_metric = "cosine",
+               distance_weight = distance.weight, distance_threshold = distance.threshold,
+               similarity_threshold = similarity.threshold, weighted = TRUE,
                remove_unconnected = TRUE,
-               cell.colors = col, title = "VeloViz", 
+               cell.colors = col, title = "VeloViz",
                plot = FALSE, return_graph = TRUE)
   emb.veloviz = g$fdg_coords
   plot(emb.veloviz, pch = 16, main = paste("VeloViz: distance weight = ",distance.weight), xlab = '', ylab = '',col=col)
-  
+
 }
 ```
 
@@ -341,18 +341,18 @@ distance.weight = 1
 similarity.threshold = 0
 
 for (distance.threshold in dts){
-  
-  set.seed(1) 
+
+  set.seed(1)
   g = graphViz(observed = t(obs.missing), projected = t(exp.missing),
-               k = k, distance_metric = "L2", similarity_metric = "cosine", 
-               distance_weight = distance.weight, distance_threshold = distance.threshold, 
-               similarity_threshold = similarity.threshold, weighted = TRUE, 
+               k = k, distance_metric = "L2", similarity_metric = "cosine",
+               distance_weight = distance.weight, distance_threshold = distance.threshold,
+               similarity_threshold = similarity.threshold, weighted = TRUE,
                remove_unconnected = TRUE,
-               cell.colors = col, title = "VeloViz", 
+               cell.colors = col, title = "VeloViz",
                plot = FALSE, return_graph = TRUE)
   emb.veloviz = g$fdg_coords
   plot(emb.veloviz, pch = 16, main = paste("VeloViz: distance threshold = ",distance.threshold), xlab = '', ylab = '',col=col)
-  
+
 }
 ```
 
@@ -368,19 +368,26 @@ distance.weight = 1
 distance.threshold = 1
 
 for (similarity.threshold in sts){
-  
-  set.seed(1) 
+
+  set.seed(1)
   g = graphViz(observed = t(obs.missing), projected = t(exp.missing),
-               k = k, distance_metric = "L2", similarity_metric = "cosine", 
-               distance_weight = distance.weight, distance_threshold = distance.threshold, 
-               similarity_threshold = similarity.threshold, weighted = TRUE, 
+               k = k, distance_metric = "L2", similarity_metric = "cosine",
+               distance_weight = distance.weight, distance_threshold = distance.threshold,
+               similarity_threshold = similarity.threshold, weighted = TRUE,
                remove_unconnected = TRUE,
-               cell.colors = col, title = "VeloViz", 
+               cell.colors = col, title = "VeloViz",
                plot = FALSE, return_graph = TRUE)
   emb.veloviz = g$fdg_coords
   plot(emb.veloviz, pch = 16, main = paste("VeloViz: similarity threshold = ",similarity.threshold), xlab = '', ylab = '',col=col)
-  
+
 }
 ```
 
 ![](simulation_files/figure-markdown_strict/changing%20similarity%20threshold-1.png)
+
+## Other tutorials
+[Getting Started](index) \
+[scRNA-seq data preprocessing and visualization using VeloViz](pancreas) \
+[MERFISH cell cycle visualization using VeloViz](merfish)
+[Visualizing the VeloViz graph using UMAP](umap) \
+[VeloViz with dynamic velocity estimates from scVelo](scVeloVignette)

@@ -109,6 +109,9 @@ projected transcriptional states.
                                            cell.dist = cell.dist,
                                            fit.quantile = 0.1)
 
+    #(or use precomputed velocity object)
+    # vel = pancreas$vel
+
 5.) Normalize current and projected  
 Now that we have the current and projected expression, we want to go
 through a similar normalization process as we did with the raw counts
@@ -325,10 +328,12 @@ embeddings.
 Visualization with missing intermediates using VeloViz
 ======================================================
 
-Load data: this is the same dataset as above but missing a proportion of
+Download data with missing intermediates: this is the same dataset as above but missing a proportion of
 Ngn3 high EP cells
 
-    data(pancreasWithGap)
+    # get data
+    download.file("https://zenodo.org/record/4632471/files/pancreasWithGap.rda?download=1", destfile = "pancreasWithGap.rda", method = "curl")
+    load("pancreasWithGap.rda")
 
     spliced = pancreasWithGap$spliced
     unspliced = pancreasWithGap$unspliced
@@ -349,6 +354,9 @@ Compute velocity
                                            kCells = 30,
                                            cell.dist = cell.dist,
                                            fit.quantile = 0.1)
+
+    #(or use precomputed velocity object)
+    # vel = pancreasWithGap$vel
 
 Create VeloViz embedding
 

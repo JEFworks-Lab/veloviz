@@ -13,9 +13,11 @@ First, load libraries:
     library(velocyto.R)
     library(uwot)
 
-Next, get pancreas data from VeloViz package:
+Next, get preprocessed example data [Zenodo](https://doi.org/10.5281/zenodo.4632471):
 
-    data(pancreas)
+    # get pancreas scRNA-seq data
+    download.file("https://zenodo.org/record/4632471/files/pancreas.rda?download=1", destfile = "pancreas.rda", method = "curl")
+    load("pancreas.rda")
 
     spliced = pancreas$spliced
     unspliced = pancreas$unspliced
@@ -37,24 +39,28 @@ Compute velocity:
                                            cell.dist = cell.dist,
                                            fit.quantile = 0.1)
 
+     #(or use precomputed velocity object)
+     # vel = pancreas$vel
+
+     
 Embed using UMAP with PCs as inputs:
 
     set.seed(0)
     emb.umap <- uwot::umap(pcs, min_dist = 0.5)
     rownames(emb.umap) <- rownames(pcs)
 
-    plotEmbedding(emb.umap, colors = cell.cols, 
+    plotEmbedding(emb.umap, colors = cell.cols,
                   main = 'UMAP', xlab = "X", ylab = "Y")
 
 ![](umap_files/figure-markdown_strict/unnamed-chunk-5-1.png)
 
 Now, build VeloViz graph:
 
-    curr <- vel$current 
+    curr <- vel$current
     proj <- vel$projected
 
     veloviz.graph <- buildVeloviz(
-      curr = curr, 
+      curr = curr,
       proj = proj,
       normalize.depth = TRUE,
       use.ods.genes = TRUE,
@@ -73,7 +79,7 @@ Now, build VeloViz graph:
     )
 
     emb.veloviz <- veloviz.graph$fdg_coords
-    plotEmbedding(emb.veloviz, colors = cell.cols, 
+    plotEmbedding(emb.veloviz, colors = cell.cols,
                   main = 'VeloViz with F-R', xlab = "X", ylab = "Y")
 
 ![](umap_files/figure-markdown_strict/unnamed-chunk-6-1.png)
@@ -81,33 +87,32 @@ Now, build VeloViz graph:
 Now, use UMAP to embed the velocity informed graph constructed using
 VeloViz:
 
-    veloviz.nnGraph <- asNNGraph(veloviz.graph) #converts veloviz igraph object to a format that UMAP understands 
+    veloviz.nnGraph <- asNNGraph(veloviz.graph) #converts veloviz igraph object to a format that UMAP understands
 
     set.seed(0)
     emb.umapVelo <- uwot::umap(X = NULL, nn_method = veloviz.nnGraph, min_dist = 1)
     rownames(emb.umapVelo) <- rownames(emb.veloviz)
-    plotEmbedding(emb.umapVelo, colors = cell.cols, 
+    plotEmbedding(emb.umapVelo, colors = cell.cols,
                   main = 'VeloViz with UMAP', xlab = "X", ylab = "Y")
 
 ![](umap_files/figure-markdown_strict/unnamed-chunk-7-1.png)
 
     par(mfrow = c(1,3))
 
-    plotEmbedding(emb.umap, colors = cell.cols, 
+    plotEmbedding(emb.umap, colors = cell.cols,
                   main = 'UMAP', xlab = "X", ylab = "Y")
-    plotEmbedding(emb.veloviz, colors = cell.cols, 
+    plotEmbedding(emb.veloviz, colors = cell.cols,
                   main = 'VeloViz with F-R', xlab = "X", ylab = "Y")
-    plotEmbedding(emb.umapVelo, colors = cell.cols, 
+    plotEmbedding(emb.umapVelo, colors = cell.cols,
                   main = 'VeloViz with UMAP', xlab = "X", ylab = "Y")
 
 ![](umap_files/figure-markdown_strict/unnamed-chunk-8-1.png)
 
-Let’s try it when there is a gap in the data. First, load the data from
-the VeloViz package:
+Let’s try it when there is a gap in the data. First, download the preprocessed example from [Zenodo](https://doi.org/10.5281/zenodo.4632471):
 
-Next, get pancreas data from VeloViz package:
-
-    data("pancreasWithGap")
+    # get data
+    download.file("https://zenodo.org/record/4632471/files/pancreasWithGap.rda?download=1", destfile = "pancreasWithGap.rda", method = "curl")
+    load("pancreasWithGap.rda")
 
     spliced = pancreasWithGap$spliced
     unspliced = pancreasWithGap$unspliced
@@ -129,24 +134,27 @@ Compute velocity:
                                            cell.dist = cell.dist,
                                            fit.quantile = 0.1)
 
+   #(or use precomputed velocity object)
+   # vel = pancreasWithGap$vel                                           
+
 Embed using UMAP with PCs as inputs:
 
     set.seed(0)
     emb.umap <- uwot::umap(pcs, min_dist = 0.5)
     rownames(emb.umap) <- rownames(pcs)
 
-    plotEmbedding(emb.umap, colors = cell.cols, 
+    plotEmbedding(emb.umap, colors = cell.cols,
                   main = 'UMAP', xlab = "X", ylab = "Y")
 
 ![](umap_files/figure-markdown_strict/unnamed-chunk-12-1.png)
 
 Now, build VeloViz graph:
 
-    curr <- vel$current 
+    curr <- vel$current
     proj <- vel$projected
 
     veloviz.graph <- buildVeloviz(
-      curr = curr, 
+      curr = curr,
       proj = proj,
       normalize.depth = TRUE,
       use.ods.genes = TRUE,
@@ -165,7 +173,7 @@ Now, build VeloViz graph:
     )
 
     emb.veloviz <- veloviz.graph$fdg_coords
-    plotEmbedding(emb.veloviz, colors = cell.cols, 
+    plotEmbedding(emb.veloviz, colors = cell.cols,
                   main = 'VeloViz with F-R', xlab = "X", ylab = "Y")
 
 ![](umap_files/figure-markdown_strict/unnamed-chunk-13-1.png)
@@ -173,23 +181,30 @@ Now, build VeloViz graph:
 Now, use UMAP to embed the velocity informed graph constructed using
 VeloViz:
 
-    veloviz.nnGraph <- asNNGraph(veloviz.graph) #converts veloviz igraph object to a format that UMAP understands 
+    veloviz.nnGraph <- asNNGraph(veloviz.graph) #converts veloviz igraph object to a format that UMAP understands
 
     set.seed(0)
     emb.umapVelo <- uwot::umap(X = NULL, nn_method = veloviz.nnGraph, min_dist = 1)
     rownames(emb.umapVelo) <- rownames(emb.veloviz)
-    plotEmbedding(emb.umapVelo, colors = cell.cols, 
+    plotEmbedding(emb.umapVelo, colors = cell.cols,
                   main = 'VeloViz with UMAP', xlab = "X", ylab = "Y")
 
 ![](umap_files/figure-markdown_strict/unnamed-chunk-14-1.png)
 
     par(mfrow = c(1,3))
 
-    plotEmbedding(emb.umap, colors = cell.cols, 
+    plotEmbedding(emb.umap, colors = cell.cols,
                   main = 'UMAP', xlab = "X", ylab = "Y")
-    plotEmbedding(emb.veloviz, colors = cell.cols, 
+    plotEmbedding(emb.veloviz, colors = cell.cols,
                   main = 'VeloViz with F-R', xlab = "X", ylab = "Y")
-    plotEmbedding(emb.umapVelo, colors = cell.cols, 
+    plotEmbedding(emb.umapVelo, colors = cell.cols,
                   main = 'VeloViz with UMAP', xlab = "X", ylab = "Y")
 
 ![](umap_files/figure-markdown_strict/unnamed-chunk-15-1.png)
+
+## Other tutorials
+[Getting Started](index) \
+[scRNA-seq data preprocessing and visualization using VeloViz](pancreas) \
+[MERFISH cell cycle visualization using VeloViz](merfish)  
+[Understanding VeloViz parameters](simulation) \
+[VeloViz with dynamic velocity estimates from scVelo](scVeloVignette)

@@ -388,6 +388,6 @@ for (similarity.threshold in sts){
 ## Other tutorials
 [Getting Started](index) \
 [scRNA-seq data preprocessing and visualization using VeloViz](pancreas) \
-[MERFISH cell cycle visualization using VeloViz](merfish)
+[MERFISH cell cycle visualization using VeloViz](merfish) \
 [Visualizing the VeloViz graph using UMAP](umap) \
 [VeloViz with dynamic velocity estimates from scVelo](scVeloVignette)

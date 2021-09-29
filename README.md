@@ -10,7 +10,7 @@
 
 ![](https://github.com/JEFworks-Lab/veloviz/raw/package_extras/docs/img/readme_schematic.png)
 
-The overall approach is detailed in the [preprint](https://www.biorxiv.org/content/10.1101/2021.01.28.425293v2).
+The overall approach is detailed in [Atta et. al. Bioinformatics. 2021](https://doi.org/10.1093/bioinformatics/btab653).
 
 ## Installation
 
@@ -48,7 +48,7 @@ vel = gene.relative.velocity.estimates(spliced,
                                        kCells = 30,
                                        cell.dist = cell.dist,
                                        fit.quantile = 0.1)
-                                    
+
 curr = vel$current
 proj = vel$projected
 
@@ -83,7 +83,7 @@ plotEmbedding(emb.pca, groups=pancreas$clusters, main='PCA')
 
 #tSNE
 set.seed(0)
-emb.tsne = Rtsne::Rtsne(pcs, perplexity=30)$Y 
+emb.tsne = Rtsne::Rtsne(pcs, perplexity=30)$Y
 rownames(emb.tsne) = rownames(pcs)
 plotEmbedding(emb.tsne, groups=pancreas$clusters, main='tSNE',
               xlab = "t-SNE X", ylab = "t-SNE Y")

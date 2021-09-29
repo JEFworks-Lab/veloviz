@@ -9,7 +9,7 @@
 <img src="https://github.com/JEFworks-Lab/veloviz/blob/package_extras/docs/img/schematic_for_website.png?raw=true"/>
 
 
-The overall approach is detailed in [Atta et. al. Bioinformatics. 2021.](https://doi.org/10.1093/bioinformatics/btab653).
+The overall approach is detailed in [Atta et. al. Bioinformatics. 2021](https://doi.org/10.1093/bioinformatics/btab653).
 
 ## Installation
 

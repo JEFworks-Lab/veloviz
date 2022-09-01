@@ -1,6 +1,6 @@
 Package: veloviz
 Title: VeloViz: RNA-velocity informed 2D embeddings for visualizing cell state trajectories
-Version: 0.99.8
+Version: 0.99.7
 Authors@R:
     c(person(given = "Lyla",
            family = "Atta",

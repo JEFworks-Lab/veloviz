@@ -188,6 +188,7 @@ graphViz = function(observed, projected, k, distance_metric = "L2", similarity_m
   if (weighted){
     print("calculating weights")
     E(g)$weight = max(edgeWeights) - edgeWeights
+    E(g)$weight = E(g)$weight + 0.1*min(E(g)$weight[E(g)$weight>0]) #igraph>1.3.4 require positive weights
     #E(g)$weight = abs(edgeWeights)
     #print(abs(edgeWeights)[1:10])
   }
